@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { BottomNav } from "@/components/BottomNav";
 import { AppHeader } from "@/components/AppHeader";
 import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider } from "@/hooks/use-auth";
 
 function NotFoundComponent() {
   return (
@@ -85,13 +86,15 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   return (
-    <ThemeProvider>
-      <div className="min-h-screen bg-background pb-20">
-        <AppHeader />
-        <Outlet />
-      </div>
-      <BottomNav />
-      <Toaster />
-    </ThemeProvider>
+    <AuthProvider>
+      <ThemeProvider>
+        <div className="min-h-screen bg-background pb-20">
+          <AppHeader />
+          <Outlet />
+        </div>
+        <BottomNav />
+        <Toaster />
+      </ThemeProvider>
+    </AuthProvider>
   );
 }

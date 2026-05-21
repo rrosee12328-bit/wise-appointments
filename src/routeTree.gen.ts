@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PlatformsRouteImport } from './routes/platforms'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppointmentsRouteImport } from './routes/appointments'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -30,6 +31,11 @@ const PlatformsRoute = PlatformsRouteImport.update({
   path: '/platforms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppointmentsRoute = AppointmentsRouteImport.update({
   id: '/appointments',
   path: '/appointments',
@@ -44,6 +50,7 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/appointments': typeof AppointmentsRoute
+  '/login': typeof LoginRoute
   '/platforms': typeof PlatformsRoute
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/appointments': typeof AppointmentsRoute
+  '/login': typeof LoginRoute
   '/platforms': typeof PlatformsRoute
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
@@ -59,19 +67,27 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/appointments': typeof AppointmentsRoute
+  '/login': typeof LoginRoute
   '/platforms': typeof PlatformsRoute
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/appointments' | '/platforms' | '/settings' | '/support'
+  fullPaths:
+    | '/'
+    | '/appointments'
+    | '/login'
+    | '/platforms'
+    | '/settings'
+    | '/support'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/appointments' | '/platforms' | '/settings' | '/support'
+  to: '/' | '/appointments' | '/login' | '/platforms' | '/settings' | '/support'
   id:
     | '__root__'
     | '/'
     | '/appointments'
+    | '/login'
     | '/platforms'
     | '/settings'
     | '/support'
@@ -80,6 +96,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppointmentsRoute: typeof AppointmentsRoute
+  LoginRoute: typeof LoginRoute
   PlatformsRoute: typeof PlatformsRoute
   SettingsRoute: typeof SettingsRoute
   SupportRoute: typeof SupportRoute
@@ -108,6 +125,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlatformsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/appointments': {
       id: '/appointments'
       path: '/appointments'
@@ -128,6 +152,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppointmentsRoute: AppointmentsRoute,
+  LoginRoute: LoginRoute,
   PlatformsRoute: PlatformsRoute,
   SettingsRoute: SettingsRoute,
   SupportRoute: SupportRoute,
@@ -135,13 +160,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
