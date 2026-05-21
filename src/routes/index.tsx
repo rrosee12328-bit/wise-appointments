@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { RefreshCw, AlertTriangle, CheckCircle2, Plus } from "lucide-react";
@@ -7,10 +7,12 @@ import { AppointmentRow } from "@/components/AppointmentCard";
 import { PlatformBadge } from "@/components/PlatformBadge";
 import { ConflictResolverDialog } from "@/components/ConflictResolverDialog";
 import { WalkInDialog } from "@/components/WalkInDialog";
-import { type Appointment, findConflicts, formatTime } from "@/lib/mock-data";
-import { useAuth } from "@/hooks/use-auth";
-import { useAppointments } from "@/hooks/use-appointments";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  TODAY_APPOINTMENTS,
+  type Appointment,
+  findConflicts,
+  formatTime,
+} from "@/lib/mock-data";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -25,8 +27,9 @@ export const Route = createFileRoute("/")({
 });
 
 function Schedule() {
-  const { user, loading: authLoading } = useAuth();
-  const { appointments, loading, addLocal, updateLocal } = useAppointments("today");
+  const [appointments, setAppointments] = useState<Appointment[]>(() =>
+    [...TODAY_APPOINTMENTS].sort((a, b) => a.start.getTime() - b.start.getTime()),
+  );
   const sorted = useMemo(
     () => [...appointments].sort((a, b) => a.start.getTime() - b.start.getTime()),
     [appointments],
@@ -67,44 +70,13 @@ function Schedule() {
     toast.success("Calendar is up to date");
   };
 
-  const reschedule = async (id: string, newStart: Date) => {
-    const existing = appointments.find((a) => a.id === id);
-    if (!existing) return;
-    const newEnd = new Date(newStart.getTime() + existing.durationMin * 60_000);
-    updateLocal(id, { start: newStart });
-    if (user) {
-      const { error } = await supabase
-        .from("appointments")
-        .update({ starts_at: newStart.toISOString(), ends_at: newEnd.toISOString() })
-        .eq("id", id);
-      if (error) toast.error(error.message);
-    }
+  const reschedule = (id: string, newStart: Date) => {
+    setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, start: newStart } : a)));
     toast.success("Appointment rescheduled · synced to all platforms");
   };
 
-  const addWalkIn = async (appt: Appointment) => {
-    if (user) {
-      const ends = new Date(appt.start.getTime() + appt.durationMin * 60_000);
-      const { data, error } = await supabase
-        .from("appointments")
-        .insert({
-          user_id: user.id,
-          source_platform: appt.platform,
-          client_name: appt.client,
-          service: appt.service,
-          starts_at: appt.start.toISOString(),
-          ends_at: ends.toISOString(),
-        })
-        .select("id")
-        .single();
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
-      addLocal({ ...appt, id: data.id });
-    } else {
-      addLocal(appt);
-    }
+  const addWalkIn = (appt: Appointment) => {
+    setAppointments((prev) => [...prev, appt]);
     toast.success(`Walk-in added · time blocked across all platforms`);
   };
 
@@ -119,22 +91,6 @@ function Schedule() {
           {greeting}, <span className="text-accent">Jey</span>
         </h1>
       </header>
-
-      {!authLoading && !user && (
-        <section className="mb-5 rounded-xl border border-accent/30 bg-accent/10 p-4 text-sm">
-          <p className="font-semibold text-foreground">Sign in to sync your schedule</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Your appointments are saved to your account.
-          </p>
-          <Link to="/login" className="mt-3 inline-flex">
-            <Button size="sm">Sign in</Button>
-          </Link>
-        </section>
-      )}
-
-      {loading && user && (
-        <p className="mb-3 text-xs text-muted-foreground">Loading appointments…</p>
-      )}
 
       {next ? (
         <section
