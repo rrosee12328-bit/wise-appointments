@@ -1,62 +1,86 @@
+# Backend foundation for Jey Link
 
-# OneChair — Central Scheduler (UI + Mock Data)
+Goal: stand up Lovable Cloud (auth + database) so the app stops relying on mock data and is ready to wire real platform OAuth in a follow-up.
 
-A scheduler app for solo barbers and beauticians that acts as the **single source of truth** across Google Calendar, Square, Booksy, Fresha, Acuity, and Calendly. This first build is UI-only with realistic mock data so you can validate the flows before wiring real OAuth integrations.
+## Scope
 
-## Pages
+Foundation only. No platform OAuth in this phase — that comes next, once you pick the first platform.
 
-1. **/ — Dashboard**
-   - Today's appointments, next up, daily revenue, # of synced platforms, conflict alerts banner.
-   - Quick "Block time" and "New appointment" actions.
+## What gets built
 
-2. **/calendar — Unified Calendar**
-   - Day / Week / Month views.
-   - Each appointment chip shows source platform badge (Google, Square, Booksy, Fresha, Acuity, Calendly, or "OneChair").
-   - Color-coded by service. Click → side drawer with details + "Push to all platforms" status.
-   - Mock conflict detection: two overlapping events → red outline + "Resolve conflict" modal.
+### 1. Enable Lovable Cloud
+Provisions the managed Postgres database, auth, and storage. No external account needed.
 
-3. **/integrations — Connected Platforms**
-   - Card per platform with Connect / Disconnect (mock), last sync time, # of events pulled, sync direction indicator (pull + push busy-blocks).
-   - "Sync now" button with simulated progress.
+### 2. Authentication
+- Email + password (with leaked-password protection enabled)
+- Google sign-in (one tap)
+- Apple sign-in (needed for future iOS)
+- `/login` page (sign in + sign up tabs)
+- `/reset-password` page
+- Auth state listener at the app root so the UI reacts immediately to sign-in/out
+- An `_authenticated` layout that gates the app — unauthenticated users get redirected to `/login`
 
-4. **/clients — Client list (light)**
-   - Name, phone, last visit, total visits, preferred service. Mock data only.
+### 3. Database tables
 
-5. **/services — Services & pricing**
-   - Service name, duration, price, color. Editable in local state.
+```text
+profiles
+  id (uuid, FK -> auth.users, PK)
+  display_name        text
+  shop_name           text
+  avatar_url          text
+  phone               text
+  timezone            text
+  created_at, updated_at
 
-6. **/settings — Working hours, breaks, time-off, sync rules**
-   - "Block this time on all connected platforms" toggle for time-off.
+user_roles            (separate table — required for safe role checks)
+  id, user_id, role (enum: admin | user)
 
-## Key UI behaviors (all mock)
+platform_connections
+  id, user_id, platform_id (text: 'square', 'booksy', ...)
+  status (connected | reauth | disconnected)
+  access_token, refresh_token, token_expires_at   (encrypted at rest)
+  external_account_id, metadata (jsonb)
+  last_sync_at, created_at, updated_at
 
-- **Conflict detection**: a util scans the mock event array for overlaps across sources and flags them. Dashboard shows a count; calendar highlights them.
-- **Source-of-truth indicator**: every event displays which platform it originated from and which platforms have received the busy-block.
-- **Optimistic sync animation**: when creating an appointment, show a "Pushing to Google, Square, Booksy…" toast with per-platform checkmarks.
+appointments
+  id, user_id, platform_id
+  external_id          (id from the source platform, for dedupe)
+  client_name, service, notes
+  start_at, duration_min
+  status (booked | cancelled | completed)
+  created_at, updated_at
+```
 
-## Design direction
+- RLS enabled on every table; users can only read/write their own rows
+- Trigger to auto-create a `profiles` row on signup
+- `has_role()` security-definer function for safe role checks
 
-Clean, professional, mobile-first (solo pros use phones between clients). Warm neutral palette with a single strong accent for the brand. Generous spacing, large touch targets, calendar legibility prioritized over decoration.
+### 4. Replace mock data in the UI
+- `/` (Schedule), `/appointments`, `/platforms` read from the database instead of `src/lib/mock-data.ts`
+- Empty states for new users (no appointments yet, no platforms connected yet)
+- Keep the existing UI/visual design as-is
 
-I'll generate 3 design directions for you to pick from before building, so the look and feel matches your brand.
+### 5. Profile page
+- Simple `/settings/profile` form to edit display name, shop name, phone, timezone, avatar
 
-## Tech
+## Out of scope (next phase)
+- Real OAuth for any specific platform
+- Background sync jobs
+- Webhook handlers
+- Conflict detection across real platform data
 
-- TanStack Start routes for each page.
-- Mock data in `src/lib/mock-data.ts` (appointments, clients, services, platform connections).
-- Conflict-detection util in `src/lib/conflicts.ts`.
-- shadcn components (Calendar, Dialog, Drawer, Card, Badge, Toast).
-- All state in-memory / React state — no backend yet.
+## Technical notes
+- All server-side data access via TanStack `createServerFn` with the `requireSupabaseAuth` middleware (RLS as the user)
+- Service-role admin client only used for signup trigger / admin tasks
+- Google + Apple use the Lovable broker; both providers also have to be enabled in Supabase Auth (done as part of setup)
+- Existing routes stay; `index`, `appointments`, `platforms`, `settings`, `support` get moved under the `_authenticated` layout
 
-## Out of scope for this build
+## After approval, the rough order of work
+1. Enable Lovable Cloud
+2. Create migrations (tables, RLS, trigger, role enum)
+3. Build `/login` + `/reset-password` + auth listener
+4. Add `_authenticated` layout and move existing routes under it
+5. Swap mock data for real queries
+6. Add profile editor
 
-- Real OAuth to Google/Square/Booksy/Fresha/Acuity/Calendly.
-- User auth / accounts.
-- Persistence (refresh resets state).
-- Payments, SMS reminders, online booking page.
-
-## Next steps after you approve this UI
-
-1. Enable Lovable Cloud for auth + persistence.
-2. Wire Google Calendar first (per-user OAuth — required since each barber connects their own account).
-3. Add Square, then Booksy/Fresha/Acuity/Calendly one at a time. Booksy notably has no public API for solo pros — we'll discuss workarounds (iCal feed, manual import) when we get there.
+Once this is live, we pick the first platform (Google Calendar is the easiest) and add real OAuth + sync.

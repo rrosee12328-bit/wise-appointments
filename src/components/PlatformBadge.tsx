@@ -1,32 +1,31 @@
-import { type Platform, PLATFORM_LABEL } from "@/lib/mock-data";
+import { PLATFORMS, type PlatformId } from "@/lib/platforms";
 import { cn } from "@/lib/utils";
-
-const STYLE: Record<Platform, string> = {
-  google: "bg-platform-google text-platform-google-foreground",
-  square: "bg-platform-square text-platform-square-foreground",
-  booksy: "bg-platform-booksy text-platform-booksy-foreground",
-  fresha: "bg-platform-fresha text-platform-fresha-foreground",
-  acuity: "bg-platform-acuity text-platform-acuity-foreground",
-  calendly: "bg-platform-calendly text-platform-calendly-foreground",
-  steady: "bg-platform-steady text-platform-steady-foreground",
-};
 
 export function PlatformBadge({
   platform,
   className,
 }: {
-  platform: Platform;
+  platform: PlatformId;
   className?: string;
 }) {
+  const p = PLATFORMS[platform];
   return (
     <span
       className={cn(
-        "px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ring-1 ring-inset ring-black/5",
-        STYLE[platform],
+        "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium",
         className,
       )}
+      style={{
+        backgroundColor: `color-mix(in oklab, ${p.colorVar} 18%, transparent)`,
+        color: p.colorVar,
+      }}
     >
-      {PLATFORM_LABEL[platform]}
+      <span
+        className="h-1.5 w-1.5 rounded-full"
+        style={{ backgroundColor: p.colorVar }}
+        aria-hidden
+      />
+      {p.label}
     </span>
   );
 }

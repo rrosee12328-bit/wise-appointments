@@ -1,179 +1,181 @@
-export type Platform =
-  | "google"
-  | "square"
-  | "booksy"
-  | "fresha"
-  | "acuity"
-  | "calendly"
-  | "steady";
-
-export const PLATFORM_LABEL: Record<Platform, string> = {
-  google: "Google",
-  square: "Square",
-  booksy: "Booksy",
-  fresha: "Fresha",
-  acuity: "Acuity",
-  calendly: "Calendly",
-  steady: "Steady",
-};
+import type { PlatformId } from "./platforms";
 
 export type Appointment = {
   id: string;
-  /** minutes from midnight */
-  start: number;
-  /** minutes from midnight */
-  end: number;
+  start: Date;
+  durationMin: number;
   client: string;
   service: string;
-  price?: number;
-  source: Platform;
-  /** platforms the busy-block was pushed to */
-  syncedTo: Platform[];
-  isBlock?: boolean;
-  note?: string;
+  platform: PlatformId;
+  notes?: string;
 };
 
-export type PlatformConnection = {
-  platform: Exclude<Platform, "steady">;
-  connected: boolean;
-  lastSyncMinutesAgo?: number;
-  eventsPulled?: number;
-  syncDirection: "two-way" | "pull" | "push" | "off";
-};
+function at(hour: number, min: number, dayOffset = 0): Date {
+  const d = new Date();
+  d.setDate(d.getDate() + dayOffset);
+  d.setHours(hour, min, 0, 0);
+  return d;
+}
 
-export type Client = {
-  id: string;
-  name: string;
-  phone: string;
-  lastVisitDaysAgo: number;
-  totalVisits: number;
-  preferredService: string;
-};
-
-export type Service = {
-  id: string;
-  name: string;
-  durationMin: number;
-  price: number;
-  color: string;
-};
-
-export const todayAppointments: Appointment[] = [
+export const TODAY_APPOINTMENTS: Appointment[] = [
   {
     id: "a1",
-    start: 9 * 60,
-    end: 10 * 60 + 30,
-    client: "Elena Rodriguez",
-    service: "Full Color & Highlight",
-    price: 180,
-    source: "square",
-    syncedTo: ["google", "booksy", "fresha"],
+    start: at(9, 0),
+    durationMin: 45,
+    client: "Andre Cole",
+    service: "Haircut",
+    platform: "square",
   },
   {
     id: "a2",
-    start: 10 * 60 + 45,
-    end: 11 * 60 + 30,
-    client: "Marcus Chen",
-    service: "Taper Fade",
-    price: 45,
-    source: "booksy",
-    syncedTo: ["google", "square", "fresha"],
+    start: at(11, 30),
+    durationMin: 30,
+    client: "Priya Shah",
+    service: "Lineup",
+    platform: "thecut",
   },
   {
     id: "a3",
-    start: 12 * 60,
-    end: 12 * 60 + 45,
-    client: "Lunch",
-    service: "Personal break",
-    source: "steady",
-    syncedTo: ["google", "square", "booksy"],
-    isBlock: true,
+    start: at(14, 30),
+    durationMin: 30,
+    client: "Marcus Reed",
+    service: "Beard Trim",
+    platform: "booksy",
   },
   {
     id: "a4",
-    start: 13 * 60,
-    end: 14 * 60,
-    client: "Sofia Patel",
-    service: "Womens Cut & Style",
-    price: 75,
-    source: "fresha",
-    syncedTo: ["google", "square"],
+    start: at(16, 0),
+    durationMin: 60,
+    client: "Devon Hill",
+    service: "Cut & Beard",
+    platform: "setmore",
   },
   {
     id: "a5",
-    start: 14 * 60 + 30,
-    end: 15 * 60 + 15,
-    client: "Jordan P.",
-    service: "Fade & Beard Trim",
-    price: 55,
-    source: "booksy",
-    syncedTo: ["google"],
+    start: at(16, 30),
+    durationMin: 30,
+    client: "Jordan Alvarez",
+    service: "Kids Cut",
+    platform: "google",
+  },
+];
+
+export const UPCOMING_APPOINTMENTS: Appointment[] = [
+  ...TODAY_APPOINTMENTS,
+  {
+    id: "b1",
+    start: at(10, 0, 1),
+    durationMin: 45,
+    client: "Sam Patel",
+    service: "Haircut",
+    platform: "booksy",
   },
   {
-    id: "a6",
-    start: 14 * 60 + 30,
-    end: 15 * 60 + 30,
-    client: "David S.",
-    service: "Men's Cut",
-    price: 40,
-    source: "square",
-    syncedTo: ["google"],
+    id: "b2",
+    start: at(13, 0, 1),
+    durationMin: 30,
+    client: "Wes Brooks",
+    service: "Beard Trim",
+    platform: "square",
   },
   {
-    id: "a7",
-    start: 15 * 60 + 30,
-    end: 16 * 60 + 15,
-    client: "Aisha Williams",
-    service: "Box Braids Touch-up",
-    price: 120,
-    source: "acuity",
-    syncedTo: ["google", "square"],
+    id: "b3",
+    start: at(15, 30, 2),
+    durationMin: 60,
+    client: "Theo Nakamura",
+    service: "Cut & Beard",
+    platform: "google",
+  },
+];
+
+export const PAST_APPOINTMENTS: Appointment[] = [
+  {
+    id: "p1",
+    start: at(11, 0, -1),
+    durationMin: 30,
+    client: "Eli Watson",
+    service: "Lineup",
+    platform: "thecut",
   },
   {
-    id: "a8",
-    start: 16 * 60 + 15,
-    end: 17 * 60,
-    client: "School Pickup",
-    service: "Blocked: Personal",
-    source: "google",
-    syncedTo: ["square", "booksy", "fresha"],
-    isBlock: true,
+    id: "p2",
+    start: at(15, 0, -1),
+    durationMin: 45,
+    client: "Noah Bennett",
+    service: "Haircut",
+    platform: "booksy",
+  },
+  {
+    id: "p3",
+    start: at(9, 30, -2),
+    durationMin: 30,
+    client: "Kai Romero",
+    service: "Beard Trim",
+    platform: "setmore",
   },
 ];
 
-export const platformConnections: PlatformConnection[] = [
-  { platform: "google", connected: true, lastSyncMinutesAgo: 2, eventsPulled: 14, syncDirection: "two-way" },
-  { platform: "square", connected: true, lastSyncMinutesAgo: 5, eventsPulled: 23, syncDirection: "two-way" },
-  { platform: "booksy", connected: true, lastSyncMinutesAgo: 8, eventsPulled: 17, syncDirection: "two-way" },
-  { platform: "fresha", connected: true, lastSyncMinutesAgo: 11, eventsPulled: 9, syncDirection: "two-way" },
-  { platform: "acuity", connected: true, lastSyncMinutesAgo: 4, eventsPulled: 6, syncDirection: "two-way" },
-  { platform: "calendly", connected: false, syncDirection: "off" },
-];
-
-export const clients: Client[] = [
-  { id: "c1", name: "Elena Rodriguez", phone: "(415) 555-0142", lastVisitDaysAgo: 28, totalVisits: 14, preferredService: "Full Color & Highlight" },
-  { id: "c2", name: "Marcus Chen", phone: "(415) 555-0119", lastVisitDaysAgo: 14, totalVisits: 22, preferredService: "Taper Fade" },
-  { id: "c3", name: "Sofia Patel", phone: "(415) 555-0166", lastVisitDaysAgo: 35, totalVisits: 9, preferredService: "Womens Cut & Style" },
-  { id: "c4", name: "Jordan P.", phone: "(415) 555-0188", lastVisitDaysAgo: 21, totalVisits: 6, preferredService: "Fade & Beard Trim" },
-  { id: "c5", name: "Aisha Williams", phone: "(415) 555-0173", lastVisitDaysAgo: 42, totalVisits: 11, preferredService: "Box Braids" },
-  { id: "c6", name: "David S.", phone: "(415) 555-0124", lastVisitDaysAgo: 7, totalVisits: 19, preferredService: "Men's Cut" },
-];
-
-export const services: Service[] = [
-  { id: "s1", name: "Men's Cut", durationMin: 30, price: 40, color: "#3b82f6" },
-  { id: "s2", name: "Taper Fade", durationMin: 45, price: 45, color: "#06b6d4" },
-  { id: "s3", name: "Fade & Beard Trim", durationMin: 45, price: 55, color: "#0891b2" },
-  { id: "s4", name: "Women's Cut & Style", durationMin: 60, price: 75, color: "#ec4899" },
-  { id: "s5", name: "Full Color & Highlight", durationMin: 90, price: 180, color: "#a855f7" },
-  { id: "s6", name: "Box Braids Touch-up", durationMin: 45, price: 120, color: "#f97316" },
-];
-
-export const workingHours = {
-  monday: { open: "09:00", close: "18:00", enabled: true },
-  tuesday: { open: "09:00", close: "18:00", enabled: true },
-  wednesday: { open: "09:00", close: "19:00", enabled: true },
-  thursday: { open: "09:00", close: "19:00", enabled: true },
-  friday: { open: "09:00", close: "20:00", enabled: true },
-  saturday: { open: "10:00", close: "17:00", enabled: true },
-  sunday: { open: "10:00", close: "15:00", enabled: false },
+export type PlatformConnection = {
+  id: PlatformId;
+  status: "connected" | "reauth" | "disconnected";
+  lastSync?: Date;
 };
+
+export const PLATFORM_CONNECTIONS: PlatformConnection[] = [
+  { id: "booksy", status: "connected", lastSync: at(8, 12) },
+  { id: "square", status: "connected", lastSync: at(8, 12) },
+  { id: "google", status: "connected", lastSync: at(8, 12) },
+  { id: "thecut", status: "reauth", lastSync: at(7, 0, -1) },
+  { id: "setmore", status: "disconnected" },
+  { id: "squire", status: "disconnected" },
+  { id: "vagaro", status: "disconnected" },
+  { id: "barberly", status: "disconnected" },
+  { id: "ringmybarber", status: "disconnected" },
+  { id: "goldie", status: "disconnected" },
+  { id: "glossgenius", status: "disconnected" },
+  { id: "styleseat", status: "disconnected" },
+  { id: "fresha", status: "disconnected" },
+  { id: "mangomint", status: "disconnected" },
+  { id: "boulevard", status: "disconnected" },
+  { id: "zenoti", status: "disconnected" },
+  { id: "acuity", status: "disconnected" },
+  { id: "calendly", status: "disconnected" },
+  { id: "simplybook", status: "disconnected" },
+];
+
+export function getNextAppointment(now = new Date()): Appointment | undefined {
+  return [...TODAY_APPOINTMENTS, ...UPCOMING_APPOINTMENTS]
+    .filter((a) => a.start.getTime() > now.getTime())
+    .sort((a, b) => a.start.getTime() - b.start.getTime())[0];
+}
+
+export function findConflicts(appts: Appointment[]): Appointment[] {
+  const sorted = [...appts].sort((a, b) => a.start.getTime() - b.start.getTime());
+  const conflicts: Appointment[] = [];
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = sorted[i - 1];
+    const cur = sorted[i];
+    const prevEnd = prev.start.getTime() + prev.durationMin * 60_000;
+    if (cur.start.getTime() < prevEnd) {
+      if (!conflicts.includes(prev)) conflicts.push(prev);
+      conflicts.push(cur);
+    }
+  }
+  return conflicts;
+}
+
+export function formatTime(d: Date): string {
+  return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+export function formatRelativeDay(d: Date): string {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(d);
+  target.setHours(0, 0, 0, 0);
+  const diff = Math.round((target.getTime() - today.getTime()) / 86400000);
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Tomorrow";
+  if (diff === -1) return "Yesterday";
+  return d.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" });
+}
