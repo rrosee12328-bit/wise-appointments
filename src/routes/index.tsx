@@ -67,13 +67,44 @@ function Schedule() {
     toast.success("Calendar is up to date");
   };
 
-  const reschedule = (id: string, newStart: Date) => {
-    setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, start: newStart } : a)));
+  const reschedule = async (id: string, newStart: Date) => {
+    const existing = appointments.find((a) => a.id === id);
+    if (!existing) return;
+    const newEnd = new Date(newStart.getTime() + existing.durationMin * 60_000);
+    updateLocal(id, { start: newStart });
+    if (user) {
+      const { error } = await supabase
+        .from("appointments")
+        .update({ starts_at: newStart.toISOString(), ends_at: newEnd.toISOString() })
+        .eq("id", id);
+      if (error) toast.error(error.message);
+    }
     toast.success("Appointment rescheduled · synced to all platforms");
   };
 
-  const addWalkIn = (appt: Appointment) => {
-    setAppointments((prev) => [...prev, appt]);
+  const addWalkIn = async (appt: Appointment) => {
+    if (user) {
+      const ends = new Date(appt.start.getTime() + appt.durationMin * 60_000);
+      const { data, error } = await supabase
+        .from("appointments")
+        .insert({
+          user_id: user.id,
+          source_platform: appt.platform,
+          client_name: appt.client,
+          service: appt.service,
+          starts_at: appt.start.toISOString(),
+          ends_at: ends.toISOString(),
+        })
+        .select("id")
+        .single();
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      addLocal({ ...appt, id: data.id });
+    } else {
+      addLocal(appt);
+    }
     toast.success(`Walk-in added · time blocked across all platforms`);
   };
 
