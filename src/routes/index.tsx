@@ -120,6 +120,22 @@ function Schedule() {
         </h1>
       </header>
 
+      {!authLoading && !user && (
+        <section className="mb-5 rounded-xl border border-accent/30 bg-accent/10 p-4 text-sm">
+          <p className="font-semibold text-foreground">Sign in to sync your schedule</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Your appointments are saved to your account.
+          </p>
+          <Link to="/login" className="mt-3 inline-flex">
+            <Button size="sm">Sign in</Button>
+          </Link>
+        </section>
+      )}
+
+      {loading && user && (
+        <p className="mb-3 text-xs text-muted-foreground">Loading appointments…</p>
+      )}
+
       {next ? (
         <section
           aria-label="Next appointment"
