@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import logo from "@/assets/jey-link-logo.png";
+
+const logo = "/jey-link-logo.png";
 
 export function AppHeader() {
   return (
