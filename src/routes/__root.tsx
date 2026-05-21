@@ -8,6 +8,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
+import { Header } from "@/components/Header";
 
 import appCss from "../styles.css?url";
 
@@ -122,7 +123,10 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <div className="min-h-screen bg-background text-foreground">
+        <Header />
+        <Outlet />
+      </div>
       <Toaster />
     </QueryClientProvider>
   );
