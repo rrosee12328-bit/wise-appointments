@@ -11,11 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as ServicesRouteImport } from './routes/services'
 import { Route as PlatformsRouteImport } from './routes/platforms'
-import { Route as IntegrationsRouteImport } from './routes/integrations'
-import { Route as ClientsRouteImport } from './routes/clients'
-import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as AppointmentsRouteImport } from './routes/appointments'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -29,29 +25,9 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ServicesRoute = ServicesRouteImport.update({
-  id: '/services',
-  path: '/services',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PlatformsRoute = PlatformsRouteImport.update({
   id: '/platforms',
   path: '/platforms',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const IntegrationsRoute = IntegrationsRouteImport.update({
-  id: '/integrations',
-  path: '/integrations',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ClientsRoute = ClientsRouteImport.update({
-  id: '/clients',
-  path: '/clients',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CalendarRoute = CalendarRouteImport.update({
-  id: '/calendar',
-  path: '/calendar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppointmentsRoute = AppointmentsRouteImport.update({
@@ -68,22 +44,14 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/appointments': typeof AppointmentsRoute
-  '/calendar': typeof CalendarRoute
-  '/clients': typeof ClientsRoute
-  '/integrations': typeof IntegrationsRoute
   '/platforms': typeof PlatformsRoute
-  '/services': typeof ServicesRoute
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/appointments': typeof AppointmentsRoute
-  '/calendar': typeof CalendarRoute
-  '/clients': typeof ClientsRoute
-  '/integrations': typeof IntegrationsRoute
   '/platforms': typeof PlatformsRoute
-  '/services': typeof ServicesRoute
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
 }
@@ -91,46 +59,20 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/appointments': typeof AppointmentsRoute
-  '/calendar': typeof CalendarRoute
-  '/clients': typeof ClientsRoute
-  '/integrations': typeof IntegrationsRoute
   '/platforms': typeof PlatformsRoute
-  '/services': typeof ServicesRoute
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/appointments'
-    | '/calendar'
-    | '/clients'
-    | '/integrations'
-    | '/platforms'
-    | '/services'
-    | '/settings'
-    | '/support'
+  fullPaths: '/' | '/appointments' | '/platforms' | '/settings' | '/support'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/appointments'
-    | '/calendar'
-    | '/clients'
-    | '/integrations'
-    | '/platforms'
-    | '/services'
-    | '/settings'
-    | '/support'
+  to: '/' | '/appointments' | '/platforms' | '/settings' | '/support'
   id:
     | '__root__'
     | '/'
     | '/appointments'
-    | '/calendar'
-    | '/clients'
-    | '/integrations'
     | '/platforms'
-    | '/services'
     | '/settings'
     | '/support'
   fileRoutesById: FileRoutesById
@@ -138,11 +80,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppointmentsRoute: typeof AppointmentsRoute
-  CalendarRoute: typeof CalendarRoute
-  ClientsRoute: typeof ClientsRoute
-  IntegrationsRoute: typeof IntegrationsRoute
   PlatformsRoute: typeof PlatformsRoute
-  ServicesRoute: typeof ServicesRoute
   SettingsRoute: typeof SettingsRoute
   SupportRoute: typeof SupportRoute
 }
@@ -163,39 +101,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/services': {
-      id: '/services'
-      path: '/services'
-      fullPath: '/services'
-      preLoaderRoute: typeof ServicesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/platforms': {
       id: '/platforms'
       path: '/platforms'
       fullPath: '/platforms'
       preLoaderRoute: typeof PlatformsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/integrations': {
-      id: '/integrations'
-      path: '/integrations'
-      fullPath: '/integrations'
-      preLoaderRoute: typeof IntegrationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/clients': {
-      id: '/clients'
-      path: '/clients'
-      fullPath: '/clients'
-      preLoaderRoute: typeof ClientsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/calendar': {
-      id: '/calendar'
-      path: '/calendar'
-      fullPath: '/calendar'
-      preLoaderRoute: typeof CalendarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/appointments': {
@@ -218,14 +128,20 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppointmentsRoute: AppointmentsRoute,
-  CalendarRoute: CalendarRoute,
-  ClientsRoute: ClientsRoute,
-  IntegrationsRoute: IntegrationsRoute,
   PlatformsRoute: PlatformsRoute,
-  ServicesRoute: ServicesRoute,
   SettingsRoute: SettingsRoute,
   SupportRoute: SupportRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
