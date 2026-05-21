@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { RefreshCw, AlertTriangle, CheckCircle2, Plus } from "lucide-react";
@@ -7,12 +7,10 @@ import { AppointmentRow } from "@/components/AppointmentCard";
 import { PlatformBadge } from "@/components/PlatformBadge";
 import { ConflictResolverDialog } from "@/components/ConflictResolverDialog";
 import { WalkInDialog } from "@/components/WalkInDialog";
-import {
-  TODAY_APPOINTMENTS,
-  type Appointment,
-  findConflicts,
-  formatTime,
-} from "@/lib/mock-data";
+import { type Appointment, findConflicts, formatTime } from "@/lib/mock-data";
+import { useAuth } from "@/hooks/use-auth";
+import { useAppointments } from "@/hooks/use-appointments";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -27,9 +25,8 @@ export const Route = createFileRoute("/")({
 });
 
 function Schedule() {
-  const [appointments, setAppointments] = useState<Appointment[]>(() =>
-    [...TODAY_APPOINTMENTS].sort((a, b) => a.start.getTime() - b.start.getTime()),
-  );
+  const { user, loading: authLoading } = useAuth();
+  const { appointments, loading, addLocal, updateLocal } = useAppointments("today");
   const sorted = useMemo(
     () => [...appointments].sort((a, b) => a.start.getTime() - b.start.getTime()),
     [appointments],
