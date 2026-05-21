@@ -1,16 +1,10 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  Outlet,
-  Link,
-  createRootRouteWithContext,
-  useRouter,
-  HeadContent,
-  Scripts,
-} from "@tanstack/react-router";
-import { Toaster } from "@/components/ui/sonner";
-import { Header } from "@/components/Header";
+import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { BottomNav } from "@/components/BottomNav";
+import { AppHeader } from "@/components/AppHeader";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -34,75 +28,45 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  console.error(error);
-  const router = useRouter();
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
-        </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <button
-            onClick={() => {
-              router.invalidate();
-              reset();
-            }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Try again
-          </button>
-          <a
-            href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-          >
-            Go home
-          </a>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Steady — One calendar for barbers & beauticians" },
+      {
+        name: "viewport",
+        content: "width=device-width, initial-scale=1, viewport-fit=cover",
+      },
+      { title: "Jey Link — Your unified appointment dashboard" },
       {
         name: "description",
         content:
-          "Steady unifies Google, Square, Booksy, Fresha, Acuity and Calendly into one calendar so you never double-book again.",
+          "Jey Link unifies bookings from Square, Booksy, TheCut, Setmore and Google Calendar into one calm dashboard.",
       },
-      { name: "author", content: "Steady" },
-      { property: "og:title", content: "Steady — One calendar for barbers & beauticians" },
+      { name: "author", content: "Jey Link" },
+      { property: "og:title", content: "Jey Link — Your unified appointment dashboard" },
       {
         property: "og:description",
-        content:
-          "Aggregate every booking platform into a single calendar. Stop double bookings before they happen.",
+        content: "One calm dashboard for every appointment, from every platform.",
       },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "Jey Link — Your unified appointment dashboard" },
+      { name: "description", content: "Unified Scheduler" },
+      { property: "og:description", content: "Unified Scheduler" },
+      { name: "twitter:description", content: "Unified Scheduler" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/VWdRVt7OnwO6YnrGjI9n4QlxJFl1/social-images/social-1778770403032-28B21D7E-23A0-481B-96A9-69488D1840E9.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/VWdRVt7OnwO6YnrGjI9n4QlxJFl1/social-images/social-1778770403032-28B21D7E-23A0-481B-96A9-69488D1840E9.webp" },
     ],
     links: [
-      { rel: "stylesheet", href: appCss },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Sans:wght@500;600;700&display=swap",
+        href: appCss,
       },
     ],
   }),
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
-  errorComponent: ErrorComponent,
 });
 
 function RootShell({ children }: { children: React.ReactNode }) {
@@ -120,14 +84,14 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
-  const { queryClient } = Route.useRouteContext();
   return (
-    <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen bg-background text-foreground">
-        <Header />
+    <ThemeProvider>
+      <div className="min-h-screen bg-background pb-20">
+        <AppHeader />
         <Outlet />
       </div>
+      <BottomNav />
       <Toaster />
-    </QueryClientProvider>
+    </ThemeProvider>
   );
 }

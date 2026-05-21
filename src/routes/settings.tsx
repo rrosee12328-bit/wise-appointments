@@ -1,127 +1,126 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Sun, Moon, Monitor } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { useTheme } from "@/components/ThemeProvider";
+import { cn } from "@/lib/utils";
 import { useState } from "react";
-import { workingHours } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
     meta: [
-      { title: "Settings — Steady" },
-      {
-        name: "description",
-        content: "Working hours, breaks, time-off and sync rules.",
-      },
+      { title: "Settings — Jey Link" },
+      { name: "description", content: "Profile, appearance, notifications and billing." },
+      { property: "og:title", content: "Settings — Jey Link" },
+      { property: "og:description", content: "Manage your Jey Link preferences." },
     ],
   }),
   component: SettingsPage,
 });
 
-const DAYS = [
-  "monday",
-  "tuesday",
-  "wednesday",
-  "thursday",
-  "friday",
-  "saturday",
-  "sunday",
-] as const;
-
 function SettingsPage() {
-  const [hours, setHours] = useState(workingHours);
-  const [blockOnAll, setBlockOnAll] = useState(true);
+  const { mode, setMode } = useTheme();
+  const [notifyNew, setNotifyNew] = useState(true);
+  const [notifyConflicts, setNotifyConflicts] = useState(true);
+  const [notifyDigest, setNotifyDigest] = useState(false);
+
+  const themes = [
+    { id: "system" as const, label: "System", icon: Monitor },
+    { id: "light" as const, label: "Light", icon: Sun },
+    { id: "dark" as const, label: "Dark", icon: Moon },
+  ];
 
   return (
-    <main className="max-w-3xl mx-auto px-6 py-10 space-y-12">
-      <section>
-        <h1 className="text-3xl font-semibold tracking-tight mb-2">Settings</h1>
-        <p className="text-muted-foreground">
-          Tell Steady when you're available and how aggressively to block other
-          platforms.
-        </p>
-      </section>
+    <main className="mx-auto max-w-md px-4 pt-8">
+      <header className="mb-6">
+        <h1 className="text-xl font-semibold text-foreground">Settings</h1>
+      </header>
 
-      <section>
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-4">
-          Working hours
-        </h2>
-        <div className="rounded-xl ring-1 ring-border bg-surface divide-y divide-border">
-          {DAYS.map((day) => {
-            const h = hours[day];
-            return (
-              <div
-                key={day}
-                className="flex items-center gap-4 px-4 py-3 flex-wrap"
-              >
-                <label className="inline-flex items-center gap-2 w-32">
-                  <input
-                    type="checkbox"
-                    checked={h.enabled}
-                    onChange={(e) =>
-                      setHours((prev) => ({
-                        ...prev,
-                        [day]: { ...h, enabled: e.target.checked },
-                      }))
-                    }
-                  />
-                  <span className="text-sm font-medium capitalize">{day}</span>
-                </label>
-                <div className="flex items-center gap-2 ml-auto">
-                  <input
-                    type="time"
-                    value={h.open}
-                    disabled={!h.enabled}
-                    onChange={(e) =>
-                      setHours((prev) => ({
-                        ...prev,
-                        [day]: { ...h, open: e.target.value },
-                      }))
-                    }
-                    className="px-2 py-1 text-sm rounded ring-1 ring-border bg-background disabled:opacity-50"
-                  />
-                  <span className="text-muted-foreground text-sm">to</span>
-                  <input
-                    type="time"
-                    value={h.close}
-                    disabled={!h.enabled}
-                    onChange={(e) =>
-                      setHours((prev) => ({
-                        ...prev,
-                        [day]: { ...h, close: e.target.value },
-                      }))
-                    }
-                    className="px-2 py-1 text-sm rounded ring-1 ring-border bg-background disabled:opacity-50"
-                  />
-                </div>
-              </div>
-            );
-          })}
+      <Section title="Profile">
+        <div className="flex items-center gap-3 rounded-md border bg-card p-4">
+          <div
+            className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-semibold text-primary-foreground"
+            style={{ backgroundColor: "var(--primary)" }}
+          >
+            JL
+          </div>
+          <div className="min-w-0">
+            <div className="text-sm font-medium text-foreground">Jey Link</div>
+            <div className="truncate text-xs text-muted-foreground">jey@example.com</div>
+          </div>
         </div>
-      </section>
+      </Section>
 
-      <section>
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-4">
-          Sync rules
-        </h2>
-        <div className="rounded-xl ring-1 ring-border bg-surface p-5">
-          <label className="flex items-start gap-3">
-            <input
-              type="checkbox"
-              checked={blockOnAll}
-              onChange={(e) => setBlockOnAll(e.target.checked)}
-              className="mt-1"
-            />
-            <div>
-              <p className="text-sm font-semibold">
-                Block time-off on every connected platform
-              </p>
-              <p className="text-xs text-muted-foreground mt-1 max-w-[60ch]">
-                When you mark personal time, push a busy-block to Google,
-                Square, Booksy, Fresha, Acuity and Calendly so clients can't
-                book over it.
-              </p>
-            </div>
-          </label>
+      <Section title="Appearance">
+        <div className="grid grid-cols-3 gap-2 rounded-md border bg-card p-2">
+          {themes.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setMode(id)}
+              className={cn(
+                "flex flex-col items-center gap-1 rounded-md py-3 text-xs font-medium transition-colors",
+                mode === id
+                  ? "bg-secondary text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {label}
+            </button>
+          ))}
         </div>
-      </section>
+      </Section>
+
+      <Section title="Notifications">
+        <Row label="New bookings" checked={notifyNew} onChange={setNotifyNew} />
+        <Row label="Conflict warnings" checked={notifyConflicts} onChange={setNotifyConflicts} />
+        <Row label="Daily digest" checked={notifyDigest} onChange={setNotifyDigest} />
+      </Section>
+
+      <Section title="Billing">
+        <div className="rounded-md border bg-card p-4">
+          <div className="text-sm font-medium text-foreground">Pro plan</div>
+          <div className="mb-3 text-xs text-muted-foreground">$12 / month · renews May 28</div>
+          <Button variant="outline" size="sm">
+            Manage subscription
+          </Button>
+        </div>
+      </Section>
+
+      <Section title="About">
+        <div className="rounded-md border bg-card p-4 text-xs text-muted-foreground">
+          Jey Link · v0.1.0
+        </div>
+      </Section>
     </main>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="mb-6">
+      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {title}
+      </h2>
+      <div className="flex flex-col gap-2">{children}</div>
+    </section>
+  );
+}
+
+function Row({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <label className="flex items-center justify-between rounded-md border bg-card p-4">
+      <span className="text-sm text-foreground">{label}</span>
+      <Switch checked={checked} onCheckedChange={onChange} />
+    </label>
   );
 }

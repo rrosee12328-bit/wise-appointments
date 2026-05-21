@@ -1,227 +1,194 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
-import { AlertTriangle, Plus } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { RefreshCw, AlertTriangle, CheckCircle2, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AppointmentRow } from "@/components/AppointmentCard";
 import { PlatformBadge } from "@/components/PlatformBadge";
-import barberStation from "@/assets/barber-station.jpg";
+import { ConflictResolverDialog } from "@/components/ConflictResolverDialog";
+import { WalkInDialog } from "@/components/WalkInDialog";
 import {
-  todayAppointments,
-  platformConnections,
-  PLATFORM_LABEL,
+  TODAY_APPOINTMENTS,
+  type Appointment,
+  findConflicts,
+  formatTime,
 } from "@/lib/mock-data";
-import { findConflicts, formatMin, isInConflict } from "@/lib/conflicts";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Today's Schedule — Steady" },
-      {
-        name: "description",
-        content:
-          "Your unified daily schedule across every booking platform — with instant conflict alerts.",
-      },
+      { title: "Schedule — Jey Link" },
+      { name: "description", content: "Your next appointment and today's schedule, all in one place." },
+      { property: "og:title", content: "Schedule — Jey Link" },
+      { property: "og:description", content: "Your next appointment, today's timeline, and platform sync status." },
     ],
   }),
-  component: Dashboard,
+  component: Schedule,
 });
 
-function Dashboard() {
-  const conflicts = useMemo(() => findConflicts(todayAppointments), []);
-  const activeChannels = platformConnections.filter((p) => p.connected).length;
+function Schedule() {
+  const [appointments, setAppointments] = useState<Appointment[]>(() =>
+    [...TODAY_APPOINTMENTS].sort((a, b) => a.start.getTime() - b.start.getTime()),
+  );
+  const sorted = useMemo(
+    () => [...appointments].sort((a, b) => a.start.getTime() - b.start.getTime()),
+    [appointments],
+  );
+  const next = useMemo(() => {
+    const now = Date.now();
+    return sorted.find((a) => a.start.getTime() > now);
+  }, [sorted]);
+  const conflicts = useMemo(() => findConflicts(sorted), [sorted]);
+  const conflictIds = new Set(conflicts.map((c) => c.id));
+  const [syncing, setSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState<Date>(new Date());
+  const [resolverOpen, setResolverOpen] = useState(false);
+  const [walkInOpen, setWalkInOpen] = useState(false);
+
+  useEffect(() => {
+    if (conflicts.length > 0) setResolverOpen(true);
+  }, [conflicts.length]);
+
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (h < 12) return "Good morning";
+    if (h < 18) return "Good afternoon";
+    return "Good evening";
+  })();
+
+  const today = new Date().toLocaleDateString([], {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+
+  const sync = async () => {
+    setSyncing(true);
+    await new Promise((r) => setTimeout(r, 900));
+    setSyncing(false);
+    setLastSync(new Date());
+    toast.success("Calendar is up to date");
+  };
+
+  const reschedule = (id: string, newStart: Date) => {
+    setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, start: newStart } : a)));
+    toast.success("Appointment rescheduled · synced to all platforms");
+  };
+
+  const addWalkIn = (appt: Appointment) => {
+    setAppointments((prev) => [...prev, appt]);
+    toast.success(`Walk-in added · time blocked across all platforms`);
+  };
 
   return (
-    <main className="max-w-5xl mx-auto px-6 py-10">
-      {conflicts.length > 0 && (
-        <section className="mb-10">
-          {conflicts.map(({ a, b }, i) => (
-            <div
-              key={i}
-              className="bg-warning-surface ring-1 ring-warning/30 rounded-xl p-5 flex items-start gap-4 mb-3"
-            >
-              <div className="size-8 bg-warning rounded-full flex items-center justify-center shrink-0">
-                <AlertTriangle className="size-4 text-warning-foreground" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-sm font-semibold text-warning-foreground">
-                  Schedule conflict detected
-                </h3>
-                <p className="text-sm text-warning-foreground/80 mt-1 max-w-[60ch]">
-                  Double booking at {formatMin(a.start)}: {a.service} (
-                  {PLATFORM_LABEL[a.source]}) overlaps with {b.service} (
-                  {PLATFORM_LABEL[b.source]}).
-                </p>
-                <div className="mt-4 flex gap-2">
-                  <button
-                    onClick={() =>
-                      toast.success("Pushed cancellation to all platforms", {
-                        description: `${b.client}'s appointment removed`,
-                      })
-                    }
-                    className="text-xs font-semibold px-3 py-1.5 bg-warning text-warning-foreground rounded"
-                  >
-                    Resolve now
-                  </button>
-                  <button className="text-xs font-semibold px-3 py-1.5 text-warning-foreground/80 hover:bg-warning/10 rounded">
-                    Dismiss
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+    <main className="mx-auto max-w-md px-5 pb-10 pt-8">
+      <header className="mb-8">
+        <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-accent">
+          <span className="h-1 w-1 rounded-full bg-accent" />
+          {today}
+        </p>
+        <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-foreground">
+          {greeting}, <span className="text-accent">Jey</span>
+        </h1>
+      </header>
+
+      {next ? (
+        <section
+          aria-label="Next appointment"
+          className="relative overflow-hidden rounded-xl bg-primary p-7 text-primary-foreground"
+          style={{
+            backgroundImage:
+              "radial-gradient(120% 80% at 100% 0%, oklch(0.58 0.09 262 / 0.18), transparent 55%)",
+            boxShadow: "var(--shadow-elegant)",
+          }}
+        >
+          <div
+            className="absolute left-0 top-0 h-full w-1 bg-accent"
+            aria-hidden
+          />
+          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-accent">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+            Next appointment
+          </div>
+          <div className="mt-5 text-6xl font-black leading-none tracking-tight">
+            {formatTime(next.start)}
+          </div>
+          <div className="mt-5 h-px w-10 bg-accent" aria-hidden />
+          <div className="mt-5 text-base font-semibold">{next.client}</div>
+          <div className="text-sm opacity-70">
+            {next.service} · {next.durationMin} min
+          </div>
+          <div className="mt-4">
+            <PlatformBadge platform={next.platform} />
+          </div>
+        </section>
+      ) : (
+        <section className="rounded-xl border border-border bg-card p-6">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+            Next appointment
+          </div>
+          <p className="mt-3 text-sm text-foreground">No upcoming appointments.</p>
         </section>
       )}
 
-      <div className="flex flex-col lg:flex-row gap-12">
-        <div className="flex-1 min-w-0">
-          <header className="mb-8">
-            <h1 className="text-3xl font-semibold tracking-tight text-balance">
-              {new Date().toLocaleDateString(undefined, {
-                weekday: "long",
-                month: "short",
-                day: "numeric",
-              })}
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              {todayAppointments.length} appointments today across{" "}
-              {activeChannels} linked platforms.
-            </p>
-          </header>
-
-          <div className="space-y-3">
-            {todayAppointments.map((appt) => {
-              const conflicted = isInConflict(appt, conflicts);
-              return (
-                <div
-                  key={appt.id}
-                  className={cn(
-                    "group relative flex items-center gap-4 p-4 rounded-xl ring-1 transition-colors",
-                    conflicted
-                      ? "bg-warning-surface ring-warning/40"
-                      : "bg-surface-muted ring-black/5 hover:ring-black/10",
-                  )}
-                >
-                  <div className="w-16 shrink-0">
-                    <span
-                      className={cn(
-                        "text-xs font-medium",
-                        conflicted
-                          ? "text-warning-foreground font-bold"
-                          : "text-muted-foreground",
-                      )}
-                    >
-                      {formatMin(appt.start)}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-semibold truncate">
-                      {appt.client}
-                    </h4>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {appt.service}
-                      {appt.price ? ` · $${appt.price}` : ""}
-                    </p>
-                  </div>
-                  <PlatformBadge platform={appt.source} />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <aside className="w-full lg:w-72 shrink-0 space-y-8">
-          <MonthMini />
-
-          <div className="space-y-4">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-              Active Channels
-            </h3>
-            <div className="divide-y divide-border">
-              {platformConnections.map((c) => (
-                <div
-                  key={c.platform}
-                  className="py-3 flex items-center justify-between"
-                >
-                  <span
-                    className={cn(
-                      "text-sm font-medium",
-                      !c.connected && "text-muted-foreground",
-                    )}
-                  >
-                    {PLATFORM_LABEL[c.platform]}
-                  </span>
-                  {c.connected ? (
-                    <div className="size-1.5 rounded-full bg-emerald-500" />
-                  ) : (
-                    <span className="text-[10px] text-muted-foreground">
-                      OFF
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <button
-            onClick={() =>
-              toast("New appointment", {
-                description: "Pushing to Google, Square, Booksy…",
-              })
-            }
-            className="w-full text-sm font-medium bg-primary text-primary-foreground py-2.5 rounded-md flex items-center justify-center gap-2 hover:bg-accent transition-colors"
-          >
-            <Plus className="size-4" />
-            New Appointment
-          </button>
-
-          <div className="w-full aspect-square overflow-hidden rounded-xl ring-1 ring-black/5">
-            <img
-              src={barberStation}
-              alt="Barber station with tools laid out on dark wood"
-              width={768}
-              height={768}
-              loading="lazy"
-              className="w-full h-full object-cover"
-            />
-          </div>
-        </aside>
+      <div className="mt-5 flex items-center justify-between gap-2.5">
+        <Button onClick={sync} disabled={syncing} className="flex-1">
+          <RefreshCw className={syncing ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
+          {syncing ? "Syncing…" : "Sync platforms"}
+        </Button>
+        <Button
+          onClick={() => setWalkInOpen(true)}
+          variant="outline"
+          className="flex-1"
+        >
+          <Plus className="h-4 w-4" />
+          Add walk-in
+        </Button>
       </div>
-    </main>
-  );
-}
+      <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+        <CheckCircle2 className="h-3.5 w-3.5 text-accent" />
+        Calendar is up to date · {formatTime(lastSync)}
+      </p>
 
-function MonthMini() {
-  const today = new Date();
-  const day = today.getDate();
-  const days = Array.from({ length: 7 }, (_, i) => day - 3 + i);
-  return (
-    <div className="p-5 bg-surface ring-1 ring-black/5 rounded-xl">
-      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-4">
-        This Week
-      </h3>
-      <div className="grid grid-cols-7 gap-1 text-center">
-        {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
-          <span
-            key={i}
-            className="text-[10px] text-muted-foreground font-medium"
-          >
-            {d}
+      {conflicts.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setResolverOpen(true)}
+          className="mt-4 flex w-full items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-left text-sm text-destructive transition-colors hover:bg-destructive/15"
+        >
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span className="flex-1">
+            {conflicts.length} overlapping appointment{conflicts.length > 1 ? "s" : ""} at{" "}
+            {formatTime(conflicts[0].start)}
           </span>
-        ))}
-        {days.map((d) => (
-          <div
-            key={d}
-            className={cn(
-              "aspect-square flex items-center justify-center text-xs rounded-full",
-              d === day
-                ? "bg-primary text-primary-foreground font-semibold"
-                : "text-foreground/80 hover:bg-muted cursor-pointer",
-            )}
-          >
-            {d}
-          </div>
-        ))}
-      </div>
-    </div>
+          <span className="text-xs font-semibold uppercase tracking-wider">Resolve</span>
+        </button>
+      )}
+
+      <section className="mt-9">
+        <div className="mb-4 flex items-baseline justify-between border-b-2 border-foreground pb-2">
+          <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-foreground">
+            <span className="h-2 w-2 bg-accent" />
+            Today
+          </h2>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">
+            {sorted.length} appts
+          </span>
+        </div>
+        <div className="flex flex-col gap-2">
+          {sorted.map((a) => (
+            <AppointmentRow key={a.id} appt={a} conflict={conflictIds.has(a.id)} />
+          ))}
+        </div>
+      </section>
+
+      <ConflictResolverDialog
+        open={resolverOpen}
+        onOpenChange={setResolverOpen}
+        conflicts={conflicts}
+        onReschedule={reschedule}
+      />
+      <WalkInDialog open={walkInOpen} onOpenChange={setWalkInOpen} onAdd={addWalkIn} />
+    </main>
   );
 }
