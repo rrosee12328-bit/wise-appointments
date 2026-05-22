@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { RefreshCw, AlertTriangle, CheckCircle2, Plus } from "lucide-react";
+import { RefreshCw, AlertTriangle, CheckCircle2, Plus, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppointmentRow } from "@/components/AppointmentCard";
 import { PlatformBadge } from "@/components/PlatformBadge";
@@ -15,6 +15,9 @@ import {
 } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    verify: typeof s.verify === "string" ? (s.verify as string) : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Schedule — Jey Link" },
@@ -27,6 +30,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Schedule() {
+  const search = useSearch({ from: "/" });
   const [appointments, setAppointments] = useState<Appointment[]>(() =>
     [...TODAY_APPOINTMENTS].sort((a, b) => a.start.getTime() - b.start.getTime()),
   );
@@ -98,6 +102,18 @@ function Schedule() {
           {greeting}, <span className="text-accent">Jey</span>
         </h1>
       </header>
+
+      {search.verify === "email" && (
+        <div className="mb-6 flex items-start gap-3 rounded-lg border border-accent/30 bg-accent/10 p-4 text-sm text-foreground">
+          <Mail className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+          <div>
+            <p className="font-medium">Check your email to confirm your account</p>
+            <p className="mt-0.5 text-muted-foreground">
+              We sent a confirmation link to your inbox. Click it to finish signing up.
+            </p>
+          </div>
+        </div>
+      )}
 
       {next ? (
         <section
