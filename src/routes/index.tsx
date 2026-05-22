@@ -49,18 +49,25 @@ function Schedule() {
     if (conflicts.length > 0) setResolverOpen(true);
   }, [conflicts.length]);
 
-  const greeting = (() => {
-    const h = new Date().getHours();
-    if (h < 12) return "Good morning";
-    if (h < 18) return "Good afternoon";
-    return "Good evening";
-  })();
-
-  const today = new Date().toLocaleDateString([], {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
+  const [{ greeting, today }, setNow] = useState<{ greeting: string; today: string }>({
+    greeting: "",
+    today: "",
   });
+
+  useEffect(() => {
+    const compute = () => {
+      const d = new Date();
+      const h = d.getHours();
+      const g = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+      const t = d.toLocaleDateString([], {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+      });
+      setNow({ greeting: g, today: t });
+    };
+    compute();
+  }, []);
 
   const sync = async () => {
     setSyncing(true);
