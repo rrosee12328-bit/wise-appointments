@@ -93,14 +93,25 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ThemeProvider>
-          <div className="min-h-screen bg-background pb-20">
-            <AppHeader />
-            <Outlet />
-          </div>
-          <BottomNav />
+          <AppShell />
           <Toaster />
         </ThemeProvider>
       </AuthProvider>
     </QueryClientProvider>
+  );
+}
+
+function AppShell() {
+  const { session } = useAuth();
+  return (
+    <>
+      <div className="min-h-screen bg-background pb-20">
+        <AppHeader />
+        <AuthGate>
+          <Outlet />
+        </AuthGate>
+      </div>
+      {session ? <BottomNav /> : null}
+    </>
   );
 }
