@@ -1,4 +1,6 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useState } from "react";
 
 import appCss from "../styles.css?url";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -71,11 +73,11 @@ export const Route = createRootRoute({
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className="bg-background">
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body className="bg-background text-foreground">
         {children}
         <Scripts />
       </body>
@@ -84,14 +86,17 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
+  const [queryClient] = useState(() => new QueryClient());
   return (
-    <ThemeProvider>
-      <div className="min-h-screen bg-background pb-20">
-        <AppHeader />
-        <Outlet />
-      </div>
-      <BottomNav />
-      <Toaster />
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <div className="min-h-screen bg-background pb-20">
+          <AppHeader />
+          <Outlet />
+        </div>
+        <BottomNav />
+        <Toaster />
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
