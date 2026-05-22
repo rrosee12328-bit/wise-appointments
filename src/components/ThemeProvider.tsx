@@ -20,11 +20,11 @@ function applyTheme(resolved: "light" | "dark") {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setModeState] = useState<ThemeMode>("system");
+  const [mode, setModeState] = useState<ThemeMode>("light");
   const [resolved, setResolved] = useState<"light" | "dark">("light");
 
   useEffect(() => {
-    const stored = (localStorage.getItem(STORAGE_KEY) as ThemeMode | null) ?? "system";
+    const stored = (localStorage.getItem(STORAGE_KEY) as ThemeMode | null) ?? "light";
     setModeState(stored);
   }, []);
 
