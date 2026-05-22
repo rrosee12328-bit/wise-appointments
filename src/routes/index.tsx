@@ -17,6 +17,7 @@ import {
   toUiAppointment,
 } from "@/lib/mock-data";
 import { getAppointments, upsertAppointment } from "@/lib/appointments.functions";
+import { getProfile } from "@/lib/profile.functions";
 
 export const Route = createFileRoute("/")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -48,10 +49,17 @@ function Schedule() {
   const qc = useQueryClient();
   const fetchAppts = useServerFn(getAppointments);
   const upsertFn = useServerFn(upsertAppointment);
+  const fetchProfile = useServerFn(getProfile);
 
   const { data, isLoading } = useQuery({
     queryKey: ["appointments"],
     queryFn: () => fetchAppts(),
+    enabled: !!session,
+  });
+
+  const { data: profile } = useQuery({
+    queryKey: ["profile"],
+    queryFn: () => fetchProfile(),
     enabled: !!session,
   });
 
@@ -122,7 +130,11 @@ function Schedule() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const firstName = session?.user.email?.split("@")[0] ?? "there";
+  const firstName =
+    profile?.first_name?.trim() ||
+    profile?.display_name?.trim().split(/\s+/)[0] ||
+    session?.user.email?.split("@")[0] ||
+    "there";
 
   return (
     <main className="mx-auto max-w-md px-5 pb-10 pt-8">
