@@ -13,6 +13,9 @@ type Mode = "signin" | "signup";
 export function AuthForm({ mode }: { mode: Mode }) {
   const navigate = useNavigate();
   const { session, loading } = useAuth();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -26,10 +29,26 @@ export function AuthForm({ mode }: { mode: Mode }) {
     setSubmitting(true);
     try {
       if (mode === "signup") {
+        const fn = firstName.trim();
+        const ln = lastName.trim();
+        const ph = phone.trim();
+        if (!fn || !ln) {
+          toast.error("Please enter your first and last name.");
+          setSubmitting(false);
+          return;
+        }
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: `${window.location.origin}/` },
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+            data: {
+              first_name: fn,
+              last_name: ln,
+              phone: ph || null,
+              full_name: `${fn} ${ln}`.trim(),
+            },
+          },
         });
         if (error) throw error;
         toast.success("Check your email to confirm your account.");
@@ -86,6 +105,44 @@ export function AuthForm({ mode }: { mode: Mode }) {
           </div>
 
           <form onSubmit={handleEmail} className="space-y-3">
+            {isSignup && (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="first-name">First name</Label>
+                    <Input
+                      id="first-name"
+                      required
+                      maxLength={60}
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="last-name">Last name</Label>
+                    <Input
+                      id="last-name"
+                      required
+                      maxLength={60}
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="phone">Phone number</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    autoComplete="tel"
+                    maxLength={32}
+                    placeholder="(555) 123-4567"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
