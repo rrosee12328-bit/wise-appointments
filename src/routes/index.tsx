@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { RefreshCw, AlertTriangle, CheckCircle2, Plus } from "lucide-react";
+import { RefreshCw, AlertTriangle, CheckCircle2, Plus, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppointmentRow } from "@/components/AppointmentCard";
 import { PlatformBadge } from "@/components/PlatformBadge";
@@ -15,6 +15,9 @@ import {
 } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    verify: typeof s.verify === "string" ? (s.verify as string) : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Schedule — Jey Link" },

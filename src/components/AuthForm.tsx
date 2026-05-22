@@ -33,6 +33,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
         });
         if (error) throw error;
         toast.success("Check your email to confirm your account.");
+        navigate({ to: "/", search: { verify: "email" } });
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
