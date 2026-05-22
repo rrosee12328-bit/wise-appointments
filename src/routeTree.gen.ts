@@ -10,6 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SupportRouteImport } from './routes/support'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SigninRouteImport } from './routes/signin'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PlatformsRouteImport } from './routes/platforms'
 import { Route as LoginRouteImport } from './routes/login'
@@ -20,6 +22,16 @@ import { Route as ApiOauthGoogleCallbackRouteImport } from './routes/api/oauth/g
 const SupportRoute = SupportRouteImport.update({
   id: '/support',
   path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SigninRoute = SigninRouteImport.update({
+  id: '/signin',
+  path: '/signin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -59,6 +71,8 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/platforms': typeof PlatformsRoute
   '/settings': typeof SettingsRoute
+  '/signin': typeof SigninRoute
+  '/signup': typeof SignupRoute
   '/support': typeof SupportRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
 }
@@ -68,6 +82,8 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/platforms': typeof PlatformsRoute
   '/settings': typeof SettingsRoute
+  '/signin': typeof SigninRoute
+  '/signup': typeof SignupRoute
   '/support': typeof SupportRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
 }
@@ -78,6 +94,8 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/platforms': typeof PlatformsRoute
   '/settings': typeof SettingsRoute
+  '/signin': typeof SigninRoute
+  '/signup': typeof SignupRoute
   '/support': typeof SupportRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
 }
@@ -89,6 +107,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/platforms'
     | '/settings'
+    | '/signin'
+    | '/signup'
     | '/support'
     | '/api/oauth/google/callback'
   fileRoutesByTo: FileRoutesByTo
@@ -98,6 +118,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/platforms'
     | '/settings'
+    | '/signin'
+    | '/signup'
     | '/support'
     | '/api/oauth/google/callback'
   id:
@@ -107,6 +129,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/platforms'
     | '/settings'
+    | '/signin'
+    | '/signup'
     | '/support'
     | '/api/oauth/google/callback'
   fileRoutesById: FileRoutesById
@@ -117,6 +141,8 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   PlatformsRoute: typeof PlatformsRoute
   SettingsRoute: typeof SettingsRoute
+  SigninRoute: typeof SigninRoute
+  SignupRoute: typeof SignupRoute
   SupportRoute: typeof SupportRoute
   ApiOauthGoogleCallbackRoute: typeof ApiOauthGoogleCallbackRoute
 }
@@ -128,6 +154,20 @@ declare module '@tanstack/react-router' {
       path: '/support'
       fullPath: '/support'
       preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signin': {
+      id: '/signin'
+      path: '/signin'
+      fullPath: '/signin'
+      preLoaderRoute: typeof SigninRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -181,9 +221,21 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   PlatformsRoute: PlatformsRoute,
   SettingsRoute: SettingsRoute,
+  SigninRoute: SigninRoute,
+  SignupRoute: SignupRoute,
   SupportRoute: SupportRoute,
   ApiOauthGoogleCallbackRoute: ApiOauthGoogleCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
