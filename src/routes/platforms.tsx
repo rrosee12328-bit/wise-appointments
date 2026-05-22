@@ -73,13 +73,7 @@ function Platforms() {
   // Fetch real google connection status
   const { data: realConnections } = useQuery({
     queryKey: ["platform-connections"],
-    queryFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return { connections: [] };
-      return list({
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      } as never);
-    },
+    queryFn: () => list(),
   });
 
   const googleConn = realConnections?.connections.find((c) => c.platform === "google_calendar");
@@ -88,10 +82,7 @@ function Platforms() {
     mutationFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Please sign in first");
-      const { url } = await getAuthUrl({
-        data: {},
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      } as never);
+      const { url } = await getAuthUrl({ data: {} });
       window.location.href = url;
     },
     onError: (e: Error) => toast.error(e.message),
@@ -99,12 +90,7 @@ function Platforms() {
 
   const disconnectGoogle = useMutation({
     mutationFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Please sign in first");
-      await disconnect({
-        data: { platform: "google_calendar" },
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      } as never);
+      await disconnect({ data: { platform: "google_calendar" } });
     },
     onSuccess: () => {
       toast.success("Google Calendar disconnected");
