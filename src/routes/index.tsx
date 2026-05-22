@@ -90,11 +90,11 @@ function Schedule() {
   return (
     <main className="mx-auto max-w-md px-5 pb-10 pt-8">
       <header className="mb-8">
-        <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-accent">
+        <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-accent" suppressHydrationWarning>
           <span className="h-1 w-1 rounded-full bg-accent" />
           {today}
         </p>
-        <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-foreground">
+        <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-foreground" suppressHydrationWarning>
           {greeting}, <span className="text-accent">Jey</span>
         </h1>
       </header>
