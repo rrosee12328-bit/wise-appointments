@@ -50,8 +50,8 @@ function Schedule() {
   }, [conflicts.length]);
 
   const [{ greeting, today }, setNow] = useState<{ greeting: string; today: string }>({
-    greeting: "",
-    today: "",
+    greeting: "Hello",
+    today: "Today",
   });
 
   useEffect(() => {
