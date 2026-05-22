@@ -90,14 +90,16 @@ function RootComponent() {
   const [queryClient] = useState(() => new QueryClient());
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <div className="min-h-screen bg-background pb-20">
-          <AppHeader />
-          <Outlet />
-        </div>
-        <BottomNav />
-        <Toaster />
-      </ThemeProvider>
+      <AuthProvider>
+        <ThemeProvider>
+          <div className="min-h-screen bg-background pb-20">
+            <AppHeader />
+            <Outlet />
+          </div>
+          <BottomNav />
+          <Toaster />
+        </ThemeProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
