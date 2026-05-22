@@ -1,10 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Sun, Moon, Monitor } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Sun, Moon, Monitor, LogOut } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useTheme } from "@/components/ThemeProvider";
+import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { getProfile, updateProfile } from "@/lib/profile.functions";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -20,15 +27,61 @@ export const Route = createFileRoute("/settings")({
 
 function SettingsPage() {
   const { mode, setMode } = useTheme();
+  const { session, signOut } = useAuth();
+  const qc = useQueryClient();
+  const fetchProfile = useServerFn(getProfile);
+  const saveProfile = useServerFn(updateProfile);
+
   const [notifyNew, setNotifyNew] = useState(true);
   const [notifyConflicts, setNotifyConflicts] = useState(true);
   const [notifyDigest, setNotifyDigest] = useState(false);
+
+  const { data: profile, isLoading } = useQuery({
+    queryKey: ["profile"],
+    queryFn: () => fetchProfile(),
+    enabled: !!session,
+  });
+
+  const [displayName, setDisplayName] = useState("");
+  const [businessName, setBusinessName] = useState("");
+  const [timezone, setTimezone] = useState("America/New_York");
+
+  useEffect(() => {
+    if (profile) {
+      setDisplayName(profile.display_name ?? "");
+      setBusinessName(profile.business_name ?? "");
+      setTimezone(profile.timezone ?? "America/New_York");
+    }
+  }, [profile]);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      await saveProfile({
+        data: {
+          display_name: displayName.trim() || undefined,
+          business_name: businessName.trim() || null,
+          timezone: timezone.trim() || null,
+        },
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["profile"] });
+      toast.success("Profile saved");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const themes = [
     { id: "system" as const, label: "System", icon: Monitor },
     { id: "light" as const, label: "Light", icon: Sun },
     { id: "dark" as const, label: "Dark", icon: Moon },
   ];
+
+  const initials =
+    (displayName || profile?.email || "?")
+      .split(/\s+|@/)[0]
+      .slice(0, 2)
+      .toUpperCase() || "?";
 
   return (
     <main className="mx-auto max-w-md px-4 pt-8">
@@ -42,12 +95,56 @@ function SettingsPage() {
             className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-semibold text-primary-foreground"
             style={{ backgroundColor: "var(--primary)" }}
           >
-            JL
+            {initials}
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-medium text-foreground">Jey Link</div>
-            <div className="truncate text-xs text-muted-foreground">jey@example.com</div>
+            <div className="text-sm font-medium text-foreground">
+              {profile?.display_name || profile?.email || "—"}
+            </div>
+            <div className="truncate text-xs text-muted-foreground">
+              {profile?.email ?? ""}
+            </div>
           </div>
+        </div>
+
+        <div className="flex flex-col gap-3 rounded-md border bg-card p-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="display-name">Display name</Label>
+            <Input
+              id="display-name"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="Your name"
+              disabled={isLoading}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="business-name">Business name</Label>
+            <Input
+              id="business-name"
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+              placeholder="Shop or business name"
+              disabled={isLoading}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="timezone">Timezone</Label>
+            <Input
+              id="timezone"
+              value={timezone}
+              onChange={(e) => setTimezone(e.target.value)}
+              placeholder="America/New_York"
+              disabled={isLoading}
+            />
+          </div>
+          <Button
+            onClick={() => save.mutate()}
+            disabled={save.isPending || isLoading}
+            className="mt-1"
+          >
+            {save.isPending ? "Saving…" : "Save profile"}
+          </Button>
         </div>
       </Section>
 
@@ -78,14 +175,17 @@ function SettingsPage() {
         <Row label="Daily digest" checked={notifyDigest} onChange={setNotifyDigest} />
       </Section>
 
-      <Section title="Billing">
-        <div className="rounded-md border bg-card p-4">
-          <div className="text-sm font-medium text-foreground">Pro plan</div>
-          <div className="mb-3 text-xs text-muted-foreground">$12 / month · renews May 28</div>
-          <Button variant="outline" size="sm">
-            Manage subscription
-          </Button>
-        </div>
+      <Section title="Account">
+        <Button
+          variant="outline"
+          onClick={async () => {
+            await signOut();
+            toast.success("Signed out");
+          }}
+        >
+          <LogOut className="h-4 w-4" />
+          Sign out
+        </Button>
       </Section>
 
       <Section title="About">

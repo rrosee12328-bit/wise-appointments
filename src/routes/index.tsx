@@ -1,18 +1,22 @@
 import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { RefreshCw, AlertTriangle, CheckCircle2, Plus, Mail } from "lucide-react";
+import { RefreshCw, AlertTriangle, CheckCircle2, Plus, Mail, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppointmentRow } from "@/components/AppointmentCard";
 import { PlatformBadge } from "@/components/PlatformBadge";
 import { ConflictResolverDialog } from "@/components/ConflictResolverDialog";
 import { WalkInDialog } from "@/components/WalkInDialog";
+import { useAuth } from "@/hooks/use-auth";
 import {
-  TODAY_APPOINTMENTS,
   type Appointment,
   findConflicts,
   formatTime,
+  toUiAppointment,
 } from "@/lib/mock-data";
+import { getAppointments, upsertAppointment } from "@/lib/appointments.functions";
 
 export const Route = createFileRoute("/")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -29,14 +33,36 @@ export const Route = createFileRoute("/")({
   component: Schedule,
 });
 
+function isToday(d: Date) {
+  const now = new Date();
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
+}
+
 function Schedule() {
   const search = useSearch({ from: "/" });
-  const [appointments, setAppointments] = useState<Appointment[]>(() =>
-    [...TODAY_APPOINTMENTS].sort((a, b) => a.start.getTime() - b.start.getTime()),
-  );
+  const { session } = useAuth();
+  const qc = useQueryClient();
+  const fetchAppts = useServerFn(getAppointments);
+  const upsertFn = useServerFn(upsertAppointment);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["appointments"],
+    queryFn: () => fetchAppts(),
+    enabled: !!session,
+  });
+
+  const todayAppts: Appointment[] = useMemo(() => {
+    const rows = data?.items ?? [];
+    return rows.map(toUiAppointment).filter((a) => isToday(a.start));
+  }, [data]);
+
   const sorted = useMemo(
-    () => [...appointments].sort((a, b) => a.start.getTime() - b.start.getTime()),
-    [appointments],
+    () => [...todayAppts].sort((a, b) => a.start.getTime() - b.start.getTime()),
+    [todayAppts],
   );
   const next = useMemo(() => {
     const now = Date.now();
@@ -59,37 +85,44 @@ function Schedule() {
   });
 
   useEffect(() => {
-    const compute = () => {
-      const d = new Date();
-      const h = d.getHours();
-      const g = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
-      const t = d.toLocaleDateString([], {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-      });
-      setNow({ greeting: g, today: t });
-    };
-    compute();
+    const d = new Date();
+    const h = d.getHours();
+    const g = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+    const t = d.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+    setNow({ greeting: g, today: t });
   }, []);
 
   const sync = async () => {
     setSyncing(true);
-    await new Promise((r) => setTimeout(r, 900));
+    await qc.invalidateQueries({ queryKey: ["appointments"] });
     setSyncing(false);
     setLastSync(new Date());
     toast.success("Calendar is up to date");
   };
 
-  const reschedule = (id: string, newStart: Date) => {
-    setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, start: newStart } : a)));
-    toast.success("Appointment rescheduled · synced to all platforms");
-  };
+  const addWalkIn = useMutation({
+    mutationFn: async (appt: Appointment) => {
+      const ends = new Date(appt.start.getTime() + appt.durationMin * 60_000);
+      await upsertFn({
+        data: {
+          source_platform: "walk_in",
+          client_name: appt.client,
+          service: appt.service,
+          starts_at: appt.start.toISOString(),
+          ends_at: ends.toISOString(),
+          is_block: true,
+          note: appt.notes ?? null,
+        },
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["appointments"] });
+      toast.success("Walk-in added · time blocked");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
-  const addWalkIn = (appt: Appointment) => {
-    setAppointments((prev) => [...prev, appt]);
-    toast.success(`Walk-in added · time blocked across all platforms`);
-  };
+  const firstName = session?.user.email?.split("@")[0] ?? "there";
 
   return (
     <main className="mx-auto max-w-md px-5 pb-10 pt-8">
@@ -99,7 +132,7 @@ function Schedule() {
           {today}
         </p>
         <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-foreground" suppressHydrationWarning>
-          {greeting}, <span className="text-accent">Jey</span>
+          {greeting}, <span className="text-accent">{firstName}</span>
         </h1>
       </header>
 
@@ -125,10 +158,7 @@ function Schedule() {
             boxShadow: "var(--shadow-elegant)",
           }}
         >
-          <div
-            className="absolute left-0 top-0 h-full w-1 bg-accent"
-            aria-hidden
-          />
+          <div className="absolute left-0 top-0 h-full w-1 bg-accent" aria-hidden />
           <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-accent">
             <span className="h-1.5 w-1.5 rounded-full bg-accent" />
             Next appointment
@@ -146,11 +176,14 @@ function Schedule() {
           </div>
         </section>
       ) : (
-        <section className="rounded-xl border border-border bg-card p-6">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-            Next appointment
+        <section className="rounded-xl border border-dashed border-border bg-card p-8 text-center">
+          <Calendar className="mx-auto h-8 w-8 text-muted-foreground" />
+          <div className="mt-3 text-sm font-medium text-foreground">
+            {isLoading ? "Loading…" : "No upcoming appointments today"}
           </div>
-          <p className="mt-3 text-sm text-foreground">No upcoming appointments.</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Connect a platform or add a walk-in to get started.
+          </p>
         </section>
       )}
 
@@ -159,11 +192,7 @@ function Schedule() {
           <RefreshCw className={syncing ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
           {syncing ? "Syncing…" : "Sync platforms"}
         </Button>
-        <Button
-          onClick={() => setWalkInOpen(true)}
-          variant="outline"
-          className="flex-1"
-        >
+        <Button onClick={() => setWalkInOpen(true)} variant="outline" className="flex-1">
           <Plus className="h-4 w-4" />
           Add walk-in
         </Button>
@@ -198,20 +227,30 @@ function Schedule() {
             {sorted.length} appts
           </span>
         </div>
-        <div className="flex flex-col gap-2">
-          {sorted.map((a) => (
-            <AppointmentRow key={a.id} appt={a} conflict={conflictIds.has(a.id)} />
-          ))}
-        </div>
+        {sorted.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            Nothing on the schedule yet.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {sorted.map((a) => (
+              <AppointmentRow key={a.id} appt={a} conflict={conflictIds.has(a.id)} />
+            ))}
+          </div>
+        )}
       </section>
 
       <ConflictResolverDialog
         open={resolverOpen}
         onOpenChange={setResolverOpen}
         conflicts={conflicts}
-        onReschedule={reschedule}
+        onReschedule={() => toast("Rescheduling will sync to platforms once connected.")}
       />
-      <WalkInDialog open={walkInOpen} onOpenChange={setWalkInOpen} onAdd={addWalkIn} />
+      <WalkInDialog
+        open={walkInOpen}
+        onOpenChange={setWalkInOpen}
+        onAdd={(appt) => addWalkIn.mutate(appt)}
+      />
     </main>
   );
 }

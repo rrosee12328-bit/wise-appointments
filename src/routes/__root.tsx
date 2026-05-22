@@ -4,9 +4,10 @@ import { useState } from "react";
 
 import appCss from "../styles.css?url";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { AuthProvider } from "@/hooks/use-auth";
+import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { BottomNav } from "@/components/BottomNav";
 import { AppHeader } from "@/components/AppHeader";
+import { AuthGate } from "@/components/AuthGate";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -92,14 +93,25 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ThemeProvider>
-          <div className="min-h-screen bg-background pb-20">
-            <AppHeader />
-            <Outlet />
-          </div>
-          <BottomNav />
+          <AppShell />
           <Toaster />
         </ThemeProvider>
       </AuthProvider>
     </QueryClientProvider>
+  );
+}
+
+function AppShell() {
+  const { session } = useAuth();
+  return (
+    <>
+      <div className="min-h-screen bg-background pb-20">
+        <AppHeader />
+        <AuthGate>
+          <Outlet />
+        </AuthGate>
+      </div>
+      {session ? <BottomNav /> : null}
+    </>
   );
 }

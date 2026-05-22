@@ -1,15 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AppointmentRow } from "@/components/AppointmentCard";
+import { useAuth } from "@/hooks/use-auth";
 import {
-  UPCOMING_APPOINTMENTS,
-  PAST_APPOINTMENTS,
   formatRelativeDay,
+  toUiAppointment,
   type Appointment,
 } from "@/lib/mock-data";
+import { getAppointments } from "@/lib/appointments.functions";
 
 export const Route = createFileRoute("/appointments")({
   head: () => ({
@@ -35,6 +38,19 @@ function groupByDay(appts: Appointment[]) {
 
 function Appointments() {
   const [q, setQ] = useState("");
+  const { session } = useAuth();
+  const fetchAppts = useServerFn(getAppointments);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["appointments"],
+    queryFn: () => fetchAppts(),
+    enabled: !!session,
+  });
+
+  const all: Appointment[] = useMemo(
+    () => (data?.items ?? []).map(toUiAppointment),
+    [data],
+  );
 
   const filter = (list: Appointment[]) =>
     q.trim()
@@ -45,13 +61,20 @@ function Appointments() {
         )
       : list;
 
+  const now = Date.now();
   const upcoming = useMemo(
-    () => groupByDay(filter([...UPCOMING_APPOINTMENTS].sort((a, b) => +a.start - +b.start))),
-    [q],
+    () =>
+      groupByDay(
+        filter([...all].filter((a) => a.start.getTime() >= now).sort((a, b) => +a.start - +b.start)),
+      ),
+    [all, q, now],
   );
   const past = useMemo(
-    () => groupByDay(filter([...PAST_APPOINTMENTS].sort((a, b) => +b.start - +a.start))),
-    [q],
+    () =>
+      groupByDay(
+        filter([...all].filter((a) => a.start.getTime() < now).sort((a, b) => +b.start - +a.start)),
+      ),
+    [all, q, now],
   );
 
   return (
@@ -76,8 +99,13 @@ function Appointments() {
           <TabsTrigger value="past">Past</TabsTrigger>
         </TabsList>
         <TabsContent value="upcoming" className="mt-4 flex flex-col gap-4">
-          {upcoming.length === 0 && (
-            <p className="text-center text-sm text-muted-foreground">No matching appointments.</p>
+          {isLoading && (
+            <p className="text-center text-sm text-muted-foreground">Loading…</p>
+          )}
+          {!isLoading && upcoming.length === 0 && (
+            <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+              {q.trim() ? "No matching appointments." : "No upcoming appointments yet."}
+            </p>
           )}
           {upcoming.map(([day, list]) => (
             <section key={day}>
@@ -93,8 +121,10 @@ function Appointments() {
           ))}
         </TabsContent>
         <TabsContent value="past" className="mt-4 flex flex-col gap-4">
-          {past.length === 0 && (
-            <p className="text-center text-sm text-muted-foreground">No matching appointments.</p>
+          {!isLoading && past.length === 0 && (
+            <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+              No past appointments yet.
+            </p>
           )}
           {past.map(([day, list]) => (
             <section key={day}>
