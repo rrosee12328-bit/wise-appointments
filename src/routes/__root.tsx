@@ -100,16 +100,3 @@ function RootComponent() {
     </QueryClientProvider>
   );
 }
-
-function RootComponent() {
-  return (
-    <ThemeProvider>
-      <div className="min-h-screen bg-background pb-20">
-        <AppHeader />
-        <Outlet />
-      </div>
-      <BottomNav />
-      <Toaster />
-    </ThemeProvider>
-  );
-}
