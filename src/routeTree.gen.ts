@@ -15,6 +15,7 @@ import { Route as PlatformsRouteImport } from './routes/platforms'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppointmentsRouteImport } from './routes/appointments'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiOauthGoogleCallbackRouteImport } from './routes/api/oauth/google/callback'
 
 const SupportRoute = SupportRouteImport.update({
   id: '/support',
@@ -46,6 +47,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOauthGoogleCallbackRoute = ApiOauthGoogleCallbackRouteImport.update({
+  id: '/api/oauth/google/callback',
+  path: '/api/oauth/google/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/platforms': typeof PlatformsRoute
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
+  '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/platforms': typeof PlatformsRoute
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
+  '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,6 +79,7 @@ export interface FileRoutesById {
   '/platforms': typeof PlatformsRoute
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
+  '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -81,8 +90,16 @@ export interface FileRouteTypes {
     | '/platforms'
     | '/settings'
     | '/support'
+    | '/api/oauth/google/callback'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/appointments' | '/login' | '/platforms' | '/settings' | '/support'
+  to:
+    | '/'
+    | '/appointments'
+    | '/login'
+    | '/platforms'
+    | '/settings'
+    | '/support'
+    | '/api/oauth/google/callback'
   id:
     | '__root__'
     | '/'
@@ -91,6 +108,7 @@ export interface FileRouteTypes {
     | '/platforms'
     | '/settings'
     | '/support'
+    | '/api/oauth/google/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -100,6 +118,7 @@ export interface RootRouteChildren {
   PlatformsRoute: typeof PlatformsRoute
   SettingsRoute: typeof SettingsRoute
   SupportRoute: typeof SupportRoute
+  ApiOauthGoogleCallbackRoute: typeof ApiOauthGoogleCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -146,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/oauth/google/callback': {
+      id: '/api/oauth/google/callback'
+      path: '/api/oauth/google/callback'
+      fullPath: '/api/oauth/google/callback'
+      preLoaderRoute: typeof ApiOauthGoogleCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -156,17 +182,8 @@ const rootRouteChildren: RootRouteChildren = {
   PlatformsRoute: PlatformsRoute,
   SettingsRoute: SettingsRoute,
   SupportRoute: SupportRoute,
+  ApiOauthGoogleCallbackRoute: ApiOauthGoogleCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

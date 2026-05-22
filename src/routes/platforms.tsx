@@ -1,5 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, useSearch } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,8 +9,18 @@ import { PLATFORMS, type PlatformId } from "@/lib/platforms";
 import { PLATFORM_CONNECTIONS, formatTime } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { PlatformLogo } from "@/components/PlatformLogo";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  createGoogleAuthUrl,
+  listConnections,
+  disconnectPlatform,
+} from "@/lib/google-oauth.functions";
 
 export const Route = createFileRoute("/platforms")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    google: typeof s.google === "string" ? (s.google as string) : undefined,
+    reason: typeof s.reason === "string" ? (s.reason as string) : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Platforms — Jey Link" },
@@ -42,9 +54,60 @@ const CATEGORIES: { label: string; ids: PlatformId[] }[] = [
 ];
 
 function Platforms() {
+  const search = useSearch({ from: "/platforms" });
   const [connections, setConnections] = useState(PLATFORM_CONNECTIONS);
+  const qc = useQueryClient();
+  const getAuthUrl = useServerFn(createGoogleAuthUrl);
+  const list = useServerFn(listConnections);
+  const disconnect = useServerFn(disconnectPlatform);
+
+  // Handle callback redirect toast
+  useEffect(() => {
+    if (search.google === "connected") {
+      toast.success("Google Calendar connected");
+    } else if (search.google === "error") {
+      toast.error(`Google Calendar connection failed${search.reason ? `: ${search.reason}` : ""}`);
+    }
+  }, [search.google, search.reason]);
+
+  // Fetch real google connection status
+  const { data: realConnections } = useQuery({
+    queryKey: ["platform-connections"],
+    queryFn: () => list(),
+  });
+
+  const googleConn = realConnections?.connections.find((c) => c.platform === "google_calendar");
+
+  const connectGoogle = useMutation({
+    mutationFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Please sign in first");
+      const { url } = await getAuthUrl({ data: {} });
+      window.location.href = url;
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const disconnectGoogle = useMutation({
+    mutationFn: async () => {
+      await disconnect({ data: { platform: "google_calendar" } });
+    },
+    onSuccess: () => {
+      toast.success("Google Calendar disconnected");
+      qc.invalidateQueries({ queryKey: ["platform-connections"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const action = (id: PlatformId) => {
+    if (id === "google") {
+      if (googleConn) {
+        disconnectGoogle.mutate();
+      } else {
+        connectGoogle.mutate();
+      }
+      return;
+    }
     const c = connections.find((x) => x.id === id);
     if (!c) return;
     if (c.status === "connected") {
@@ -90,42 +153,55 @@ function Platforms() {
               <ul className="flex flex-col gap-2">
                 {items.map((c) => {
                   const p = PLATFORMS[c.id];
+                  const isGoogle = c.id === "google";
+                  const isConnected = isGoogle ? Boolean(googleConn) : c.status === "connected";
+                  const isReauth = !isGoogle && c.status === "reauth";
+                  const subline = isGoogle
+                    ? googleConn
+                      ? `Connected${googleConn.account_email ? ` · ${googleConn.account_email}` : ""}`
+                      : "Not connected"
+                    : statusLabel(c.status);
                   return (
-            <li
-              key={c.id}
-              className="flex items-center gap-3 rounded-md border border-l-4 bg-card p-4"
-              style={{ borderLeftColor: p.colorVar }}
-            >
-              <PlatformLogo platform={c.id} size={36} />
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium text-foreground">{p.label}</div>
-                <div
-                  className={cn(
-                    "text-xs",
-                    c.status === "connected" && "text-muted-foreground",
-                    c.status === "reauth" && "text-destructive",
-                    c.status === "disconnected" && "text-muted-foreground",
-                  )}
-                >
-                  {statusLabel(c.status)}
-                  {c.lastSync && c.status === "connected" && (
-                    <> · synced {formatTime(c.lastSync)}</>
-                  )}
-                </div>
-              </div>
-              <Button
-                size="sm"
-                variant={c.status === "connected" ? "outline" : "default"}
-                onClick={() => action(c.id)}
-              >
-                {c.status === "connected" && <RefreshCw className="h-3.5 w-3.5" />}
-                {c.status === "connected"
-                  ? "Sync now"
-                  : c.status === "reauth"
-                    ? "Reconnect"
-                    : "Connect"}
-              </Button>
-            </li>
+                    <li
+                      key={c.id}
+                      className="flex items-center gap-3 rounded-md border border-l-4 bg-card p-4"
+                      style={{ borderLeftColor: p.colorVar }}
+                    >
+                      <PlatformLogo platform={c.id} size={36} />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium text-foreground">{p.label}</div>
+                        <div
+                          className={cn(
+                            "text-xs",
+                            isConnected && "text-muted-foreground",
+                            isReauth && "text-destructive",
+                            !isConnected && !isReauth && "text-muted-foreground",
+                          )}
+                        >
+                          {subline}
+                          {!isGoogle && c.lastSync && c.status === "connected" && (
+                            <> · synced {formatTime(c.lastSync)}</>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant={isConnected ? "outline" : "default"}
+                        onClick={() => action(c.id)}
+                        disabled={isGoogle && (connectGoogle.isPending || disconnectGoogle.isPending)}
+                      >
+                        {!isGoogle && isConnected && <RefreshCw className="h-3.5 w-3.5" />}
+                        {isGoogle
+                          ? isConnected
+                            ? "Disconnect"
+                            : "Connect"
+                          : isConnected
+                            ? "Sync now"
+                            : isReauth
+                              ? "Reconnect"
+                              : "Connect"}
+                      </Button>
+                    </li>
                   );
                 })}
               </ul>
