@@ -42,13 +42,17 @@ function SettingsPage() {
     enabled: !!session,
   });
 
-  const [displayName, setDisplayName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [timezone, setTimezone] = useState("America/New_York");
 
   useEffect(() => {
     if (profile) {
-      setDisplayName(profile.display_name ?? "");
+      setFirstName(profile.first_name ?? "");
+      setLastName(profile.last_name ?? "");
+      setPhone(profile.phone ?? "");
       setBusinessName(profile.business_name ?? "");
       setTimezone(profile.timezone ?? "America/New_York");
     }
@@ -58,7 +62,9 @@ function SettingsPage() {
     mutationFn: async () => {
       await saveProfile({
         data: {
-          display_name: displayName.trim() || undefined,
+          first_name: firstName.trim() || null,
+          last_name: lastName.trim() || null,
+          phone: phone.trim() || null,
           business_name: businessName.trim() || null,
           timezone: timezone.trim() || null,
         },
@@ -77,11 +83,15 @@ function SettingsPage() {
     { id: "dark" as const, label: "Dark", icon: Moon },
   ];
 
+  const fullName =
+    `${firstName} ${lastName}`.trim() || profile?.display_name || profile?.email || "?";
   const initials =
-    (displayName || profile?.email || "?")
-      .split(/\s+|@/)[0]
+    fullName
+      .split(/\s+|@/)
+      .filter(Boolean)
       .slice(0, 2)
-      .toUpperCase() || "?";
+      .map((s) => s[0]?.toUpperCase() ?? "")
+      .join("") || "?";
 
   return (
     <main className="mx-auto max-w-md px-4 pt-8">
@@ -98,9 +108,7 @@ function SettingsPage() {
             {initials}
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-medium text-foreground">
-              {profile?.display_name || profile?.email || "—"}
-            </div>
+            <div className="text-sm font-medium text-foreground">{fullName}</div>
             <div className="truncate text-xs text-muted-foreground">
               {profile?.email ?? ""}
             </div>
@@ -108,13 +116,36 @@ function SettingsPage() {
         </div>
 
         <div className="flex flex-col gap-3 rounded-md border bg-card p-4">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="first-name">First name</Label>
+              <Input
+                id="first-name"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="First"
+                disabled={isLoading}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="last-name">Last name</Label>
+              <Input
+                id="last-name"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Last"
+                disabled={isLoading}
+              />
+            </div>
+          </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="display-name">Display name</Label>
+            <Label htmlFor="phone">Phone number</Label>
             <Input
-              id="display-name"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Your name"
+              id="phone"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="(555) 123-4567"
               disabled={isLoading}
             />
           </div>
