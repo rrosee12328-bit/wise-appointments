@@ -13,7 +13,7 @@ export function AppHeader() {
   const handleSignOut = async () => {
     await signOut();
     toast.success("Signed out");
-    navigate({ to: "/login" });
+    navigate({ to: "/signin" });
   };
 
   return (
@@ -28,9 +28,14 @@ export function AppHeader() {
             Sign out
           </Button>
         ) : (
-          <Button size="sm" asChild>
-            <Link to="/login">Sign in</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="ghost" asChild>
+              <Link to="/signin">Sign in</Link>
+            </Button>
+            <Button size="sm" asChild>
+              <Link to="/signup">Sign up</Link>
+            </Button>
+          </div>
         )}
       </div>
     </header>
