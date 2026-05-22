@@ -73,15 +73,31 @@ export const Route = createRootRoute({
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className="bg-background">
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body className="bg-background text-foreground">
         {children}
         <Scripts />
       </body>
     </html>
+  );
+}
+
+function RootComponent() {
+  const [queryClient] = useState(() => new QueryClient());
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <div className="min-h-screen bg-background pb-20">
+          <AppHeader />
+          <Outlet />
+        </div>
+        <BottomNav />
+        <Toaster />
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 
