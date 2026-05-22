@@ -30,6 +30,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Schedule() {
+  const search = useSearch({ from: "/" });
   const [appointments, setAppointments] = useState<Appointment[]>(() =>
     [...TODAY_APPOINTMENTS].sort((a, b) => a.start.getTime() - b.start.getTime()),
   );
