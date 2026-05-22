@@ -103,6 +103,18 @@ function Schedule() {
         </h1>
       </header>
 
+      {search.verify === "email" && (
+        <div className="mb-6 flex items-start gap-3 rounded-lg border border-accent/30 bg-accent/10 p-4 text-sm text-foreground">
+          <Mail className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+          <div>
+            <p className="font-medium">Check your email to confirm your account</p>
+            <p className="mt-0.5 text-muted-foreground">
+              We sent a confirmation link to your inbox. Click it to finish signing up.
+            </p>
+          </div>
+        </div>
+      )}
+
       {next ? (
         <section
           aria-label="Next appointment"
