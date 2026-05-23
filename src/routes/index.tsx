@@ -11,12 +11,7 @@ import { ConflictResolverDialog } from "@/components/ConflictResolverDialog";
 import { WalkInDialog } from "@/components/WalkInDialog";
 import { useAuth } from "@/hooks/use-auth";
 import { useAutoSyncPlatforms } from "@/hooks/use-auto-sync-platforms";
-import {
-  type Appointment,
-  findConflicts,
-  formatTime,
-  toUiAppointment,
-} from "@/lib/mock-data";
+import { type Appointment, findConflicts, formatTime, toUiAppointment } from "@/lib/mock-data";
 import { getAppointments, upsertAppointment } from "@/lib/appointments.functions";
 import { getProfile } from "@/lib/profile.functions";
 import { syncGoogleCalendar } from "@/lib/google-sync.functions";
@@ -29,9 +24,15 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Schedule — Jey Link" },
-      { name: "description", content: "Your next appointment and today's schedule, all in one place." },
+      {
+        name: "description",
+        content: "Your next appointment and today's schedule, all in one place.",
+      },
       { property: "og:title", content: "Schedule — Jey Link" },
-      { property: "og:description", content: "Your next appointment, today's timeline, and platform sync status." },
+      {
+        property: "og:description",
+        content: "Your next appointment, today's timeline, and platform sync status.",
+      },
     ],
   }),
   component: Schedule,
@@ -180,11 +181,17 @@ function Schedule() {
   return (
     <main className="mx-auto max-w-md px-5 pb-10 pt-8">
       <header className="mb-8">
-        <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-accent" suppressHydrationWarning>
+        <p
+          className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-accent"
+          suppressHydrationWarning
+        >
           <span className="h-1 w-1 rounded-full bg-accent" />
           {today}
         </p>
-        <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-foreground" suppressHydrationWarning>
+        <h1
+          className="mt-2 text-3xl font-extrabold tracking-tight text-foreground"
+          suppressHydrationWarning
+        >
           {greeting}, <span className="text-accent">{firstName}</span>
         </h1>
       </header>

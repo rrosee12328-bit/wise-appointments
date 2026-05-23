@@ -9,18 +9,17 @@ import { AppointmentRow } from "@/components/AppointmentCard";
 import { DayTimelineView, MonthGridView } from "@/components/CalendarViews";
 import { useAuth } from "@/hooks/use-auth";
 import { useAutoSyncPlatforms } from "@/hooks/use-auto-sync-platforms";
-import {
-  formatRelativeDay,
-  toUiAppointment,
-  type Appointment,
-} from "@/lib/mock-data";
+import { formatRelativeDay, toUiAppointment, type Appointment } from "@/lib/mock-data";
 import { getAppointments } from "@/lib/appointments.functions";
 
 export const Route = createFileRoute("/appointments")({
   head: () => ({
     meta: [
       { title: "Appointments — Jey Link" },
-      { name: "description", content: "Search upcoming and past appointments across every platform." },
+      {
+        name: "description",
+        content: "Search upcoming and past appointments across every platform.",
+      },
       { property: "og:title", content: "Appointments — Jey Link" },
       { property: "og:description", content: "All your bookings, searchable in one place." },
     ],
@@ -51,10 +50,7 @@ function Appointments() {
     enabled: !!session,
   });
 
-  const all: Appointment[] = useMemo(
-    () => (data?.items ?? []).map(toUiAppointment),
-    [data],
-  );
+  const all: Appointment[] = useMemo(() => (data?.items ?? []).map(toUiAppointment), [data]);
 
   const filter = (list: Appointment[]) =>
     q.trim()
@@ -69,7 +65,9 @@ function Appointments() {
   const upcoming = useMemo(
     () =>
       groupByDay(
-        filter([...all].filter((a) => a.start.getTime() >= now).sort((a, b) => +a.start - +b.start)),
+        filter(
+          [...all].filter((a) => a.start.getTime() >= now).sort((a, b) => +a.start - +b.start),
+        ),
       ),
     [all, q, now],
   );
@@ -117,9 +115,7 @@ function Appointments() {
               <TabsTrigger value="past">Past</TabsTrigger>
             </TabsList>
             <TabsContent value="upcoming" className="mt-4 flex flex-col gap-4">
-              {isLoading && (
-                <p className="text-center text-sm text-muted-foreground">Loading…</p>
-              )}
+              {isLoading && <p className="text-center text-sm text-muted-foreground">Loading…</p>}
               {!isLoading && upcoming.length === 0 && (
                 <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
                   {q.trim() ? "No matching appointments." : "No upcoming appointments yet."}
