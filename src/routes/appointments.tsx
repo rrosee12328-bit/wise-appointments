@@ -2,10 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { Search } from "lucide-react";
+import { Search, List, CalendarDays, CalendarRange } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AppointmentRow } from "@/components/AppointmentCard";
+import { DayTimelineView, MonthGridView } from "@/components/CalendarViews";
 import { useAuth } from "@/hooks/use-auth";
 import {
   formatRelativeDay,
