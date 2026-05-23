@@ -19,6 +19,7 @@ import {
 import { getAppointments, upsertAppointment } from "@/lib/appointments.functions";
 import { getProfile } from "@/lib/profile.functions";
 import { syncGoogleCalendar } from "@/lib/google-sync.functions";
+import { syncSquareBookings } from "@/lib/square-sync.functions";
 
 export const Route = createFileRoute("/")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -52,6 +53,7 @@ function Schedule() {
   const upsertFn = useServerFn(upsertAppointment);
   const fetchProfile = useServerFn(getProfile);
   const syncGoogle = useServerFn(syncGoogleCalendar);
+  const syncSquare = useServerFn(syncSquareBookings);
 
   const { data, isLoading } = useQuery({
     queryKey: ["appointments"],
@@ -105,18 +107,37 @@ function Schedule() {
   const sync = async () => {
     setSyncing(true);
     try {
-      const result = await syncGoogle();
-      if (!result.connected) {
-        toast.message("Connect Google Calendar first", {
-          description: "Go to Platforms to link your account.",
-        });
-      } else {
+      const results = await Promise.allSettled([syncGoogle(), syncSquare()]);
+      const labels = ["Google Calendar", "Square"];
+      let totalSynced = 0;
+      let totalSkipped = 0;
+      let anyConnected = false;
+      const errors: string[] = [];
+
+      results.forEach((r, i) => {
+        if (r.status === "fulfilled") {
+          if (r.value.connected) {
+            anyConnected = true;
+            totalSynced += r.value.synced;
+            totalSkipped += r.value.skipped;
+          }
+        } else {
+          errors.push(`${labels[i]}: ${(r.reason as Error).message}`);
+        }
+      });
+
+      if (anyConnected || totalSynced > 0) {
         await qc.invalidateQueries({ queryKey: ["appointments"] });
         toast.success(
-          `Synced ${result.synced} event${result.synced === 1 ? "" : "s"}` +
-            (result.skipped ? ` · skipped ${result.skipped}` : ""),
+          `Synced ${totalSynced} appointment${totalSynced === 1 ? "" : "s"}` +
+            (totalSkipped ? ` · skipped ${totalSkipped}` : ""),
         );
+      } else if (errors.length === 0) {
+        toast.message("No platforms connected", {
+          description: "Go to Platforms to link Google Calendar or Square.",
+        });
       }
+      errors.forEach((e) => toast.error(e));
       setLastSync(new Date());
     } catch (e) {
       toast.error((e as Error).message);
