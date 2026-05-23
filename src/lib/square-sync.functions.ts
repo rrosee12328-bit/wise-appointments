@@ -187,7 +187,7 @@ export const syncSquareBookings = createServerFn({ method: "POST" }).handler(
     if (customerIds.length > 0) {
       try {
         const custRes = await fetch(
-          `${SQUARE_API_BASE}/v2/customers/batch-retrieve`,
+          `${SQUARE_API_BASE}/v2/customers/bulk-retrieve`,
           {
             method: "POST",
             headers: {
@@ -201,9 +201,13 @@ export const syncSquareBookings = createServerFn({ method: "POST" }).handler(
         if (custRes.ok) {
           const custData = (await custRes.json()) as {
             customers?: SquareCustomer[];
+            responses?: Record<string, { customer?: SquareCustomer }>;
           };
           for (const c of custData.customers ?? []) {
             customerMap.set(c.id, c);
+          }
+          for (const response of Object.values(custData.responses ?? {})) {
+            if (response.customer) customerMap.set(response.customer.id, response.customer);
           }
         }
       } catch (e) {
