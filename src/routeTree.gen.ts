@@ -17,8 +17,8 @@ import { Route as PlatformsRouteImport } from './routes/platforms'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppointmentsRouteImport } from './routes/appointments'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiOauthGoogleCallbackRouteImport } from './routes/api/oauth/google/callback'
 import { Route as ApiOauthSquareCallbackRouteImport } from './routes/api/oauth/square/callback'
+import { Route as ApiOauthGoogleCallbackRouteImport } from './routes/api/oauth/google/callback'
 
 const SupportRoute = SupportRouteImport.update({
   id: '/support',
@@ -60,14 +60,14 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiOauthGoogleCallbackRoute = ApiOauthGoogleCallbackRouteImport.update({
-  id: '/api/oauth/google/callback',
-  path: '/api/oauth/google/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiOauthSquareCallbackRoute = ApiOauthSquareCallbackRouteImport.update({
   id: '/api/oauth/square/callback',
   path: '/api/oauth/square/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiOauthGoogleCallbackRoute = ApiOauthGoogleCallbackRouteImport.update({
+  id: '/api/oauth/google/callback',
+  path: '/api/oauth/google/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -218,18 +218,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/oauth/google/callback': {
-      id: '/api/oauth/google/callback'
-      path: '/api/oauth/google/callback'
-      fullPath: '/api/oauth/google/callback'
-      preLoaderRoute: typeof ApiOauthGoogleCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/oauth/square/callback': {
       id: '/api/oauth/square/callback'
       path: '/api/oauth/square/callback'
       fullPath: '/api/oauth/square/callback'
       preLoaderRoute: typeof ApiOauthSquareCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/oauth/google/callback': {
+      id: '/api/oauth/google/callback'
+      path: '/api/oauth/google/callback'
+      fullPath: '/api/oauth/google/callback'
+      preLoaderRoute: typeof ApiOauthGoogleCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
