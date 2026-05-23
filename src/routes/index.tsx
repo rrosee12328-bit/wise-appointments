@@ -53,6 +53,7 @@ function Schedule() {
   const upsertFn = useServerFn(upsertAppointment);
   const fetchProfile = useServerFn(getProfile);
   const syncGoogle = useServerFn(syncGoogleCalendar);
+  const syncSquare = useServerFn(syncSquareBookings);
 
   const { data, isLoading } = useQuery({
     queryKey: ["appointments"],
