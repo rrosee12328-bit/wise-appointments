@@ -10,6 +10,7 @@ const SQUARE_SCOPES = [
   "APPOINTMENTS_READ",
   "APPOINTMENTS_ALL_READ",
   "APPOINTMENTS_BUSINESS_SETTINGS_READ",
+  "CUSTOMERS_READ",
 ].join(" ");
 
 function getSquareRedirectUri(host: string) {
