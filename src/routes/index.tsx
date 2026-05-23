@@ -10,6 +10,7 @@ import { PlatformBadge } from "@/components/PlatformBadge";
 import { ConflictResolverDialog } from "@/components/ConflictResolverDialog";
 import { WalkInDialog } from "@/components/WalkInDialog";
 import { useAuth } from "@/hooks/use-auth";
+import { useAutoSyncPlatforms } from "@/hooks/use-auto-sync-platforms";
 import {
   type Appointment,
   findConflicts,
@@ -54,6 +55,8 @@ function Schedule() {
   const fetchProfile = useServerFn(getProfile);
   const syncGoogle = useServerFn(syncGoogleCalendar);
   const syncSquare = useServerFn(syncSquareBookings);
+
+  useAutoSyncPlatforms(!!session);
 
   const { data, isLoading } = useQuery({
     queryKey: ["appointments"],
