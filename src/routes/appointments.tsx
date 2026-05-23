@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { Search, List, CalendarDays, CalendarRange } from "lucide-react";
@@ -52,14 +52,17 @@ function Appointments() {
 
   const all: Appointment[] = useMemo(() => (data?.items ?? []).map(toUiAppointment), [data]);
 
-  const filter = (list: Appointment[]) =>
-    q.trim()
-      ? list.filter(
-          (a) =>
-            a.client.toLowerCase().includes(q.toLowerCase()) ||
-            a.service.toLowerCase().includes(q.toLowerCase()),
-        )
-      : list;
+  const filter = useCallback(
+    (list: Appointment[]) =>
+      q.trim()
+        ? list.filter(
+            (a) =>
+              a.client.toLowerCase().includes(q.toLowerCase()) ||
+              a.service.toLowerCase().includes(q.toLowerCase()),
+          )
+        : list,
+    [q],
+  );
 
   const now = Date.now();
   const upcoming = useMemo(
@@ -69,14 +72,14 @@ function Appointments() {
           [...all].filter((a) => a.start.getTime() >= now).sort((a, b) => +a.start - +b.start),
         ),
       ),
-    [all, q, now],
+    [all, filter, now],
   );
   const past = useMemo(
     () =>
       groupByDay(
         filter([...all].filter((a) => a.start.getTime() < now).sort((a, b) => +b.start - +a.start)),
       ),
-    [all, q, now],
+    [all, filter, now],
   );
 
   return (
