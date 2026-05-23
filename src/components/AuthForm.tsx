@@ -21,7 +21,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!loading && session) navigate({ to: "/" });
+    if (!loading && session) navigate({ to: "/", search: { verify: undefined } });
   }, [loading, session, navigate]);
 
   const handleEmail = async (e: React.FormEvent) => {
@@ -166,7 +166,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
             </Link>
           </p>
           <p className="text-center text-xs text-muted-foreground">
-            <Link to="/">Back to home</Link>
+            <Link to="/" search={{ verify: undefined }}>Back to home</Link>
           </p>
         </CardContent>
       </Card>

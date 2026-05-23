@@ -14,11 +14,13 @@ import {
   disconnectPlatform,
 } from "@/lib/google-oauth.functions";
 import { createSquareAuthUrl } from "@/lib/square-oauth.functions";
+import { createCalendlyAuthUrl } from "@/lib/calendly-oauth.functions";
 
 export const Route = createFileRoute("/platforms")({
   validateSearch: (s: Record<string, unknown>) => ({
     google: typeof s.google === "string" ? (s.google as string) : undefined,
     square: typeof s.square === "string" ? (s.square as string) : undefined,
+    calendly: typeof s.calendly === "string" ? (s.calendly as string) : undefined,
     reason: typeof s.reason === "string" ? (s.reason as string) : undefined,
   }),
   head: () => ({
@@ -61,7 +63,7 @@ const CATEGORIES: { label: string; ids: PlatformId[] }[] = [
 ];
 
 // Platforms that have a live OAuth integration
-const LIVE_PLATFORMS = new Set<PlatformId>(["google", "square"]);
+const LIVE_PLATFORMS = new Set<PlatformId>(["google", "square", "calendly"]);
 
 function platformToDbKey(id: PlatformId): string {
   return id === "google" ? "google_calendar" : id;
@@ -72,6 +74,7 @@ function Platforms() {
   const qc = useQueryClient();
   const getGoogleAuthUrl = useServerFn(createGoogleAuthUrl);
   const getSquareAuthUrl = useServerFn(createSquareAuthUrl);
+  const getCalendlyAuthUrl = useServerFn(createCalendlyAuthUrl);
   const list = useServerFn(listConnections);
   const disconnect = useServerFn(disconnectPlatform);
 
@@ -85,6 +88,17 @@ function Platforms() {
       );
     }
   }, [search.google, search.reason]);
+
+  useEffect(() => {
+    if (search.calendly === "connected") {
+      toast.success("Calendly connected");
+      qc.invalidateQueries({ queryKey: ["platform-connections"] });
+    } else if (search.calendly === "error") {
+      toast.error(
+        `Calendly connection failed${search.reason ? `: ${search.reason}` : ""}`,
+      );
+    }
+  }, [search.calendly, search.reason, qc]);
 
   useEffect(() => {
     if (search.square === "connected") {
@@ -116,6 +130,19 @@ function Platforms() {
       } = await supabase.auth.getSession();
       if (!session) throw new Error("Please sign in first");
       const { url } = await getGoogleAuthUrl({ data: {} });
+      window.location.href = url;
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Calendly connect
+  const connectCalendly = useMutation({
+    mutationFn: async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) throw new Error("Please sign in first");
+      const { url } = await getCalendlyAuthUrl({ data: {} });
       window.location.href = url;
     },
     onError: (e: Error) => toast.error(e.message),
@@ -167,6 +194,15 @@ function Platforms() {
       return;
     }
 
+    if (id === "calendly") {
+      if (connectedSet.has(dbKey)) {
+        disconnectPlatformMut.mutate(dbKey);
+      } else {
+        connectCalendly.mutate();
+      }
+      return;
+    }
+
     toast("Connector coming soon.");
   };
 
@@ -175,6 +211,8 @@ function Platforms() {
       return connectGoogle.isPending || disconnectPlatformMut.isPending;
     if (id === "square")
       return connectSquare.isPending || disconnectPlatformMut.isPending;
+    if (id === "calendly")
+      return connectCalendly.isPending || disconnectPlatformMut.isPending;
     return false;
   };
 
