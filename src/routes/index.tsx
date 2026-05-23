@@ -104,10 +104,25 @@ function Schedule() {
 
   const sync = async () => {
     setSyncing(true);
-    await qc.invalidateQueries({ queryKey: ["appointments"] });
-    setSyncing(false);
-    setLastSync(new Date());
-    toast.success("Calendar is up to date");
+    try {
+      const result = await syncGoogle();
+      if (!result.connected) {
+        toast.message("Connect Google Calendar first", {
+          description: "Go to Platforms to link your account.",
+        });
+      } else {
+        await qc.invalidateQueries({ queryKey: ["appointments"] });
+        toast.success(
+          `Synced ${result.synced} event${result.synced === 1 ? "" : "s"}` +
+            (result.skipped ? ` · skipped ${result.skipped}` : ""),
+        );
+      }
+      setLastSync(new Date());
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSyncing(false);
+    }
   };
 
   const addWalkIn = useMutation({
