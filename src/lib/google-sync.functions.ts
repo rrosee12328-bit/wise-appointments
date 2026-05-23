@@ -48,7 +48,7 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(
       .from("platform_connections")
       .select("access_token, refresh_token, token_expires_at")
       .eq("user_id", userId)
-      .eq("platform", "google")
+      .eq("platform", "google_calendar")
       .maybeSingle();
     if (connErr) throw new Error(connErr.message);
     if (!conn) {
@@ -73,7 +73,7 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(
           token_expires_at: newExpiresAt,
         })
         .eq("user_id", userId)
-        .eq("platform", "google");
+        .eq("platform", "google_calendar");
     }
 
     // Pull events from now - 1 day → now + 60 days from primary calendar.
@@ -167,7 +167,7 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(
       .from("platform_connections")
       .update({ last_synced_at: new Date().toISOString() })
       .eq("user_id", userId)
-      .eq("platform", "google");
+      .eq("platform", "google_calendar");
 
     return { synced, skipped, connected: true };
   },
