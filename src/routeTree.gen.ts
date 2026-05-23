@@ -18,6 +18,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppointmentsRouteImport } from './routes/appointments'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiOauthGoogleCallbackRouteImport } from './routes/api/oauth/google/callback'
+import { Route as ApiOauthSquareCallbackRouteImport } from './routes/api/oauth/square/callback'
 
 const SupportRoute = SupportRouteImport.update({
   id: '/support',
@@ -64,6 +65,11 @@ const ApiOauthGoogleCallbackRoute = ApiOauthGoogleCallbackRouteImport.update({
   path: '/api/oauth/google/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOauthSquareCallbackRoute = ApiOauthSquareCallbackRouteImport.update({
+  id: '/api/oauth/square/callback',
+  path: '/api/oauth/square/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/support': typeof SupportRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
+  '/api/oauth/square/callback': typeof ApiOauthSquareCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/support': typeof SupportRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
+  '/api/oauth/square/callback': typeof ApiOauthSquareCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -98,6 +106,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/support': typeof SupportRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
+  '/api/oauth/square/callback': typeof ApiOauthSquareCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -111,6 +120,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/support'
     | '/api/oauth/google/callback'
+    | '/api/oauth/square/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/support'
     | '/api/oauth/google/callback'
+    | '/api/oauth/square/callback'
   id:
     | '__root__'
     | '/'
@@ -133,6 +144,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/support'
     | '/api/oauth/google/callback'
+    | '/api/oauth/square/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -145,6 +157,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   SupportRoute: typeof SupportRoute
   ApiOauthGoogleCallbackRoute: typeof ApiOauthGoogleCallbackRoute
+  ApiOauthSquareCallbackRoute: typeof ApiOauthSquareCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -212,6 +225,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiOauthGoogleCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/oauth/square/callback': {
+      id: '/api/oauth/square/callback'
+      path: '/api/oauth/square/callback'
+      fullPath: '/api/oauth/square/callback'
+      preLoaderRoute: typeof ApiOauthSquareCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -225,6 +245,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   SupportRoute: SupportRoute,
   ApiOauthGoogleCallbackRoute: ApiOauthGoogleCallbackRoute,
+  ApiOauthSquareCallbackRoute: ApiOauthSquareCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

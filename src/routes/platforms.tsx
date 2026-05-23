@@ -13,10 +13,12 @@ import {
   listConnections,
   disconnectPlatform,
 } from "@/lib/google-oauth.functions";
+import { createSquareAuthUrl } from "@/lib/square-oauth.functions";
 
 export const Route = createFileRoute("/platforms")({
   validateSearch: (s: Record<string, unknown>) => ({
     google: typeof s.google === "string" ? (s.google as string) : undefined,
+    square: typeof s.square === "string" ? (s.square as string) : undefined,
     reason: typeof s.reason === "string" ? (s.reason as string) : undefined,
   }),
   head: () => ({
@@ -24,7 +26,11 @@ export const Route = createFileRoute("/platforms")({
       { title: "Platforms — Jey Link" },
       { name: "description", content: "Connected booking platforms and sync status." },
       { property: "og:title", content: "Platforms — Jey Link" },
-      { property: "og:description", content: "Manage Square, Booksy, TheCut, Setmore and Google Calendar connections." },
+      {
+        property: "og:description",
+        content:
+          "Manage Square, Booksy, TheCut, Setmore and Google Calendar connections.",
+      },
     ],
   }),
   component: Platforms,
@@ -33,7 +39,16 @@ export const Route = createFileRoute("/platforms")({
 const CATEGORIES: { label: string; ids: PlatformId[] }[] = [
   {
     label: "Barber",
-    ids: ["thecut", "booksy", "squire", "square", "vagaro", "barberly", "ringmybarber", "goldie"],
+    ids: [
+      "thecut",
+      "booksy",
+      "squire",
+      "square",
+      "vagaro",
+      "barberly",
+      "ringmybarber",
+      "goldie",
+    ],
   },
   {
     label: "Beauty & Salon",
@@ -45,6 +60,9 @@ const CATEGORIES: { label: string; ids: PlatformId[] }[] = [
   },
 ];
 
+// Platforms that have a live OAuth integration
+const LIVE_PLATFORMS = new Set<PlatformId>(["google", "square"]);
+
 function platformToDbKey(id: PlatformId): string {
   return id === "google" ? "google_calendar" : id;
 }
@@ -52,17 +70,32 @@ function platformToDbKey(id: PlatformId): string {
 function Platforms() {
   const search = useSearch({ from: "/platforms" });
   const qc = useQueryClient();
-  const getAuthUrl = useServerFn(createGoogleAuthUrl);
+  const getGoogleAuthUrl = useServerFn(createGoogleAuthUrl);
+  const getSquareAuthUrl = useServerFn(createSquareAuthUrl);
   const list = useServerFn(listConnections);
   const disconnect = useServerFn(disconnectPlatform);
 
+  // Toast notifications for OAuth callbacks
   useEffect(() => {
     if (search.google === "connected") {
       toast.success("Google Calendar connected");
     } else if (search.google === "error") {
-      toast.error(`Google Calendar connection failed${search.reason ? `: ${search.reason}` : ""}`);
+      toast.error(
+        `Google Calendar connection failed${search.reason ? `: ${search.reason}` : ""}`,
+      );
     }
   }, [search.google, search.reason]);
+
+  useEffect(() => {
+    if (search.square === "connected") {
+      toast.success("Square connected");
+      qc.invalidateQueries({ queryKey: ["platform-connections"] });
+    } else if (search.square === "error") {
+      toast.error(
+        `Square connection failed${search.reason ? `: ${search.reason}` : ""}`,
+      );
+    }
+  }, [search.square, search.reason, qc]);
 
   const { data: realConnections } = useQuery({
     queryKey: ["platform-connections"],
@@ -72,19 +105,36 @@ function Platforms() {
   const connectedSet = new Set(
     (realConnections?.connections ?? []).map((c) => c.platform),
   );
-  const accountEmailFor = (dbKey: string) =>
+  const accountLabelFor = (dbKey: string) =>
     realConnections?.connections.find((c) => c.platform === dbKey)?.account_email;
 
+  // Google connect
   const connectGoogle = useMutation({
     mutationFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) throw new Error("Please sign in first");
-      const { url } = await getAuthUrl({ data: {} });
+      const { url } = await getGoogleAuthUrl({ data: {} });
       window.location.href = url;
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Square connect
+  const connectSquare = useMutation({
+    mutationFn: async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) throw new Error("Please sign in first");
+      const { url } = await getSquareAuthUrl({ data: {} });
+      window.location.href = url;
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Generic disconnect
   const disconnectPlatformMut = useMutation({
     mutationFn: async (dbKey: string) => {
       await disconnect({ data: { platform: dbKey } });
@@ -97,27 +147,49 @@ function Platforms() {
   });
 
   const action = (id: PlatformId) => {
+    const dbKey = platformToDbKey(id);
+
     if (id === "google") {
-      if (connectedSet.has("google_calendar")) {
-        disconnectPlatformMut.mutate("google_calendar");
+      if (connectedSet.has(dbKey)) {
+        disconnectPlatformMut.mutate(dbKey);
       } else {
         connectGoogle.mutate();
       }
       return;
     }
-    toast("Connector coming soon — Google Calendar is the only live integration right now.");
+
+    if (id === "square") {
+      if (connectedSet.has(dbKey)) {
+        disconnectPlatformMut.mutate(dbKey);
+      } else {
+        connectSquare.mutate();
+      }
+      return;
+    }
+
+    toast("Connector coming soon.");
+  };
+
+  const isActionPending = (id: PlatformId) => {
+    if (id === "google")
+      return connectGoogle.isPending || disconnectPlatformMut.isPending;
+    if (id === "square")
+      return connectSquare.isPending || disconnectPlatformMut.isPending;
+    return false;
   };
 
   return (
     <main className="mx-auto max-w-md px-4 pt-8">
       <header className="mb-6">
         <h1 className="text-xl font-semibold text-foreground">Platforms</h1>
-        <p className="text-sm text-muted-foreground">Manage your connected services.</p>
+        <p className="text-sm text-muted-foreground">
+          Manage your connected services.
+        </p>
       </header>
 
       {connectedSet.size === 0 && (
         <div className="mb-6 rounded-md border border-dashed border-border bg-card p-4 text-sm text-muted-foreground">
-          No platforms connected yet. Start with Google Calendar below.
+          No platforms connected yet. Connect Square or Google Calendar below.
         </div>
       )}
 
@@ -132,13 +204,14 @@ function Platforms() {
                 const p = PLATFORMS[id];
                 const dbKey = platformToDbKey(id);
                 const isConnected = connectedSet.has(dbKey);
-                const email = isConnected ? accountEmailFor(dbKey) : undefined;
-                const isGoogle = id === "google";
+                const label = isConnected ? accountLabelFor(dbKey) : undefined;
+                const isLive = LIVE_PLATFORMS.has(id);
                 const subline = isConnected
-                  ? `Connected${email ? ` · ${email}` : ""}`
-                  : isGoogle
+                  ? `Connected${label ? ` · ${label}` : ""}`
+                  : isLive
                     ? "Not connected"
                     : "Coming soon";
+
                 return (
                   <li
                     key={id}
@@ -147,25 +220,21 @@ function Platforms() {
                   >
                     <PlatformLogo platform={id} size={36} />
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-foreground">{p.label}</div>
-                      <div
-                        className={cn(
-                          "text-xs",
-                          isConnected ? "text-muted-foreground" : "text-muted-foreground",
-                        )}
-                      >
+                      <div className="text-sm font-medium text-foreground">
+                        {p.label}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
                         {subline}
                       </div>
                     </div>
                     <Button
                       size="sm"
-                      variant={isConnected ? "outline" : "default"}
+                      variant={isConnected ? "outline" : isLive ? "default" : "ghost"}
                       onClick={() => action(id)}
-                      disabled={
-                        isGoogle && (connectGoogle.isPending || disconnectPlatformMut.isPending)
-                      }
+                      disabled={!isLive || isActionPending(id)}
+                      className={cn(!isLive && "cursor-not-allowed opacity-50")}
                     >
-                      {isConnected ? "Disconnect" : "Connect"}
+                      {isConnected ? "Disconnect" : isLive ? "Connect" : "Soon"}
                     </Button>
                   </li>
                 );
