@@ -15,8 +15,7 @@ const SQUARE_SCOPES = [
 
 function getSquareRedirectUri(host: string) {
   const configuredOrigin = process.env.SQUARE_OAUTH_REDIRECT_ORIGIN;
-  if (configuredOrigin)
-    return `${configuredOrigin.replace(/\/$/, "")}/api/oauth/square/callback`;
+  if (configuredOrigin) return `${configuredOrigin.replace(/\/$/, "")}/api/oauth/square/callback`;
   const isLocal = host.includes("localhost");
   const origin = isLocal ? `http://${host}` : "https://jeylink.vektiss.com";
   return `${origin}/api/oauth/square/callback`;
