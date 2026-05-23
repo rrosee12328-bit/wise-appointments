@@ -11,6 +11,15 @@ const GOOGLE_SCOPES = [
   "email",
 ].join(" ");
 
+function getGoogleRedirectUri(host: string) {
+  const configuredOrigin = process.env.GOOGLE_OAUTH_REDIRECT_ORIGIN;
+  if (configuredOrigin) return `${configuredOrigin.replace(/\/$/, "")}/api/oauth/google/callback`;
+
+  const isLocal = host.includes("localhost");
+  const origin = isLocal ? `http://${host}` : "https://jeylink.vektiss.com";
+  return `${origin}/api/oauth/google/callback`;
+}
+
 export const createGoogleAuthUrl = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({}).parse(input ?? {}))
   .handler(async () => {
@@ -22,8 +31,7 @@ export const createGoogleAuthUrl = createServerFn({ method: "POST" })
     if (error || !data.user) throw new Error("Invalid session");
 
     const host = getRequestHost();
-    const proto = host.includes("localhost") ? "http" : "https";
-    const redirectUri = `${proto}://${host}/api/oauth/google/callback`;
+    const redirectUri = getGoogleRedirectUri(host);
 
     const state = signState({
       userId: data.user.id,
@@ -55,9 +63,16 @@ export const listConnections = createServerFn({ method: "GET" })
 
     const { data } = await supabaseAdmin
       .from("platform_connections")
-      .select("platform, account_email, expires_at, updated_at")
+      .select("platform, account_label, token_expires_at, updated_at")
       .eq("user_id", userData.user.id);
-    return { connections: data ?? [] };
+    return {
+      connections: (data ?? []).map((row) => ({
+        platform: row.platform,
+        account_email: row.account_label,
+        expires_at: row.token_expires_at,
+        updated_at: row.updated_at,
+      })),
+    };
   });
 
 export const disconnectPlatform = createServerFn({ method: "POST" })
