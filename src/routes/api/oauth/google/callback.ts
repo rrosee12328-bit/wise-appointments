@@ -2,6 +2,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/admin.server";
 import { verifyState } from "@/lib/oauth-state.server";
 
+function getGoogleRedirectUri(url: URL) {
+  const configuredOrigin = process.env.GOOGLE_OAUTH_REDIRECT_ORIGIN;
+  if (configuredOrigin) return `${configuredOrigin.replace(/\/$/, "")}/api/oauth/google/callback`;
+
+  const isLocal = url.hostname.includes("localhost");
+  const origin = isLocal ? `http://${url.host}` : "https://jeylink.vektiss.com";
+  return `${origin}/api/oauth/google/callback`;
+}
+
 export const Route = createFileRoute("/api/oauth/google/callback")({
   server: {
     handlers: {
@@ -23,8 +32,7 @@ export const Route = createFileRoute("/api/oauth/google/callback")({
           return redirectTo("/platforms?google=error&reason=invalid_state");
         }
 
-        const proto = url.hostname.includes("localhost") ? "http" : "https";
-        const redirectUri = `${proto}://${url.host}/api/oauth/google/callback`;
+        const redirectUri = getGoogleRedirectUri(url);
 
         // Exchange code for tokens
         const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
@@ -75,11 +83,12 @@ export const Route = createFileRoute("/api/oauth/google/callback")({
             {
               user_id: payload.userId,
               platform: "google_calendar",
+              status: "connected",
               access_token: tokens.access_token,
               refresh_token: tokens.refresh_token ?? null,
-              expires_at: expiresAt,
-              scope: tokens.scope,
-              account_email: accountEmail,
+              token_expires_at: expiresAt,
+              account_label: accountEmail,
+              metadata: { scope: tokens.scope },
               updated_at: new Date().toISOString(),
             },
             { onConflict: "user_id,platform" },
