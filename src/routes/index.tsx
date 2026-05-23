@@ -18,6 +18,7 @@ import {
 } from "@/lib/mock-data";
 import { getAppointments, upsertAppointment } from "@/lib/appointments.functions";
 import { getProfile } from "@/lib/profile.functions";
+import { syncGoogleCalendar } from "@/lib/google-sync.functions";
 
 export const Route = createFileRoute("/")({
   validateSearch: (s: Record<string, unknown>) => ({
