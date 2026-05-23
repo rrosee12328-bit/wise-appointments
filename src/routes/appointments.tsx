@@ -2,10 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { Search } from "lucide-react";
+import { Search, List, CalendarDays, CalendarRange } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AppointmentRow } from "@/components/AppointmentCard";
+import { DayTimelineView, MonthGridView } from "@/components/CalendarViews";
 import { useAuth } from "@/hooks/use-auth";
 import {
   formatRelativeDay,
@@ -93,51 +94,75 @@ function Appointments() {
         />
       </div>
 
-      <Tabs defaultValue="upcoming">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-          <TabsTrigger value="past">Past</TabsTrigger>
+      <Tabs defaultValue="list" className="mb-4">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="list" className="gap-1.5">
+            <List className="h-3.5 w-3.5" /> List
+          </TabsTrigger>
+          <TabsTrigger value="day" className="gap-1.5">
+            <CalendarDays className="h-3.5 w-3.5" /> Day
+          </TabsTrigger>
+          <TabsTrigger value="month" className="gap-1.5">
+            <CalendarRange className="h-3.5 w-3.5" /> Month
+          </TabsTrigger>
         </TabsList>
-        <TabsContent value="upcoming" className="mt-4 flex flex-col gap-4">
-          {isLoading && (
-            <p className="text-center text-sm text-muted-foreground">Loading…</p>
-          )}
-          {!isLoading && upcoming.length === 0 && (
-            <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              {q.trim() ? "No matching appointments." : "No upcoming appointments yet."}
-            </p>
-          )}
-          {upcoming.map(([day, list]) => (
-            <section key={day}>
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {day}
-              </h2>
-              <div className="flex flex-col gap-2">
-                {list.map((a) => (
-                  <AppointmentRow key={a.id} appt={a} />
-                ))}
-              </div>
-            </section>
-          ))}
+
+        <TabsContent value="list" className="mt-4">
+          <Tabs defaultValue="upcoming">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
+              <TabsTrigger value="past">Past</TabsTrigger>
+            </TabsList>
+            <TabsContent value="upcoming" className="mt-4 flex flex-col gap-4">
+              {isLoading && (
+                <p className="text-center text-sm text-muted-foreground">Loading…</p>
+              )}
+              {!isLoading && upcoming.length === 0 && (
+                <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                  {q.trim() ? "No matching appointments." : "No upcoming appointments yet."}
+                </p>
+              )}
+              {upcoming.map(([day, list]) => (
+                <section key={day}>
+                  <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {day}
+                  </h2>
+                  <div className="flex flex-col gap-2">
+                    {list.map((a) => (
+                      <AppointmentRow key={a.id} appt={a} />
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </TabsContent>
+            <TabsContent value="past" className="mt-4 flex flex-col gap-4">
+              {!isLoading && past.length === 0 && (
+                <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                  No past appointments yet.
+                </p>
+              )}
+              {past.map(([day, list]) => (
+                <section key={day}>
+                  <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {day}
+                  </h2>
+                  <div className="flex flex-col gap-2">
+                    {list.map((a) => (
+                      <AppointmentRow key={a.id} appt={a} />
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </TabsContent>
+          </Tabs>
         </TabsContent>
-        <TabsContent value="past" className="mt-4 flex flex-col gap-4">
-          {!isLoading && past.length === 0 && (
-            <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              No past appointments yet.
-            </p>
-          )}
-          {past.map(([day, list]) => (
-            <section key={day}>
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {day}
-              </h2>
-              <div className="flex flex-col gap-2">
-                {list.map((a) => (
-                  <AppointmentRow key={a.id} appt={a} />
-                ))}
-              </div>
-            </section>
-          ))}
+
+        <TabsContent value="day" className="mt-4">
+          <DayTimelineView appointments={all} />
+        </TabsContent>
+
+        <TabsContent value="month" className="mt-4">
+          <MonthGridView appointments={all} />
         </TabsContent>
       </Tabs>
     </main>
