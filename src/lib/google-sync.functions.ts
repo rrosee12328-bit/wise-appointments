@@ -48,7 +48,7 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(
       .from("platform_connections")
       .select("access_token, refresh_token, token_expires_at")
       .eq("user_id", userId)
-      .eq("platform", "google")
+      .eq("platform", "google_calendar")
       .maybeSingle();
     if (connErr) throw new Error(connErr.message);
     if (!conn) {
