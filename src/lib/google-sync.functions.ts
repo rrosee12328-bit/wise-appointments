@@ -73,7 +73,7 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(
           token_expires_at: newExpiresAt,
         })
         .eq("user_id", userId)
-        .eq("platform", "google");
+        .eq("platform", "google_calendar");
     }
 
     // Pull events from now - 1 day → now + 60 days from primary calendar.
