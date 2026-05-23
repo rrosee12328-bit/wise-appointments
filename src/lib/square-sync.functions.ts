@@ -8,6 +8,7 @@ const SQUARE_API_BASE =
     : "https://connect.squareup.com";
 
 const SQUARE_VERSION = "2024-01-18";
+const SQUARE_MAX_BOOKING_RANGE_DAYS = 31;
 
 interface SquareBooking {
   id: string;
@@ -30,6 +31,45 @@ interface SquareCustomer {
   given_name?: string;
   family_name?: string;
   email_address?: string;
+}
+
+async function fetchSquareBookings(
+  accessToken: string,
+  startAt: string,
+  endAt: string,
+): Promise<SquareBooking[]> {
+  const bookings: SquareBooking[] = [];
+  let cursor: string | undefined;
+
+  do {
+    const params = new URLSearchParams({
+      start_at_min: startAt,
+      start_at_max: endAt,
+      limit: "100",
+    });
+    if (cursor) params.set("cursor", cursor);
+
+    const bookingsRes = await fetch(`${SQUARE_API_BASE}/v2/bookings?${params}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Square-Version": SQUARE_VERSION,
+      },
+    });
+
+    if (!bookingsRes.ok) {
+      const text = await bookingsRes.text();
+      throw new Error(`Square bookings fetch failed: ${bookingsRes.status} ${text}`);
+    }
+
+    const bookingsData = (await bookingsRes.json()) as {
+      bookings?: SquareBooking[];
+      cursor?: string;
+    };
+    bookings.push(...(bookingsData.bookings ?? []));
+    cursor = bookingsData.cursor;
+  } while (cursor);
+
+  return bookings;
 }
 
 async function refreshSquareToken(refreshToken: string): Promise<{
@@ -113,31 +153,25 @@ export const syncSquareBookings = createServerFn({ method: "POST" }).handler(
         .eq("platform", "square");
     }
 
-    // Fetch bookings from Square: now - 1 day → now + 60 days
-    const startAt = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const endAt = new Date(
-      Date.now() + 60 * 24 * 60 * 60 * 1000,
-    ).toISOString();
-
-    const bookingsRes = await fetch(
-      `${SQUARE_API_BASE}/v2/bookings?start_at_min=${encodeURIComponent(startAt)}&start_at_max=${encodeURIComponent(endAt)}&limit=100`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Square-Version": SQUARE_VERSION,
-        },
-      },
-    );
-
-    if (!bookingsRes.ok) {
-      const text = await bookingsRes.text();
-      throw new Error(`Square bookings fetch failed: ${bookingsRes.status} ${text}`);
+    // Square limits ListBookings to a maximum 31-day time range, so split
+    // the app's now - 1 day → now + 60 days sync window into valid chunks.
+    const syncStart = Date.now() - 24 * 60 * 60 * 1000;
+    const syncEnd = Date.now() + 60 * 24 * 60 * 60 * 1000;
+    const bookings: SquareBooking[] = [];
+    for (let cursorMs = syncStart; cursorMs < syncEnd; ) {
+      const chunkEndMs = Math.min(
+        cursorMs + SQUARE_MAX_BOOKING_RANGE_DAYS * 24 * 60 * 60 * 1000 - 1000,
+        syncEnd,
+      );
+      bookings.push(
+        ...(await fetchSquareBookings(
+          accessToken,
+          new Date(cursorMs).toISOString(),
+          new Date(chunkEndMs).toISOString(),
+        )),
+      );
+      cursorMs = chunkEndMs + 1000;
     }
-
-    const bookingsData = (await bookingsRes.json()) as {
-      bookings?: SquareBooking[];
-    };
-    const bookings = bookingsData.bookings ?? [];
 
     // Collect unique customer IDs to batch-fetch names
     const customerIds = [
