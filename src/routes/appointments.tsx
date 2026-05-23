@@ -8,6 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AppointmentRow } from "@/components/AppointmentCard";
 import { DayTimelineView, MonthGridView } from "@/components/CalendarViews";
 import { useAuth } from "@/hooks/use-auth";
+import { useAutoSyncPlatforms } from "@/hooks/use-auto-sync-platforms";
 import {
   formatRelativeDay,
   toUiAppointment,
@@ -41,6 +42,8 @@ function Appointments() {
   const [q, setQ] = useState("");
   const { session } = useAuth();
   const fetchAppts = useServerFn(getAppointments);
+
+  useAutoSyncPlatforms(!!session);
 
   const { data, isLoading } = useQuery({
     queryKey: ["appointments"],
