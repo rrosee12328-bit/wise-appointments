@@ -167,7 +167,7 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(
       .from("platform_connections")
       .update({ last_synced_at: new Date().toISOString() })
       .eq("user_id", userId)
-      .eq("platform", "google");
+      .eq("platform", "google_calendar");
 
     return { synced, skipped, connected: true };
   },
