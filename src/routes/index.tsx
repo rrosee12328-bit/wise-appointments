@@ -16,6 +16,9 @@ import { getAppointments, upsertAppointment } from "@/lib/appointments.functions
 import { getProfile } from "@/lib/profile.functions";
 import { syncGoogleCalendar } from "@/lib/google-sync.functions";
 import { syncSquareBookings } from "@/lib/square-sync.functions";
+import { syncCalendlyEvents } from "@/lib/calendly-sync.functions";
+import { syncAcuityAppointments } from "@/lib/acuity-sync.functions";
+import { syncZohoBookings } from "@/lib/zoho-sync.functions";
 
 export const Route = createFileRoute("/")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -56,6 +59,9 @@ function Schedule() {
   const fetchProfile = useServerFn(getProfile);
   const syncGoogle = useServerFn(syncGoogleCalendar);
   const syncSquare = useServerFn(syncSquareBookings);
+  const syncCalendly = useServerFn(syncCalendlyEvents);
+  const syncAcuity = useServerFn(syncAcuityAppointments);
+  const syncZoho = useServerFn(syncZohoBookings);
 
   useAutoSyncPlatforms(!!session);
 
@@ -111,8 +117,14 @@ function Schedule() {
   const sync = async () => {
     setSyncing(true);
     try {
-      const results = await Promise.allSettled([syncGoogle(), syncSquare()]);
-      const labels = ["Google Calendar", "Square"];
+      const results = await Promise.allSettled([
+        syncGoogle(),
+        syncSquare(),
+        syncCalendly(),
+        syncAcuity(),
+        syncZoho(),
+      ]);
+      const labels = ["Google Calendar", "Square", "Calendly", "Acuity", "Zoho Bookings"];
       let totalSynced = 0;
       let totalSkipped = 0;
       let anyConnected = false;
@@ -138,7 +150,7 @@ function Schedule() {
         );
       } else if (errors.length === 0) {
         toast.message("No platforms connected", {
-          description: "Go to Platforms to link Google Calendar or Square.",
+          description: "Go to Platforms to link a booking platform.",
         });
       }
       errors.forEach((e) => toast.error(e));
