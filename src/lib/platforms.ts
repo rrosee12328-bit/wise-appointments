@@ -18,7 +18,8 @@ export type PlatformId =
   | "acuity"
   | "calendly"
   | "simplybook"
-  | "zoho";
+  | "zoho"
+  | "cliniko";
 
 export const PLATFORMS: Record<
   PlatformId,
@@ -190,6 +191,14 @@ export const PLATFORMS: Record<
     colorClass: "bg-platform-zoho/15 text-platform-zoho",
     borderClass: "border-l-platform-zoho",
     domain: "zoho.com",
+  },
+  cliniko: {
+    id: "cliniko",
+    label: "Cliniko",
+    colorVar: "var(--platform-cliniko)",
+    colorClass: "bg-platform-cliniko/15 text-platform-cliniko",
+    borderClass: "border-l-platform-cliniko",
+    domain: "cliniko.com",
   },
 };
 

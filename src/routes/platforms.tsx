@@ -1,5 +1,5 @@
 import { createFileRoute, useSearch } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { PLATFORMS, type PlatformId } from "@/lib/platforms";
 import { cn } from "@/lib/utils";
 import { PlatformLogo } from "@/components/PlatformLogo";
+import { ApiKeyConnectDialog } from "@/components/ApiKeyConnectDialog";
 import { supabase } from "@/integrations/supabase/client";
 import {
   createGoogleAuthUrl,
@@ -17,6 +18,8 @@ import { createSquareAuthUrl } from "@/lib/square-oauth.functions";
 import { createCalendlyAuthUrl } from "@/lib/calendly-oauth.functions";
 import { createAcuityAuthUrl } from "@/lib/acuity-oauth.functions";
 import { createZohoAuthUrl } from "@/lib/zoho-oauth.functions";
+import { connectClinikoApiKey } from "@/lib/cliniko-apikey.functions";
+import { connectZenotiApiKey } from "@/lib/zenoti-apikey.functions";
 
 export const Route = createFileRoute("/platforms")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -62,12 +65,17 @@ const CATEGORIES: { label: string; ids: PlatformId[] }[] = [
   },
   {
     label: "General scheduling",
-    ids: ["acuity", "setmore", "calendly", "simplybook", "zoho", "google"],
+    ids: ["acuity", "setmore", "calendly", "simplybook", "zoho", "cliniko", "google"],
   },
 ];
 
-// Platforms that have a live OAuth integration
-const LIVE_PLATFORMS = new Set<PlatformId>(["google", "square", "calendly", "acuity", "zoho"]);
+// Platforms that have a live OAuth integration (redirect flow)
+const OAUTH_PLATFORMS = new Set<PlatformId>(["google", "square", "calendly", "acuity", "zoho"]);
+
+// Platforms that use API key modal
+const APIKEY_PLATFORMS = new Set<PlatformId>(["cliniko", "zenoti"]);
+
+const LIVE_PLATFORMS = new Set<PlatformId>([...OAUTH_PLATFORMS, ...APIKEY_PLATFORMS]);
 
 function platformToDbKey(id: PlatformId): string {
   return id === "google" ? "google_calendar" : id;
@@ -81,8 +89,14 @@ function Platforms() {
   const getCalendlyAuthUrl = useServerFn(createCalendlyAuthUrl);
   const getAcuityAuthUrl = useServerFn(createAcuityAuthUrl);
   const getZohoAuthUrl = useServerFn(createZohoAuthUrl);
+  const connectCliniko = useServerFn(connectClinikoApiKey);
+  const connectZenoti = useServerFn(connectZenotiApiKey);
   const list = useServerFn(listConnections);
   const disconnect = useServerFn(disconnectPlatform);
+
+  // Which API key dialog is open
+  const [apiKeyDialog, setApiKeyDialog] = useState<"cliniko" | "zenoti" | null>(null);
+  const [apiKeyLoading, setApiKeyLoading] = useState(false);
 
   // Toast notifications for OAuth callbacks
   useEffect(() => {
@@ -153,9 +167,7 @@ function Platforms() {
   // Google connect
   const connectGoogle = useMutation({
     mutationFn: async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Please sign in first");
       const { url } = await getGoogleAuthUrl({ data: {} });
       window.location.href = url;
@@ -166,9 +178,7 @@ function Platforms() {
   // Zoho connect
   const connectZoho = useMutation({
     mutationFn: async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Please sign in first");
       const { url } = await getZohoAuthUrl({ data: {} });
       window.location.href = url;
@@ -179,9 +189,7 @@ function Platforms() {
   // Acuity connect
   const connectAcuity = useMutation({
     mutationFn: async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Please sign in first");
       const { url } = await getAcuityAuthUrl({ data: {} });
       window.location.href = url;
@@ -192,9 +200,7 @@ function Platforms() {
   // Calendly connect
   const connectCalendly = useMutation({
     mutationFn: async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Please sign in first");
       const { url } = await getCalendlyAuthUrl({ data: {} });
       window.location.href = url;
@@ -205,9 +211,7 @@ function Platforms() {
   // Square connect
   const connectSquare = useMutation({
     mutationFn: async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Please sign in first");
       const { url } = await getSquareAuthUrl({ data: {} });
       window.location.href = url;
@@ -227,50 +231,65 @@ function Platforms() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Handle API key connect submission
+  const handleApiKeyConnect = async (
+    platform: "cliniko" | "zenoti",
+    values: Record<string, string>,
+  ) => {
+    setApiKeyLoading(true);
+    try {
+      if (platform === "cliniko") {
+        const result = await connectCliniko({ data: { apiKey: values.apiKey } });
+        toast.success(`Cliniko connected · ${result.accountLabel}`);
+      } else {
+        const result = await connectZenoti({ data: { apiKey: values.apiKey } });
+        toast.success(`Zenoti connected · ${result.accountLabel}`);
+      }
+      qc.invalidateQueries({ queryKey: ["platform-connections"] });
+      setApiKeyDialog(null);
+    } catch (e: unknown) {
+      toast.error((e as Error).message ?? "Connection failed");
+    } finally {
+      setApiKeyLoading(false);
+    }
+  };
+
   const action = (id: PlatformId) => {
     const dbKey = platformToDbKey(id);
 
     if (id === "google") {
-      if (connectedSet.has(dbKey)) {
-        disconnectPlatformMut.mutate(dbKey);
-      } else {
-        connectGoogle.mutate();
-      }
+      connectedSet.has(dbKey) ? disconnectPlatformMut.mutate(dbKey) : connectGoogle.mutate();
       return;
     }
-
     if (id === "square") {
-      if (connectedSet.has(dbKey)) {
-        disconnectPlatformMut.mutate(dbKey);
-      } else {
-        connectSquare.mutate();
-      }
+      connectedSet.has(dbKey) ? disconnectPlatformMut.mutate(dbKey) : connectSquare.mutate();
       return;
     }
-
     if (id === "calendly") {
-      if (connectedSet.has(dbKey)) {
-        disconnectPlatformMut.mutate(dbKey);
-      } else {
-        connectCalendly.mutate();
-      }
+      connectedSet.has(dbKey) ? disconnectPlatformMut.mutate(dbKey) : connectCalendly.mutate();
       return;
     }
-
     if (id === "acuity") {
+      connectedSet.has(dbKey) ? disconnectPlatformMut.mutate(dbKey) : connectAcuity.mutate();
+      return;
+    }
+    if (id === "zoho") {
+      connectedSet.has(dbKey) ? disconnectPlatformMut.mutate(dbKey) : connectZoho.mutate();
+      return;
+    }
+    if (id === "cliniko") {
       if (connectedSet.has(dbKey)) {
         disconnectPlatformMut.mutate(dbKey);
       } else {
-        connectAcuity.mutate();
+        setApiKeyDialog("cliniko");
       }
       return;
     }
-
-    if (id === "zoho") {
+    if (id === "zenoti") {
       if (connectedSet.has(dbKey)) {
         disconnectPlatformMut.mutate(dbKey);
       } else {
-        connectZoho.mutate();
+        setApiKeyDialog("zenoti");
       }
       return;
     }
@@ -279,16 +298,12 @@ function Platforms() {
   };
 
   const isActionPending = (id: PlatformId) => {
-    if (id === "google")
-      return connectGoogle.isPending || disconnectPlatformMut.isPending;
-    if (id === "square")
-      return connectSquare.isPending || disconnectPlatformMut.isPending;
-    if (id === "calendly")
-      return connectCalendly.isPending || disconnectPlatformMut.isPending;
-    if (id === "acuity")
-      return connectAcuity.isPending || disconnectPlatformMut.isPending;
-    if (id === "zoho")
-      return connectZoho.isPending || disconnectPlatformMut.isPending;
+    if (id === "google") return connectGoogle.isPending || disconnectPlatformMut.isPending;
+    if (id === "square") return connectSquare.isPending || disconnectPlatformMut.isPending;
+    if (id === "calendly") return connectCalendly.isPending || disconnectPlatformMut.isPending;
+    if (id === "acuity") return connectAcuity.isPending || disconnectPlatformMut.isPending;
+    if (id === "zoho") return connectZoho.isPending || disconnectPlatformMut.isPending;
+    if (id === "cliniko" || id === "zenoti") return apiKeyLoading || disconnectPlatformMut.isPending;
     return false;
   };
 
@@ -357,6 +372,42 @@ function Platforms() {
           </section>
         ))}
       </div>
+
+      {/* Cliniko API key dialog */}
+      <ApiKeyConnectDialog
+        open={apiKeyDialog === "cliniko"}
+        onOpenChange={(open) => !open && setApiKeyDialog(null)}
+        platformName="Cliniko"
+        fields={[
+          {
+            key: "apiKey",
+            label: "API Key",
+            placeholder: "Paste your Cliniko API key here",
+            helpText: "Found in Cliniko → My Info → Manage API Keys",
+          },
+        ]}
+        onConnect={(values) => handleApiKeyConnect("cliniko", values)}
+        isLoading={apiKeyLoading}
+        helpUrl="https://help.cliniko.com/en/articles/2776-api-keys"
+      />
+
+      {/* Zenoti API key dialog */}
+      <ApiKeyConnectDialog
+        open={apiKeyDialog === "zenoti"}
+        onOpenChange={(open) => !open && setApiKeyDialog(null)}
+        platformName="Zenoti"
+        fields={[
+          {
+            key: "apiKey",
+            label: "API Key",
+            placeholder: "Paste your Zenoti API key here",
+            helpText: "Found in Zenoti → Admin → Setup → Apps → Generate API Key",
+          },
+        ]}
+        onConnect={(values) => handleApiKeyConnect("zenoti", values)}
+        isLoading={apiKeyLoading}
+        helpUrl="https://docs.zenoti.com/docs/authentication"
+      />
     </main>
   );
 }
