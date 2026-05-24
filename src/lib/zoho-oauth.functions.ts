@@ -40,7 +40,7 @@ export const createZohoAuthUrl = createServerFn({ method: "POST" })
     const params = new URLSearchParams({
       response_type: "code",
       client_id: process.env.ZOHO_OAUTH_CLIENT_ID!,
-      scope: "zohobookings.data.CREATE",
+      scope: "zohobookings.data.READ,zohobookings.data.CREATE",
       redirect_uri: redirectUri,
       access_type: "offline",
       state,
