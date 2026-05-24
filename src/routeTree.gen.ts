@@ -20,6 +20,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiOauthSquareCallbackRouteImport } from './routes/api/oauth/square/callback'
 import { Route as ApiOauthGoogleCallbackRouteImport } from './routes/api/oauth/google/callback'
 import { Route as ApiOauthCalendlyCallbackRouteImport } from './routes/api/oauth/calendly/callback'
+import { Route as ApiOauthAcuityCallbackRouteImport } from './routes/api/oauth/acuity/callback'
 
 const SupportRoute = SupportRouteImport.update({
   id: '/support',
@@ -77,6 +78,11 @@ const ApiOauthCalendlyCallbackRoute =
     path: '/api/oauth/calendly/callback',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiOauthAcuityCallbackRoute = ApiOauthAcuityCallbackRouteImport.update({
+  id: '/api/oauth/acuity/callback',
+  path: '/api/oauth/acuity/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
   '/support': typeof SupportRoute
+  '/api/oauth/acuity/callback': typeof ApiOauthAcuityCallbackRoute
   '/api/oauth/calendly/callback': typeof ApiOauthCalendlyCallbackRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
   '/api/oauth/square/callback': typeof ApiOauthSquareCallbackRoute
@@ -100,6 +107,7 @@ export interface FileRoutesByTo {
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
   '/support': typeof SupportRoute
+  '/api/oauth/acuity/callback': typeof ApiOauthAcuityCallbackRoute
   '/api/oauth/calendly/callback': typeof ApiOauthCalendlyCallbackRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
   '/api/oauth/square/callback': typeof ApiOauthSquareCallbackRoute
@@ -114,6 +122,7 @@ export interface FileRoutesById {
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
   '/support': typeof SupportRoute
+  '/api/oauth/acuity/callback': typeof ApiOauthAcuityCallbackRoute
   '/api/oauth/calendly/callback': typeof ApiOauthCalendlyCallbackRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
   '/api/oauth/square/callback': typeof ApiOauthSquareCallbackRoute
@@ -129,6 +138,7 @@ export interface FileRouteTypes {
     | '/signin'
     | '/signup'
     | '/support'
+    | '/api/oauth/acuity/callback'
     | '/api/oauth/calendly/callback'
     | '/api/oauth/google/callback'
     | '/api/oauth/square/callback'
@@ -142,6 +152,7 @@ export interface FileRouteTypes {
     | '/signin'
     | '/signup'
     | '/support'
+    | '/api/oauth/acuity/callback'
     | '/api/oauth/calendly/callback'
     | '/api/oauth/google/callback'
     | '/api/oauth/square/callback'
@@ -155,6 +166,7 @@ export interface FileRouteTypes {
     | '/signin'
     | '/signup'
     | '/support'
+    | '/api/oauth/acuity/callback'
     | '/api/oauth/calendly/callback'
     | '/api/oauth/google/callback'
     | '/api/oauth/square/callback'
@@ -169,6 +181,7 @@ export interface RootRouteChildren {
   SigninRoute: typeof SigninRoute
   SignupRoute: typeof SignupRoute
   SupportRoute: typeof SupportRoute
+  ApiOauthAcuityCallbackRoute: typeof ApiOauthAcuityCallbackRoute
   ApiOauthCalendlyCallbackRoute: typeof ApiOauthCalendlyCallbackRoute
   ApiOauthGoogleCallbackRoute: typeof ApiOauthGoogleCallbackRoute
   ApiOauthSquareCallbackRoute: typeof ApiOauthSquareCallbackRoute
@@ -253,6 +266,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiOauthCalendlyCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/oauth/acuity/callback': {
+      id: '/api/oauth/acuity/callback'
+      path: '/api/oauth/acuity/callback'
+      fullPath: '/api/oauth/acuity/callback'
+      preLoaderRoute: typeof ApiOauthAcuityCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -265,6 +285,7 @@ const rootRouteChildren: RootRouteChildren = {
   SigninRoute: SigninRoute,
   SignupRoute: SignupRoute,
   SupportRoute: SupportRoute,
+  ApiOauthAcuityCallbackRoute: ApiOauthAcuityCallbackRoute,
   ApiOauthCalendlyCallbackRoute: ApiOauthCalendlyCallbackRoute,
   ApiOauthGoogleCallbackRoute: ApiOauthGoogleCallbackRoute,
   ApiOauthSquareCallbackRoute: ApiOauthSquareCallbackRoute,
