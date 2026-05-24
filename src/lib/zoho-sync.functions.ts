@@ -18,6 +18,18 @@ interface ZohoAppointment {
   notes?: string;
 }
 
+interface ZohoFetchAppointmentResponse {
+  response?: {
+    returnvalue?: {
+      response?: ZohoAppointment[];
+      data?: ZohoAppointment[];
+      next_page_available?: boolean;
+      page?: number;
+    } | ZohoAppointment[];
+    status?: string;
+  };
+}
+
 async function refreshZohoToken(refreshToken: string): Promise<{
   access_token: string;
   expires_at: string;
@@ -61,6 +73,18 @@ function formatZohoDate(date: Date): string {
   const min = String(date.getMinutes()).padStart(2, "0");
   const ss = String(date.getSeconds()).padStart(2, "0");
   return `${dd}-${mmm}-${yyyy} ${hh}:${min}:${ss}`;
+}
+
+function extractZohoAppointments(data: ZohoFetchAppointmentResponse) {
+  const returnValue = data.response?.returnvalue;
+  if (Array.isArray(returnValue)) {
+    return { appointments: returnValue, nextPageAvailable: false };
+  }
+
+  return {
+    appointments: returnValue?.response ?? returnValue?.data ?? [],
+    nextPageAvailable: returnValue?.next_page_available === true,
+  };
 }
 
 export const syncZohoBookings = createServerFn({ method: "POST" }).handler(
@@ -113,48 +137,48 @@ export const syncZohoBookings = createServerFn({ method: "POST" }).handler(
     const fromTime = formatZohoDate(new Date(Date.now() - 24 * 60 * 60 * 1000));
     const toTime = formatZohoDate(new Date(Date.now() + 60 * 24 * 60 * 60 * 1000));
 
-    const apptRes = await fetch(
-      `${apiBase}/bookings/v1/json/fetchappointment`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Zoho-oauthtoken ${accessToken}`,
-          "Content-Type": "application/x-www-form-urlencoded",
+    const appointments: ZohoAppointment[] = [];
+    let page = 1;
+    let nextPageAvailable = true;
+
+    while (nextPageAvailable) {
+      const apptRes = await fetch(
+        `${apiBase}/bookings/v1/json/fetchappointment`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Zoho-oauthtoken ${accessToken}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams({
+            data: JSON.stringify({
+              from_time: fromTime,
+              to_time: toTime,
+              per_page: "100",
+              page,
+            }),
+          }),
         },
-        body: new URLSearchParams({
-          from_time: fromTime,
-          to_time: toTime,
-          per_page: "100",
-          status: "UPCOMING",
-        }),
-      },
-    );
+      );
 
-    if (!apptRes.ok) {
-      const text = await apptRes.text();
-      throw new Error(`Zoho appointments fetch failed: ${apptRes.status} ${text}`);
+      if (!apptRes.ok) {
+        const text = await apptRes.text();
+        throw new Error(`Zoho appointments fetch failed: ${apptRes.status} ${text}`);
+      }
+
+      const apptData = (await apptRes.json()) as ZohoFetchAppointmentResponse;
+      const extracted = extractZohoAppointments(apptData);
+      appointments.push(...extracted.appointments);
+      nextPageAvailable = extracted.nextPageAvailable;
+      page += 1;
     }
-
-    const apptData = (await apptRes.json()) as {
-      response?: {
-        returnvalue?: {
-          response?: ZohoAppointment[];
-        };
-        status?: string;
-      };
-    };
-
-    const appointments =
-      apptData.response?.returnvalue?.response ?? [];
 
     let synced = 0;
     let skipped = 0;
 
     for (const appt of appointments) {
-      if (
-        appt.status === "CANCEL" ||
-        appt.status === "NO_SHOW"
-      ) {
+      const status = appt.status?.toUpperCase();
+      if (status === "CANCEL" || status === "NO_SHOW") {
         skipped++;
         continue;
       }
