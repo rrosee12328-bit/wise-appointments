@@ -2,8 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHost, getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/admin.server";
-import { signState } from "@/lib/oauth-state.server";
-import { randomBytes } from "crypto";
 
 function getAcuityRedirectUri(host: string) {
   const configuredOrigin = process.env.ACUITY_OAUTH_REDIRECT_ORIGIN;
@@ -27,21 +25,28 @@ export const createAcuityAuthUrl = createServerFn({ method: "POST" })
     const host = getRequestHost();
     const redirectUri = getAcuityRedirectUri(host);
 
-    const state = signState({
-      userId: data.user.id,
-      nonce: randomBytes(12).toString("hex"),
-      ts: Date.now(),
-    });
+    // Store userId in a pending_acuity_oauth row so we can retrieve it in the callback
+    // Acuity's OAuth does not support the `state` parameter
+    await supabaseAdmin
+      .from("platform_connections")
+      .upsert(
+        {
+          user_id: data.user.id,
+          platform: "acuity_pending",
+          status: "pending",
+          access_token: null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,platform" },
+      );
 
-    // Acuity requires exact parameter order: response_type, scope, client_id, redirect_uri
-    // Build URL manually to match Acuity's expected format exactly
+    // Acuity OAuth URL — no state parameter (not supported)
     const url =
       `https://acuityscheduling.com/oauth2/authorize` +
       `?response_type=code` +
       `&scope=api-v1` +
       `&client_id=${encodeURIComponent(process.env.ACUITY_OAUTH_CLIENT_ID!)}` +
-      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-      `&state=${encodeURIComponent(state)}`;
+      `&redirect_uri=${encodeURIComponent(redirectUri)}`;
 
     return { url };
   });

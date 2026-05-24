@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/admin.server";
-import { verifyState } from "@/lib/oauth-state.server";
 
 function getAcuityRedirectUri(url: URL) {
   const configuredOrigin = process.env.ACUITY_OAUTH_REDIRECT_ORIGIN;
@@ -17,7 +16,6 @@ export const Route = createFileRoute("/api/oauth/acuity/callback")({
       GET: async ({ request }) => {
         const url = new URL(request.url);
         const code = url.searchParams.get("code");
-        const state = url.searchParams.get("state");
         const error = url.searchParams.get("error");
 
         if (error) {
@@ -26,16 +24,34 @@ export const Route = createFileRoute("/api/oauth/acuity/callback")({
           );
         }
 
-        if (!code || !state) {
-          return redirectTo("/platforms?acuity=error&reason=missing_params");
+        if (!code) {
+          return redirectTo("/platforms?acuity=error&reason=missing_code");
         }
 
-        const payload = verifyState(state);
-        if (!payload) {
-          return redirectTo("/platforms?acuity=error&reason=invalid_state");
+        // Acuity doesn't support state param — find the most recent pending connection
+        const { data: pending, error: pendingErr } = await supabaseAdmin
+          .from("platform_connections")
+          .select("user_id")
+          .eq("platform", "acuity_pending")
+          .eq("status", "pending")
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (pendingErr || !pending) {
+          return redirectTo("/platforms?acuity=error&reason=no_pending_session");
         }
+
+        const userId = pending.user_id;
 
         const redirectUri = getAcuityRedirectUri(url);
+
+        // Clean up the pending row
+        await supabaseAdmin
+          .from("platform_connections")
+          .delete()
+          .eq("user_id", userId)
+          .eq("platform", "acuity_pending");
 
         // Exchange authorization code for tokens
         const tokenRes = await fetch("https://acuityscheduling.com/oauth2/token", {
@@ -96,7 +112,7 @@ export const Route = createFileRoute("/api/oauth/acuity/callback")({
           .from("platform_connections")
           .upsert(
             {
-              user_id: payload.userId,
+              user_id: userId,
               platform: "acuity",
               status: "connected",
               access_token: tokens.access_token,
