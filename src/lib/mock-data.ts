@@ -44,7 +44,7 @@ export function formatRelativeDay(d: Date): string {
 const KNOWN_PLATFORMS: ReadonlySet<string> = new Set([
   "square","booksy","thecut","setmore","google","squire","vagaro","barberly",
   "ringmybarber","goldie","glossgenius","styleseat","fresha","mangomint",
-  "boulevard","zenoti","acuity","calendly","simplybook",
+  "boulevard","zenoti","acuity","calendly","simplybook","zoho",
 ]);
 
 export function toUiAppointment(row: {
