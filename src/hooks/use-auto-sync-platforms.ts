@@ -5,6 +5,7 @@ import { syncGoogleCalendar } from "@/lib/google-sync.functions";
 import { syncSquareBookings } from "@/lib/square-sync.functions";
 import { syncCalendlyEvents } from "@/lib/calendly-sync.functions";
 import { syncAcuityAppointments } from "@/lib/acuity-sync.functions";
+import { syncZohoBookings } from "@/lib/zoho-sync.functions";
 
 export function useAutoSyncPlatforms(enabled: boolean) {
   const hasRun = useRef(false);
