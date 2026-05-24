@@ -17,8 +17,8 @@ import { Route as PlatformsRouteImport } from './routes/platforms'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppointmentsRouteImport } from './routes/appointments'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiOauthGoogleCallbackRouteImport } from './routes/api/oauth/google/callback'
 import { Route as ApiOauthSquareCallbackRouteImport } from './routes/api/oauth/square/callback'
+import { Route as ApiOauthGoogleCallbackRouteImport } from './routes/api/oauth/google/callback'
 import { Route as ApiOauthCalendlyCallbackRouteImport } from './routes/api/oauth/calendly/callback'
 
 const SupportRoute = SupportRouteImport.update({
@@ -61,21 +61,22 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiOauthGoogleCallbackRoute = ApiOauthGoogleCallbackRouteImport.update({
-  id: '/api/oauth/google/callback',
-  path: '/api/oauth/google/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiOauthSquareCallbackRoute = ApiOauthSquareCallbackRouteImport.update({
   id: '/api/oauth/square/callback',
   path: '/api/oauth/square/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiOauthCalendlyCallbackRoute = ApiOauthCalendlyCallbackRouteImport.update({
-  id: '/api/oauth/calendly/callback',
-  path: '/api/oauth/calendly/callback',
+const ApiOauthGoogleCallbackRoute = ApiOauthGoogleCallbackRouteImport.update({
+  id: '/api/oauth/google/callback',
+  path: '/api/oauth/google/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOauthCalendlyCallbackRoute =
+  ApiOauthCalendlyCallbackRouteImport.update({
+    id: '/api/oauth/calendly/callback',
+    path: '/api/oauth/calendly/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -86,9 +87,9 @@ export interface FileRoutesByFullPath {
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
   '/support': typeof SupportRoute
+  '/api/oauth/calendly/callback': typeof ApiOauthCalendlyCallbackRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
   '/api/oauth/square/callback': typeof ApiOauthSquareCallbackRoute
-  '/api/oauth/calendly/callback': typeof ApiOauthCalendlyCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -99,9 +100,9 @@ export interface FileRoutesByTo {
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
   '/support': typeof SupportRoute
+  '/api/oauth/calendly/callback': typeof ApiOauthCalendlyCallbackRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
   '/api/oauth/square/callback': typeof ApiOauthSquareCallbackRoute
-  '/api/oauth/calendly/callback': typeof ApiOauthCalendlyCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -113,9 +114,9 @@ export interface FileRoutesById {
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
   '/support': typeof SupportRoute
+  '/api/oauth/calendly/callback': typeof ApiOauthCalendlyCallbackRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
   '/api/oauth/square/callback': typeof ApiOauthSquareCallbackRoute
-  '/api/oauth/calendly/callback': typeof ApiOauthCalendlyCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -128,9 +129,9 @@ export interface FileRouteTypes {
     | '/signin'
     | '/signup'
     | '/support'
+    | '/api/oauth/calendly/callback'
     | '/api/oauth/google/callback'
     | '/api/oauth/square/callback'
-    | '/api/oauth/calendly/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -141,9 +142,9 @@ export interface FileRouteTypes {
     | '/signin'
     | '/signup'
     | '/support'
+    | '/api/oauth/calendly/callback'
     | '/api/oauth/google/callback'
     | '/api/oauth/square/callback'
-    | '/api/oauth/calendly/callback'
   id:
     | '__root__'
     | '/'
@@ -154,9 +155,9 @@ export interface FileRouteTypes {
     | '/signin'
     | '/signup'
     | '/support'
+    | '/api/oauth/calendly/callback'
     | '/api/oauth/google/callback'
     | '/api/oauth/square/callback'
-    | '/api/oauth/calendly/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -168,9 +169,9 @@ export interface RootRouteChildren {
   SigninRoute: typeof SigninRoute
   SignupRoute: typeof SignupRoute
   SupportRoute: typeof SupportRoute
+  ApiOauthCalendlyCallbackRoute: typeof ApiOauthCalendlyCallbackRoute
   ApiOauthGoogleCallbackRoute: typeof ApiOauthGoogleCallbackRoute
   ApiOauthSquareCallbackRoute: typeof ApiOauthSquareCallbackRoute
-  ApiOauthCalendlyCallbackRoute: typeof ApiOauthCalendlyCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -231,18 +232,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/oauth/google/callback': {
-      id: '/api/oauth/google/callback'
-      path: '/api/oauth/google/callback'
-      fullPath: '/api/oauth/google/callback'
-      preLoaderRoute: typeof ApiOauthGoogleCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/oauth/square/callback': {
       id: '/api/oauth/square/callback'
       path: '/api/oauth/square/callback'
       fullPath: '/api/oauth/square/callback'
       preLoaderRoute: typeof ApiOauthSquareCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/oauth/google/callback': {
+      id: '/api/oauth/google/callback'
+      path: '/api/oauth/google/callback'
+      fullPath: '/api/oauth/google/callback'
+      preLoaderRoute: typeof ApiOauthGoogleCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/oauth/calendly/callback': {
@@ -264,9 +265,9 @@ const rootRouteChildren: RootRouteChildren = {
   SigninRoute: SigninRoute,
   SignupRoute: SignupRoute,
   SupportRoute: SupportRoute,
+  ApiOauthCalendlyCallbackRoute: ApiOauthCalendlyCallbackRoute,
   ApiOauthGoogleCallbackRoute: ApiOauthGoogleCallbackRoute,
   ApiOauthSquareCallbackRoute: ApiOauthSquareCallbackRoute,
-  ApiOauthCalendlyCallbackRoute: ApiOauthCalendlyCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
