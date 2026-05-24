@@ -15,12 +15,14 @@ import {
 } from "@/lib/google-oauth.functions";
 import { createSquareAuthUrl } from "@/lib/square-oauth.functions";
 import { createCalendlyAuthUrl } from "@/lib/calendly-oauth.functions";
+import { createAcuityAuthUrl } from "@/lib/acuity-oauth.functions";
 
 export const Route = createFileRoute("/platforms")({
   validateSearch: (s: Record<string, unknown>) => ({
     google: typeof s.google === "string" ? (s.google as string) : undefined,
     square: typeof s.square === "string" ? (s.square as string) : undefined,
     calendly: typeof s.calendly === "string" ? (s.calendly as string) : undefined,
+    acuity: typeof s.acuity === "string" ? (s.acuity as string) : undefined,
     reason: typeof s.reason === "string" ? (s.reason as string) : undefined,
   }),
   head: () => ({
@@ -63,7 +65,7 @@ const CATEGORIES: { label: string; ids: PlatformId[] }[] = [
 ];
 
 // Platforms that have a live OAuth integration
-const LIVE_PLATFORMS = new Set<PlatformId>(["google", "square", "calendly"]);
+const LIVE_PLATFORMS = new Set<PlatformId>(["google", "square", "calendly", "acuity"]);
 
 function platformToDbKey(id: PlatformId): string {
   return id === "google" ? "google_calendar" : id;
@@ -75,6 +77,7 @@ function Platforms() {
   const getGoogleAuthUrl = useServerFn(createGoogleAuthUrl);
   const getSquareAuthUrl = useServerFn(createSquareAuthUrl);
   const getCalendlyAuthUrl = useServerFn(createCalendlyAuthUrl);
+  const getAcuityAuthUrl = useServerFn(createAcuityAuthUrl);
   const list = useServerFn(listConnections);
   const disconnect = useServerFn(disconnectPlatform);
 
@@ -88,6 +91,17 @@ function Platforms() {
       );
     }
   }, [search.google, search.reason]);
+
+  useEffect(() => {
+    if (search.acuity === "connected") {
+      toast.success("Acuity connected");
+      qc.invalidateQueries({ queryKey: ["platform-connections"] });
+    } else if (search.acuity === "error") {
+      toast.error(
+        `Acuity connection failed${search.reason ? `: ${search.reason}` : ""}`,
+      );
+    }
+  }, [search.acuity, search.reason, qc]);
 
   useEffect(() => {
     if (search.calendly === "connected") {
@@ -130,6 +144,19 @@ function Platforms() {
       } = await supabase.auth.getSession();
       if (!session) throw new Error("Please sign in first");
       const { url } = await getGoogleAuthUrl({ data: {} });
+      window.location.href = url;
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Acuity connect
+  const connectAcuity = useMutation({
+    mutationFn: async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) throw new Error("Please sign in first");
+      const { url } = await getAcuityAuthUrl({ data: {} });
       window.location.href = url;
     },
     onError: (e: Error) => toast.error(e.message),
@@ -203,6 +230,15 @@ function Platforms() {
       return;
     }
 
+    if (id === "acuity") {
+      if (connectedSet.has(dbKey)) {
+        disconnectPlatformMut.mutate(dbKey);
+      } else {
+        connectAcuity.mutate();
+      }
+      return;
+    }
+
     toast("Connector coming soon.");
   };
 
@@ -213,6 +249,8 @@ function Platforms() {
       return connectSquare.isPending || disconnectPlatformMut.isPending;
     if (id === "calendly")
       return connectCalendly.isPending || disconnectPlatformMut.isPending;
+    if (id === "acuity")
+      return connectAcuity.isPending || disconnectPlatformMut.isPending;
     return false;
   };
 
