@@ -14,6 +14,7 @@ export function useAutoSyncPlatforms(enabled: boolean) {
   const syncSquare = useServerFn(syncSquareBookings);
   const syncCalendly = useServerFn(syncCalendlyEvents);
   const syncAcuity = useServerFn(syncAcuityAppointments);
+  const syncZoho = useServerFn(syncZohoBookings);
 
   useEffect(() => {
     if (!enabled || hasRun.current) return;
@@ -26,6 +27,7 @@ export function useAutoSyncPlatforms(enabled: boolean) {
       syncSquare(),
       syncCalendly(),
       syncAcuity(),
+      syncZoho(),
     ]).then((results) => {
       if (cancelled) return;
 
@@ -49,5 +51,5 @@ export function useAutoSyncPlatforms(enabled: boolean) {
     return () => {
       cancelled = true;
     };
-  }, [enabled, queryClient, syncGoogle, syncSquare, syncCalendly, syncAcuity]);
+  }, [enabled, queryClient, syncGoogle, syncSquare, syncCalendly, syncAcuity, syncZoho]);
 }
