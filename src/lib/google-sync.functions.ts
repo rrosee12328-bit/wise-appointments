@@ -7,10 +7,220 @@ type GoogleEvent = {
   status?: string;
   summary?: string;
   description?: string;
+  location?: string;
+  organizer?: { displayName?: string; email?: string };
+  creator?: { displayName?: string; email?: string };
   start?: { dateTime?: string; date?: string };
   end?: { dateTime?: string; date?: string };
   transparency?: string; // "transparent" = Free, omitted = Busy
+  source?: { title?: string; url?: string };
+  extendedProperties?: {
+    private?: Record<string, string>;
+    shared?: Record<string, string>;
+  };
 };
+
+// ── Smart platform detection ──────────────────────────────────────────────────
+// Detects which booking platform created a Google Calendar event based on
+// signals in the event title, description, organizer email, and source URL.
+
+type DetectedPlatform =
+  | "thecut"
+  | "booksy"
+  | "glossgenius"
+  | "styleseat"
+  | "goldie"
+  | "vagaro"
+  | "fresha"
+  | "mangomint"
+  | "boulevard"
+  | "squire"
+  | "ringmybarber"
+  | "barberly"
+  | "square"
+  | "acuity"
+  | "calendly"
+  | "simplybook"
+  | "zoho"
+  | "setmore"
+  | "google_calendar";
+
+interface PlatformSignal {
+  platform: DetectedPlatform;
+  // Strings to check in organizer email, creator email, source URL, description
+  emailPatterns?: string[];
+  urlPatterns?: string[];
+  descriptionPatterns?: string[];
+  titlePatterns?: string[];
+}
+
+const PLATFORM_SIGNALS: PlatformSignal[] = [
+  {
+    platform: "thecut",
+    emailPatterns: ["thecut.co", "noreply@thecut.co"],
+    urlPatterns: ["thecut.co"],
+    descriptionPatterns: ["thecut.co", "theCut", "the cut app"],
+    titlePatterns: ["via theCut", "- theCut"],
+  },
+  {
+    platform: "booksy",
+    emailPatterns: ["booksy.com", "noreply@booksy.com"],
+    urlPatterns: ["booksy.com"],
+    descriptionPatterns: ["booksy.com", "Booksy appointment", "booked via Booksy"],
+    titlePatterns: ["via Booksy", "- Booksy"],
+  },
+  {
+    platform: "glossgenius",
+    emailPatterns: ["glossgenius.com", "noreply@glossgenius.com"],
+    urlPatterns: ["glossgenius.com"],
+    descriptionPatterns: ["glossgenius.com", "GlossGenius", "Gloss Genius"],
+    titlePatterns: ["via GlossGenius", "- GlossGenius"],
+  },
+  {
+    platform: "styleseat",
+    emailPatterns: ["styleseat.com", "noreply@styleseat.com"],
+    urlPatterns: ["styleseat.com"],
+    descriptionPatterns: ["styleseat.com", "StyleSeat"],
+    titlePatterns: ["via StyleSeat", "- StyleSeat"],
+  },
+  {
+    platform: "goldie",
+    emailPatterns: ["heygoldie.com", "noreply@heygoldie.com"],
+    urlPatterns: ["heygoldie.com", "goldie.app"],
+    descriptionPatterns: ["heygoldie.com", "Goldie app", "via Goldie"],
+    titlePatterns: ["via Goldie", "- Goldie"],
+  },
+  {
+    platform: "vagaro",
+    emailPatterns: ["vagaro.com", "noreply@vagaro.com"],
+    urlPatterns: ["vagaro.com"],
+    descriptionPatterns: ["vagaro.com", "Vagaro appointment"],
+    titlePatterns: ["via Vagaro", "- Vagaro"],
+  },
+  {
+    platform: "fresha",
+    emailPatterns: ["fresha.com", "noreply@fresha.com"],
+    urlPatterns: ["fresha.com"],
+    descriptionPatterns: ["fresha.com", "Fresha appointment"],
+    titlePatterns: ["via Fresha", "- Fresha"],
+  },
+  {
+    platform: "mangomint",
+    emailPatterns: ["mangomint.com", "noreply@mangomint.com"],
+    urlPatterns: ["mangomint.com"],
+    descriptionPatterns: ["mangomint.com", "Mangomint"],
+    titlePatterns: ["via Mangomint", "- Mangomint"],
+  },
+  {
+    platform: "boulevard",
+    emailPatterns: ["joinblvd.com", "noreply@joinblvd.com"],
+    urlPatterns: ["joinblvd.com", "boulevard.app"],
+    descriptionPatterns: ["joinblvd.com", "Boulevard appointment"],
+    titlePatterns: ["via Boulevard", "- Boulevard"],
+  },
+  {
+    platform: "squire",
+    emailPatterns: ["getsquire.com", "noreply@getsquire.com"],
+    urlPatterns: ["getsquire.com"],
+    descriptionPatterns: ["getsquire.com", "SQUIRE appointment"],
+    titlePatterns: ["via SQUIRE", "- SQUIRE"],
+  },
+  {
+    platform: "ringmybarber",
+    emailPatterns: ["ringmybarber.com"],
+    urlPatterns: ["ringmybarber.com"],
+    descriptionPatterns: ["ringmybarber.com", "Ring My Barber"],
+    titlePatterns: ["via Ring My Barber"],
+  },
+  {
+    platform: "barberly",
+    emailPatterns: ["barberly.com"],
+    urlPatterns: ["barberly.com"],
+    descriptionPatterns: ["barberly.com", "Barberly"],
+    titlePatterns: ["via Barberly"],
+  },
+  {
+    platform: "square",
+    emailPatterns: ["squareup.com", "noreply@squareup.com"],
+    urlPatterns: ["squareup.com", "square.site"],
+    descriptionPatterns: ["squareup.com", "Square appointment", "Square Appointments"],
+    titlePatterns: ["via Square", "- Square Appointments"],
+  },
+  {
+    platform: "acuity",
+    emailPatterns: ["acuityscheduling.com", "noreply@acuityscheduling.com"],
+    urlPatterns: ["acuityscheduling.com"],
+    descriptionPatterns: ["acuityscheduling.com", "Acuity Scheduling"],
+    titlePatterns: ["via Acuity", "- Acuity"],
+  },
+  {
+    platform: "calendly",
+    emailPatterns: ["calendly.com", "noreply@calendly.com"],
+    urlPatterns: ["calendly.com"],
+    descriptionPatterns: ["calendly.com", "Calendly meeting", "Calendly event"],
+    titlePatterns: ["via Calendly"],
+  },
+  {
+    platform: "setmore",
+    emailPatterns: ["setmore.com", "noreply@setmore.com"],
+    urlPatterns: ["setmore.com"],
+    descriptionPatterns: ["setmore.com", "Setmore appointment"],
+    titlePatterns: ["via Setmore", "- Setmore"],
+  },
+  {
+    platform: "simplybook",
+    emailPatterns: ["simplybook.me"],
+    urlPatterns: ["simplybook.me"],
+    descriptionPatterns: ["simplybook.me", "SimplyBook"],
+    titlePatterns: ["via SimplyBook"],
+  },
+  {
+    platform: "zoho",
+    emailPatterns: ["zoho.com", "zohobookings.com"],
+    urlPatterns: ["zohobookings.com", "zoho.com/bookings"],
+    descriptionPatterns: ["zohobookings.com", "Zoho Bookings"],
+    titlePatterns: ["via Zoho Bookings"],
+  },
+];
+
+function detectPlatform(ev: GoogleEvent): DetectedPlatform {
+  const searchText = [
+    ev.description ?? "",
+    ev.organizer?.email ?? "",
+    ev.organizer?.displayName ?? "",
+    ev.creator?.email ?? "",
+    ev.source?.url ?? "",
+    ev.source?.title ?? "",
+    ev.location ?? "",
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  const titleText = (ev.summary ?? "").toLowerCase();
+
+  for (const signal of PLATFORM_SIGNALS) {
+    // Check email patterns
+    if (signal.emailPatterns?.some((p) => searchText.includes(p.toLowerCase()))) {
+      return signal.platform;
+    }
+    // Check URL patterns
+    if (signal.urlPatterns?.some((p) => searchText.includes(p.toLowerCase()))) {
+      return signal.platform;
+    }
+    // Check description patterns
+    if (signal.descriptionPatterns?.some((p) => searchText.includes(p.toLowerCase()))) {
+      return signal.platform;
+    }
+    // Check title patterns
+    if (signal.titlePatterns?.some((p) => titleText.includes(p.toLowerCase()))) {
+      return signal.platform;
+    }
+  }
+
+  return "google_calendar";
+}
+
+// ── Refresh token ─────────────────────────────────────────────────────────────
 
 async function refreshAccessToken(refreshToken: string) {
   const res = await fetch("https://oauth2.googleapis.com/token", {
@@ -33,6 +243,8 @@ async function refreshAccessToken(refreshToken: string) {
     scope?: string;
   };
 }
+
+// ── Sync ──────────────────────────────────────────────────────────────────────
 
 export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(
   async () => {
@@ -77,6 +289,7 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(
     }
 
     // Pull events from now - 1 day → now + 60 days from primary calendar.
+    // Request extra fields for platform detection.
     const timeMin = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const timeMax = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString();
     const params = new URLSearchParams({
@@ -85,6 +298,8 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(
       singleEvents: "true",
       orderBy: "startTime",
       maxResults: "250",
+      fields:
+        "items(id,status,summary,description,location,organizer,creator,start,end,transparency,source,extendedProperties)",
     });
     const evRes = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/primary/events?${params}`,
@@ -117,24 +332,28 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(
         continue;
       }
 
+      // Detect which platform this event came from
+      const sourcePlatform = detectPlatform(ev);
+
       const title = (ev.summary ?? "Untitled").trim();
       // Allow "Client — Service" or "Client - Service" or "Client: Service" splits.
       const split = title.split(/\s+[—\-:]\s+/);
       const clientName = split[0] || "Untitled";
       const service = split.length > 1 ? split.slice(1).join(" - ") : null;
 
-      // Manual upsert keyed on (user_id, source_platform, external_id).
+      // Upsert keyed on (user_id, source_platform, external_id).
+      // If the platform changed (re-detection), update the existing row.
       const { data: existing } = await supabaseAdmin
         .from("appointments")
         .select("id")
         .eq("user_id", userId)
-        .eq("source_platform", "google_calendar")
         .eq("external_id", ev.id)
+        .or("source_platform.eq.google_calendar,source_platform.eq.thecut,source_platform.eq.booksy,source_platform.eq.glossgenius,source_platform.eq.styleseat,source_platform.eq.goldie,source_platform.eq.vagaro,source_platform.eq.fresha,source_platform.eq.mangomint,source_platform.eq.boulevard,source_platform.eq.squire,source_platform.eq.ringmybarber,source_platform.eq.barberly,source_platform.eq.square,source_platform.eq.acuity,source_platform.eq.calendly,source_platform.eq.setmore,source_platform.eq.simplybook,source_platform.eq.zoho")
         .maybeSingle();
 
       const row = {
         user_id: userId,
-        source_platform: "google_calendar",
+        source_platform: sourcePlatform,
         external_id: ev.id,
         client_name: clientName,
         service,
