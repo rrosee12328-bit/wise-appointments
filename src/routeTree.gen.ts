@@ -21,6 +21,7 @@ import { Route as ApiOauthSquareCallbackRouteImport } from './routes/api/oauth/s
 import { Route as ApiOauthGoogleCallbackRouteImport } from './routes/api/oauth/google/callback'
 import { Route as ApiOauthCalendlyCallbackRouteImport } from './routes/api/oauth/calendly/callback'
 import { Route as ApiOauthAcuityCallbackRouteImport } from './routes/api/oauth/acuity/callback'
+import { Route as ApiOauthZohoCallbackRouteImport } from './routes/api/oauth/zoho/callback'
 
 const SupportRoute = SupportRouteImport.update({
   id: '/support',
@@ -83,6 +84,11 @@ const ApiOauthAcuityCallbackRoute = ApiOauthAcuityCallbackRouteImport.update({
   path: '/api/oauth/acuity/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOauthZohoCallbackRoute = ApiOauthZohoCallbackRouteImport.update({
+  id: '/api/oauth/zoho/callback',
+  path: '/api/oauth/zoho/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/support': typeof SupportRoute
   '/api/oauth/acuity/callback': typeof ApiOauthAcuityCallbackRoute
+  '/api/oauth/zoho/callback': typeof ApiOauthZohoCallbackRoute
   '/api/oauth/calendly/callback': typeof ApiOauthCalendlyCallbackRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
   '/api/oauth/square/callback': typeof ApiOauthSquareCallbackRoute
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/support': typeof SupportRoute
   '/api/oauth/acuity/callback': typeof ApiOauthAcuityCallbackRoute
+  '/api/oauth/zoho/callback': typeof ApiOauthZohoCallbackRoute
   '/api/oauth/calendly/callback': typeof ApiOauthCalendlyCallbackRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
   '/api/oauth/square/callback': typeof ApiOauthSquareCallbackRoute
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/support': typeof SupportRoute
   '/api/oauth/acuity/callback': typeof ApiOauthAcuityCallbackRoute
+  '/api/oauth/zoho/callback': typeof ApiOauthZohoCallbackRoute
   '/api/oauth/calendly/callback': typeof ApiOauthCalendlyCallbackRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
   '/api/oauth/square/callback': typeof ApiOauthSquareCallbackRoute
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/support'
     | '/api/oauth/acuity/callback'
+    | '/api/oauth/zoho/callback'
     | '/api/oauth/calendly/callback'
     | '/api/oauth/google/callback'
     | '/api/oauth/square/callback'
@@ -153,6 +163,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/support'
     | '/api/oauth/acuity/callback'
+    | '/api/oauth/zoho/callback'
     | '/api/oauth/calendly/callback'
     | '/api/oauth/google/callback'
     | '/api/oauth/square/callback'
@@ -167,6 +178,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/support'
     | '/api/oauth/acuity/callback'
+    | '/api/oauth/zoho/callback'
     | '/api/oauth/calendly/callback'
     | '/api/oauth/google/callback'
     | '/api/oauth/square/callback'
@@ -182,6 +194,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   SupportRoute: typeof SupportRoute
   ApiOauthAcuityCallbackRoute: typeof ApiOauthAcuityCallbackRoute
+  ApiOauthZohoCallbackRoute: typeof ApiOauthZohoCallbackRoute
   ApiOauthCalendlyCallbackRoute: typeof ApiOauthCalendlyCallbackRoute
   ApiOauthGoogleCallbackRoute: typeof ApiOauthGoogleCallbackRoute
   ApiOauthSquareCallbackRoute: typeof ApiOauthSquareCallbackRoute
@@ -273,6 +286,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiOauthAcuityCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/oauth/zoho/callback': {
+      id: '/api/oauth/zoho/callback'
+      path: '/api/oauth/zoho/callback'
+      fullPath: '/api/oauth/zoho/callback'
+      preLoaderRoute: typeof ApiOauthZohoCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -286,6 +306,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   SupportRoute: SupportRoute,
   ApiOauthAcuityCallbackRoute: ApiOauthAcuityCallbackRoute,
+  ApiOauthZohoCallbackRoute: ApiOauthZohoCallbackRoute,
   ApiOauthCalendlyCallbackRoute: ApiOauthCalendlyCallbackRoute,
   ApiOauthGoogleCallbackRoute: ApiOauthGoogleCallbackRoute,
   ApiOauthSquareCallbackRoute: ApiOauthSquareCallbackRoute,

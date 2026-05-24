@@ -17,7 +17,8 @@ export type PlatformId =
   | "zenoti"
   | "acuity"
   | "calendly"
-  | "simplybook";
+  | "simplybook"
+  | "zoho";
 
 export const PLATFORMS: Record<
   PlatformId,
@@ -181,6 +182,14 @@ export const PLATFORMS: Record<
     colorClass: "bg-platform-simplybook/15 text-platform-simplybook",
     borderClass: "border-l-platform-simplybook",
     domain: "simplybook.me",
+  },
+  zoho: {
+    id: "zoho",
+    label: "Zoho Bookings",
+    colorVar: "var(--platform-zoho)",
+    colorClass: "bg-platform-zoho/15 text-platform-zoho",
+    borderClass: "border-l-platform-zoho",
+    domain: "zoho.com",
   },
 };
 
