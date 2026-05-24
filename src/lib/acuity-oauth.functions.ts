@@ -33,15 +33,15 @@ export const createAcuityAuthUrl = createServerFn({ method: "POST" })
       ts: Date.now(),
     });
 
-    const params = new URLSearchParams({
-      client_id: process.env.ACUITY_OAUTH_CLIENT_ID!,
-      response_type: "code",
-      redirect_uri: redirectUri,
-      scope: "api-v1",
-      state,
-    });
+    // Acuity requires exact parameter order: response_type, scope, client_id, redirect_uri
+    // Build URL manually to match Acuity's expected format exactly
+    const url =
+      `https://acuityscheduling.com/oauth2/authorize` +
+      `?response_type=code` +
+      `&scope=api-v1` +
+      `&client_id=${encodeURIComponent(process.env.ACUITY_OAUTH_CLIENT_ID!)}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+      `&state=${encodeURIComponent(state)}`;
 
-    return {
-      url: `https://acuityscheduling.com/oauth2/authorize?${params.toString()}`,
-    };
+    return { url };
   });

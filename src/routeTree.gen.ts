@@ -97,6 +97,7 @@ export interface FileRoutesByFullPath {
   '/api/oauth/calendly/callback': typeof ApiOauthCalendlyCallbackRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
   '/api/oauth/square/callback': typeof ApiOauthSquareCallbackRoute
+  '/api/oauth/acuity/callback': typeof ApiOauthAcuityCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -111,6 +112,7 @@ export interface FileRoutesByTo {
   '/api/oauth/calendly/callback': typeof ApiOauthCalendlyCallbackRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
   '/api/oauth/square/callback': typeof ApiOauthSquareCallbackRoute
+  '/api/oauth/acuity/callback': typeof ApiOauthAcuityCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -126,6 +128,7 @@ export interface FileRoutesById {
   '/api/oauth/calendly/callback': typeof ApiOauthCalendlyCallbackRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
   '/api/oauth/square/callback': typeof ApiOauthSquareCallbackRoute
+  '/api/oauth/acuity/callback': typeof ApiOauthAcuityCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -142,6 +145,7 @@ export interface FileRouteTypes {
     | '/api/oauth/calendly/callback'
     | '/api/oauth/google/callback'
     | '/api/oauth/square/callback'
+    | '/api/oauth/acuity/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -156,6 +160,7 @@ export interface FileRouteTypes {
     | '/api/oauth/calendly/callback'
     | '/api/oauth/google/callback'
     | '/api/oauth/square/callback'
+    | '/api/oauth/acuity/callback'
   id:
     | '__root__'
     | '/'
@@ -170,6 +175,7 @@ export interface FileRouteTypes {
     | '/api/oauth/calendly/callback'
     | '/api/oauth/google/callback'
     | '/api/oauth/square/callback'
+    | '/api/oauth/acuity/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -185,6 +191,7 @@ export interface RootRouteChildren {
   ApiOauthCalendlyCallbackRoute: typeof ApiOauthCalendlyCallbackRoute
   ApiOauthGoogleCallbackRoute: typeof ApiOauthGoogleCallbackRoute
   ApiOauthSquareCallbackRoute: typeof ApiOauthSquareCallbackRoute
+  ApiOauthAcuityCallbackRoute: typeof ApiOauthAcuityCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -289,6 +296,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiOauthCalendlyCallbackRoute: ApiOauthCalendlyCallbackRoute,
   ApiOauthGoogleCallbackRoute: ApiOauthGoogleCallbackRoute,
   ApiOauthSquareCallbackRoute: ApiOauthSquareCallbackRoute,
+  ApiOauthAcuityCallbackRoute: ApiOauthAcuityCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
