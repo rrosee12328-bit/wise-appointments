@@ -17,6 +17,13 @@ interface AcuityAppointment {
   canceled: boolean;
 }
 
+function addMinutesToTimestamp(timestamp: string, minutes: number) {
+  const start = new Date(timestamp);
+  if (Number.isNaN(start.getTime())) return null;
+
+  return new Date(start.getTime() + minutes * 60 * 1000).toISOString();
+}
+
 export const syncAcuityAppointments = createServerFn({ method: "POST" }).handler(
   async () => {
     const authHeader = getRequestHeader("authorization");
@@ -88,9 +95,20 @@ export const syncAcuityAppointments = createServerFn({ method: "POST" }).handler
         appt.email ||
         "Unknown Client";
 
-      // Acuity datetime is in the account's timezone — use as-is
+      // Acuity's endTime is only a clock value (for example "10:20am"),
+      // so calculate a full timestamp from the appointment start + duration.
       const startsAt = appt.datetime;
-      const endsAt = appt.endTime;
+      const endsAt = addMinutesToTimestamp(appt.datetime, appt.duration);
+
+      if (!endsAt) {
+        console.error("skip acuity appointment with invalid datetime", {
+          id: appt.id,
+          datetime: appt.datetime,
+          duration: appt.duration,
+        });
+        skipped++;
+        continue;
+      }
 
       const { data: existing } = await supabaseAdmin
         .from("appointments")
