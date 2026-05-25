@@ -17,6 +17,7 @@ import { Route as PlatformsRouteImport } from './routes/platforms'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppointmentsRouteImport } from './routes/appointments'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthVerifyRouteImport } from './routes/auth.verify'
 import { Route as ApiOauthZohoCallbackRouteImport } from './routes/api/oauth/zoho/callback'
 import { Route as ApiOauthSquareCallbackRouteImport } from './routes/api/oauth/square/callback'
 import { Route as ApiOauthGoogleCallbackRouteImport } from './routes/api/oauth/google/callback'
@@ -63,6 +64,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthVerifyRoute = AuthVerifyRouteImport.update({
+  id: '/auth/verify',
+  path: '/auth/verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiOauthZohoCallbackRoute = ApiOauthZohoCallbackRouteImport.update({
   id: '/api/oauth/zoho/callback',
   path: '/api/oauth/zoho/callback',
@@ -99,6 +105,7 @@ export interface FileRoutesByFullPath {
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
   '/support': typeof SupportRoute
+  '/auth/verify': typeof AuthVerifyRoute
   '/api/oauth/acuity/callback': typeof ApiOauthAcuityCallbackRoute
   '/api/oauth/calendly/callback': typeof ApiOauthCalendlyCallbackRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
@@ -114,6 +121,7 @@ export interface FileRoutesByTo {
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
   '/support': typeof SupportRoute
+  '/auth/verify': typeof AuthVerifyRoute
   '/api/oauth/acuity/callback': typeof ApiOauthAcuityCallbackRoute
   '/api/oauth/calendly/callback': typeof ApiOauthCalendlyCallbackRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
@@ -130,6 +138,7 @@ export interface FileRoutesById {
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
   '/support': typeof SupportRoute
+  '/auth/verify': typeof AuthVerifyRoute
   '/api/oauth/acuity/callback': typeof ApiOauthAcuityCallbackRoute
   '/api/oauth/calendly/callback': typeof ApiOauthCalendlyCallbackRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
@@ -147,6 +156,7 @@ export interface FileRouteTypes {
     | '/signin'
     | '/signup'
     | '/support'
+    | '/auth/verify'
     | '/api/oauth/acuity/callback'
     | '/api/oauth/calendly/callback'
     | '/api/oauth/google/callback'
@@ -162,6 +172,7 @@ export interface FileRouteTypes {
     | '/signin'
     | '/signup'
     | '/support'
+    | '/auth/verify'
     | '/api/oauth/acuity/callback'
     | '/api/oauth/calendly/callback'
     | '/api/oauth/google/callback'
@@ -177,6 +188,7 @@ export interface FileRouteTypes {
     | '/signin'
     | '/signup'
     | '/support'
+    | '/auth/verify'
     | '/api/oauth/acuity/callback'
     | '/api/oauth/calendly/callback'
     | '/api/oauth/google/callback'
@@ -193,6 +205,7 @@ export interface RootRouteChildren {
   SigninRoute: typeof SigninRoute
   SignupRoute: typeof SignupRoute
   SupportRoute: typeof SupportRoute
+  AuthVerifyRoute: typeof AuthVerifyRoute
   ApiOauthAcuityCallbackRoute: typeof ApiOauthAcuityCallbackRoute
   ApiOauthCalendlyCallbackRoute: typeof ApiOauthCalendlyCallbackRoute
   ApiOauthGoogleCallbackRoute: typeof ApiOauthGoogleCallbackRoute
@@ -258,6 +271,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/verify': {
+      id: '/auth/verify'
+      path: '/auth/verify'
+      fullPath: '/auth/verify'
+      preLoaderRoute: typeof AuthVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/oauth/zoho/callback': {
       id: '/api/oauth/zoho/callback'
       path: '/api/oauth/zoho/callback'
@@ -305,6 +325,7 @@ const rootRouteChildren: RootRouteChildren = {
   SigninRoute: SigninRoute,
   SignupRoute: SignupRoute,
   SupportRoute: SupportRoute,
+  AuthVerifyRoute: AuthVerifyRoute,
   ApiOauthAcuityCallbackRoute: ApiOauthAcuityCallbackRoute,
   ApiOauthCalendlyCallbackRoute: ApiOauthCalendlyCallbackRoute,
   ApiOauthGoogleCallbackRoute: ApiOauthGoogleCallbackRoute,
