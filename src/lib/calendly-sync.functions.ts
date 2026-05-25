@@ -24,6 +24,13 @@ interface CalendlyInvitee {
   status?: string;
 }
 
+class CalendlyReauthRequiredError extends Error {
+  constructor(message = "Calendly reconnection required") {
+    super(message);
+    this.name = "CalendlyReauthRequiredError";
+  }
+}
+
 async function refreshCalendlyToken(refreshToken: string): Promise<{
   access_token: string;
   expires_at: string;
@@ -41,6 +48,9 @@ async function refreshCalendlyToken(refreshToken: string): Promise<{
 
   if (!res.ok) {
     const text = await res.text();
+    if (res.status === 400 && text.includes("invalid_grant")) {
+      throw new CalendlyReauthRequiredError();
+    }
     throw new Error(`Calendly token refresh failed: ${res.status} ${text}`);
   }
 
@@ -56,6 +66,7 @@ async function refreshCalendlyToken(refreshToken: string): Promise<{
     ).toISOString(),
   };
 }
+
 
 export const syncCalendlyEvents = createServerFn({ method: "POST" }).handler(
   async () => {
@@ -88,19 +99,33 @@ export const syncCalendlyEvents = createServerFn({ method: "POST" }).handler(
 
     // Refresh if expired or about to expire
     if (!accessToken || expiresAt - Date.now() < 60_000) {
-      if (!refreshToken)
-        throw new Error("No refresh token. Please reconnect Calendly.");
-      const refreshed = await refreshCalendlyToken(refreshToken);
-      accessToken = refreshed.access_token;
-      await supabaseAdmin
-        .from("platform_connections")
-        .update({
-          access_token: accessToken,
-          token_expires_at: refreshed.expires_at,
-        })
-        .eq("user_id", userId)
-        .eq("platform", "calendly");
+      if (!refreshToken) {
+        return { synced: 0, skipped: 0, connected: false, needsReconnect: true };
+      }
+      try {
+        const refreshed = await refreshCalendlyToken(refreshToken);
+        accessToken = refreshed.access_token;
+        await supabaseAdmin
+          .from("platform_connections")
+          .update({
+            access_token: accessToken,
+            token_expires_at: refreshed.expires_at,
+          })
+          .eq("user_id", userId)
+          .eq("platform", "calendly");
+      } catch (err) {
+        if (err instanceof CalendlyReauthRequiredError) {
+          await supabaseAdmin
+            .from("platform_connections")
+            .update({ access_token: null, refresh_token: null, token_expires_at: null })
+            .eq("user_id", userId)
+            .eq("platform", "calendly");
+          return { synced: 0, skipped: 0, connected: false, needsReconnect: true };
+        }
+        throw err;
+      }
     }
+
 
     // Get user URI from stored metadata (needed to query events)
     const metadata = conn.metadata as { user_uri?: string; organization_uri?: string } | null;
