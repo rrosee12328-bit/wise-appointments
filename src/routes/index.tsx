@@ -118,16 +118,6 @@ function Schedule() {
   const [lastSync, setLastSync] = useState<Date>(new Date());
   const [resolverOpen, setResolverOpen] = useState(false);
   const [walkInOpen, setWalkInOpen] = useState(false);
-  const [hiddenPlatforms, setHiddenPlatforms] = useState<Set<PlatformId>>(new Set());
-
-  const togglePlatform = (id: PlatformId) => {
-    setHiddenPlatforms((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
 
   useEffect(() => {
     if (conflicts.length > 0) setResolverOpen(true);
