@@ -24,6 +24,13 @@ interface CalendlyInvitee {
   status?: string;
 }
 
+class CalendlyReauthRequiredError extends Error {
+  constructor(message = "Calendly reconnection required") {
+    super(message);
+    this.name = "CalendlyReauthRequiredError";
+  }
+}
+
 async function refreshCalendlyToken(refreshToken: string): Promise<{
   access_token: string;
   expires_at: string;
@@ -41,6 +48,9 @@ async function refreshCalendlyToken(refreshToken: string): Promise<{
 
   if (!res.ok) {
     const text = await res.text();
+    if (res.status === 400 && text.includes("invalid_grant")) {
+      throw new CalendlyReauthRequiredError();
+    }
     throw new Error(`Calendly token refresh failed: ${res.status} ${text}`);
   }
 
@@ -56,6 +66,7 @@ async function refreshCalendlyToken(refreshToken: string): Promise<{
     ).toISOString(),
   };
 }
+
 
 export const syncCalendlyEvents = createServerFn({ method: "POST" }).handler(
   async () => {
