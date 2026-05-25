@@ -187,8 +187,8 @@ function Schedule() {
   const firstName =
     profile?.first_name?.trim() ||
     profile?.display_name?.trim().split(/\s+/)[0] ||
-    session?.user.email?.split("@")[0] ||
-    "there";
+    "";
+
 
   return (
     <main className="mx-auto max-w-md px-5 pb-10 pt-8">
@@ -204,7 +204,7 @@ function Schedule() {
           className="mt-2 text-3xl font-extrabold tracking-tight text-foreground"
           suppressHydrationWarning
         >
-          {greeting}, <span className="text-accent">{firstName}</span>
+          {greeting}{firstName ? <>, <span className="text-accent">{firstName}</span></> : null}
         </h1>
       </header>
 
