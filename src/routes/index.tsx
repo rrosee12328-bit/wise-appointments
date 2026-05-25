@@ -187,8 +187,8 @@ function Schedule() {
   const firstName =
     profile?.first_name?.trim() ||
     profile?.display_name?.trim().split(/\s+/)[0] ||
-    session?.user.email?.split("@")[0] ||
-    "there";
+    "";
+
 
   return (
     <main className="mx-auto max-w-md px-5 pb-10 pt-8">
