@@ -110,10 +110,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="first-name">First name</Label>
-                    <Input
+                  <Input
                       id="first-name"
                       required
                       maxLength={60}
+                      autoComplete="given-name"
+                      autoCapitalize="words"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
                     />
@@ -124,6 +126,8 @@ export function AuthForm({ mode }: { mode: Mode }) {
                       id="last-name"
                       required
                       maxLength={60}
+                      autoComplete="family-name"
+                      autoCapitalize="words"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
                     />
@@ -134,6 +138,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
                   <Input
                     id="phone"
                     type="tel"
+                    inputMode="tel"
                     autoComplete="tel"
                     maxLength={32}
                     placeholder="(555) 123-4567"
@@ -145,11 +150,33 @@ export function AuthForm({ mode }: { mode: Mode }) {
             )}
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Input
+                id="email"
+                type="email"
+                required
+                inputMode="email"
+                autoComplete="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                value={email}
+                onChange={(e) => setEmail(e.target.value.trim())}
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+              <Input
+                id="password"
+                type="password"
+                required
+                minLength={6}
+                autoComplete={isSignup ? "new-password" : "current-password"}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </div>
             <Button type="submit" className="w-full" disabled={submitting}>
               {submitting ? "Please wait…" : isSignup ? "Sign up" : "Sign in"}
