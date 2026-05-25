@@ -311,6 +311,39 @@ function Schedule() {
         </button>
       )}
 
+      {platformsInDay.length > 0 && (
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Filter
+          </span>
+          {platformsInDay.map((id) => {
+            const p = PLATFORMS[id];
+            const isHidden = hiddenPlatforms.has(id);
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => togglePlatform(id)}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-all",
+                  isHidden
+                    ? "border-border bg-muted/50 text-muted-foreground opacity-60"
+                    : "border-border bg-card text-foreground shadow-sm",
+                )}
+                title={isHidden ? `Show ${p.label}` : `Hide ${p.label}`}
+              >
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ background: p.colorVar, opacity: isHidden ? 0.3 : 1 }}
+                />
+                {p.label}
+                {isHidden ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <section className="mt-9">
         <div className="mb-4 flex items-baseline justify-between border-b-2 border-foreground pb-2">
           <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-foreground">
