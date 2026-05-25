@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { RefreshCw, AlertTriangle, CheckCircle2, Plus, Mail, Calendar } from "lucide-react";
+import { RefreshCw, AlertTriangle, CheckCircle2, Plus, Mail, Calendar, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppointmentRow } from "@/components/AppointmentCard";
 import { PlatformBadge } from "@/components/PlatformBadge";
@@ -12,6 +12,7 @@ import { WalkInDialog } from "@/components/WalkInDialog";
 import { useAuth } from "@/hooks/use-auth";
 import { useAutoSyncPlatforms } from "@/hooks/use-auto-sync-platforms";
 import { type Appointment, findConflicts, formatTime, toUiAppointment } from "@/lib/mock-data";
+import { PLATFORMS, type PlatformId } from "@/lib/platforms";
 import { getAppointments, upsertAppointment } from "@/lib/appointments.functions";
 import { getProfile } from "@/lib/profile.functions";
 import { syncGoogleCalendar } from "@/lib/google-sync.functions";
@@ -19,6 +20,7 @@ import { syncSquareBookings } from "@/lib/square-sync.functions";
 import { syncCalendlyEvents } from "@/lib/calendly-sync.functions";
 import { syncAcuityAppointments } from "@/lib/acuity-sync.functions";
 import { syncZohoBookings } from "@/lib/zoho-sync.functions";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -82,9 +84,29 @@ function Schedule() {
     return rows.map(toUiAppointment).filter((a) => isToday(a.start));
   }, [data]);
 
+  const [hiddenPlatforms, setHiddenPlatforms] = useState<Set<PlatformId>>(new Set());
+
+  const togglePlatform = (id: PlatformId) => {
+    setHiddenPlatforms((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const platformsInDay = useMemo(() => {
+    const set = new Set<PlatformId>();
+    for (const a of todayAppts) set.add(a.platform);
+    return Array.from(set).sort((a, b) => PLATFORMS[a].label.localeCompare(PLATFORMS[b].label));
+  }, [todayAppts]);
+
   const sorted = useMemo(
-    () => [...todayAppts].sort((a, b) => a.start.getTime() - b.start.getTime()),
-    [todayAppts],
+    () =>
+      [...todayAppts]
+        .filter((a) => !hiddenPlatforms.has(a.platform))
+        .sort((a, b) => a.start.getTime() - b.start.getTime()),
+    [todayAppts, hiddenPlatforms],
   );
   const next = useMemo(() => {
     const now = Date.now();
@@ -287,6 +309,39 @@ function Schedule() {
           </span>
           <span className="text-xs font-semibold uppercase tracking-wider">Resolve</span>
         </button>
+      )}
+
+      {platformsInDay.length > 0 && (
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Filter
+          </span>
+          {platformsInDay.map((id) => {
+            const p = PLATFORMS[id];
+            const isHidden = hiddenPlatforms.has(id);
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => togglePlatform(id)}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-all",
+                  isHidden
+                    ? "border-border bg-muted/50 text-muted-foreground opacity-60"
+                    : "border-border bg-card text-foreground shadow-sm",
+                )}
+                title={isHidden ? `Show ${p.label}` : `Hide ${p.label}`}
+              >
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ background: p.colorVar, opacity: isHidden ? 0.3 : 1 }}
+                />
+                {p.label}
+                {isHidden ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+              </button>
+            );
+          })}
+        </div>
       )}
 
       <section className="mt-9">
