@@ -84,6 +84,17 @@ function Schedule() {
     return rows.map(toUiAppointment).filter((a) => isToday(a.start));
   }, [data]);
 
+  const [hiddenPlatforms, setHiddenPlatforms] = useState<Set<PlatformId>>(new Set());
+
+  const togglePlatform = (id: PlatformId) => {
+    setHiddenPlatforms((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const platformsInDay = useMemo(() => {
     const set = new Set<PlatformId>();
     for (const a of todayAppts) set.add(a.platform);
