@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { RefreshCw, AlertTriangle, CheckCircle2, Plus, Mail, Calendar } from "lucide-react";
+import { RefreshCw, AlertTriangle, CheckCircle2, Plus, Mail, Calendar, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppointmentRow } from "@/components/AppointmentCard";
 import { PlatformBadge } from "@/components/PlatformBadge";
@@ -12,6 +12,7 @@ import { WalkInDialog } from "@/components/WalkInDialog";
 import { useAuth } from "@/hooks/use-auth";
 import { useAutoSyncPlatforms } from "@/hooks/use-auto-sync-platforms";
 import { type Appointment, findConflicts, formatTime, toUiAppointment } from "@/lib/mock-data";
+import { PLATFORMS, type PlatformId } from "@/lib/platforms";
 import { getAppointments, upsertAppointment } from "@/lib/appointments.functions";
 import { getProfile } from "@/lib/profile.functions";
 import { syncGoogleCalendar } from "@/lib/google-sync.functions";
@@ -19,6 +20,7 @@ import { syncSquareBookings } from "@/lib/square-sync.functions";
 import { syncCalendlyEvents } from "@/lib/calendly-sync.functions";
 import { syncAcuityAppointments } from "@/lib/acuity-sync.functions";
 import { syncZohoBookings } from "@/lib/zoho-sync.functions";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
   validateSearch: (s: Record<string, unknown>) => ({
