@@ -204,7 +204,7 @@ function Schedule() {
           className="mt-2 text-3xl font-extrabold tracking-tight text-foreground"
           suppressHydrationWarning
         >
-          {greeting}, <span className="text-accent">{firstName}</span>
+          {greeting}{firstName ? <>, <span className="text-accent">{firstName}</span></> : null}
         </h1>
       </header>
 
