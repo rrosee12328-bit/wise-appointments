@@ -84,9 +84,18 @@ function Schedule() {
     return rows.map(toUiAppointment).filter((a) => isToday(a.start));
   }, [data]);
 
+  const platformsInDay = useMemo(() => {
+    const set = new Set<PlatformId>();
+    for (const a of todayAppts) set.add(a.platform);
+    return Array.from(set).sort((a, b) => PLATFORMS[a].label.localeCompare(PLATFORMS[b].label));
+  }, [todayAppts]);
+
   const sorted = useMemo(
-    () => [...todayAppts].sort((a, b) => a.start.getTime() - b.start.getTime()),
-    [todayAppts],
+    () =>
+      [...todayAppts]
+        .filter((a) => !hiddenPlatforms.has(a.platform))
+        .sort((a, b) => a.start.getTime() - b.start.getTime()),
+    [todayAppts, hiddenPlatforms],
   );
   const next = useMemo(() => {
     const now = Date.now();
