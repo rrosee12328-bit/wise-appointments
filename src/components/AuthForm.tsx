@@ -181,6 +181,16 @@ export function AuthForm({ mode }: { mode: Mode }) {
             <Button type="submit" className="w-full" disabled={submitting}>
               {submitting ? "Please wait…" : isSignup ? "Sign up" : "Sign in"}
             </Button>
+            {!isSignup && (
+              <p className="text-center text-sm">
+                <Link
+                  to="/forgot-password"
+                  className="text-muted-foreground underline-offset-4 hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </p>
+            )}
           </form>
 
           <p className="text-center text-sm text-muted-foreground">
