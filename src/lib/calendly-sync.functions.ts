@@ -151,10 +151,10 @@ export const syncCalendlyEvents = createServerFn({ method: "POST" }).handler(
 
     if (!userUri) throw new Error("Could not determine Calendly user URI.");
 
-    // Fetch scheduled events: now - 1 day → now + 60 days
-    const minStart = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    // Fetch scheduled events: 30 days back → 180 days forward
+    const minStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const maxStart = new Date(
-      Date.now() + 60 * 24 * 60 * 60 * 1000,
+      Date.now() + 180 * 24 * 60 * 60 * 1000,
     ).toISOString();
 
     const params = new URLSearchParams({
@@ -165,6 +165,10 @@ export const syncCalendlyEvents = createServerFn({ method: "POST" }).handler(
       count: "100",
       sort: "start_time:asc",
     });
+
+    console.log(
+      `[calendly-sync] user=${userId} userUri=${userUri} window=${minStart}..${maxStart}`,
+    );
 
     const eventsRes = await fetch(
       `${CALENDLY_API_BASE}/scheduled_events?${params}`,
