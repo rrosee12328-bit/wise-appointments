@@ -136,20 +136,38 @@ export const syncCalendlyEvents = createServerFn({ method: "POST" }).handler(
       const meRes = await fetch(`${CALENDLY_API_BASE}/users/me`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      if (meRes.ok) {
-        const meData = (await meRes.json()) as { resource?: { uri?: string } };
+      const meText = await meRes.text();
+      console.log(`[calendly-sync] /users/me status=${meRes.status} body=${meText.slice(0, 500)}`);
+
+      if (!meRes.ok) {
+        if (meRes.status === 401) {
+          await supabaseAdmin
+            .from("platform_connections")
+            .update({ access_token: null, refresh_token: null, token_expires_at: null })
+            .eq("user_id", userId)
+            .eq("platform", "calendly");
+          return { synced: 0, skipped: 0, connected: false, needsReconnect: true };
+        }
+        throw new Error(`Calendly /users/me failed: ${meRes.status} ${meText.slice(0, 200)}`);
+      }
+
+      try {
+        const meData = JSON.parse(meText) as { resource?: { uri?: string; current_organization?: string } };
         userUri = meData.resource?.uri ?? null;
+        const orgUri = meData.resource?.current_organization ?? null;
         if (userUri) {
           await supabaseAdmin
             .from("platform_connections")
-            .update({ metadata: { ...metadata, user_uri: userUri } })
+            .update({ metadata: { ...metadata, user_uri: userUri, organization_uri: orgUri } })
             .eq("user_id", userId)
             .eq("platform", "calendly");
         }
+      } catch (e) {
+        throw new Error(`Calendly /users/me returned non-JSON: ${meText.slice(0, 200)}`);
       }
     }
 
-    if (!userUri) throw new Error("Could not determine Calendly user URI.");
+    if (!userUri) throw new Error("Calendly /users/me succeeded but returned no resource.uri — token may be missing the 'default' scope. Try disconnecting and reconnecting Calendly.");
 
     // Fetch scheduled events: 30 days back → 180 days forward
     const minStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
