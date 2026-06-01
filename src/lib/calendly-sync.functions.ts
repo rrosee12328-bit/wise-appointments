@@ -188,6 +188,7 @@ export const syncCalendlyEvents = createServerFn({ method: "POST" }).handler(
       collection?: CalendlyEvent[];
     };
     const events = eventsData.collection ?? [];
+    console.log(`[calendly-sync] fetched ${events.length} events from Calendly`);
 
     let synced = 0;
     let skipped = 0;
