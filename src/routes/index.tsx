@@ -151,6 +151,7 @@ function Schedule() {
       let totalSkipped = 0;
       let anyConnected = false;
       const errors: string[] = [];
+      const perPlatform: string[] = [];
 
       results.forEach((r, i) => {
         if (r.status === "fulfilled") {
@@ -158,6 +159,9 @@ function Schedule() {
             anyConnected = true;
             totalSynced += r.value.synced;
             totalSkipped += r.value.skipped;
+            perPlatform.push(`${labels[i]}: ${r.value.synced}`);
+          } else if ((r.value as { needsReconnect?: boolean }).needsReconnect) {
+            errors.push(`${labels[i]}: reconnect required`);
           }
         } else {
           errors.push(`${labels[i]}: ${(r.reason as Error).message}`);
@@ -169,6 +173,7 @@ function Schedule() {
         toast.success(
           `Synced ${totalSynced} appointment${totalSynced === 1 ? "" : "s"}` +
             (totalSkipped ? ` · skipped ${totalSkipped}` : ""),
+          { description: perPlatform.join(" · ") || undefined },
         );
       } else if (errors.length === 0) {
         toast.message("No platforms connected", {
