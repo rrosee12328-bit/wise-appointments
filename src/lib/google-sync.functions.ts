@@ -284,18 +284,37 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(
       : 0;
 
     if (!accessToken || expiresAt - Date.now() < 60_000) {
-      if (!refreshToken) throw new Error("No refresh token. Please reconnect Google.");
-      const refreshed = await refreshAccessToken(refreshToken);
-      accessToken = refreshed.access_token;
-      const newExpiresAt = new Date(Date.now() + refreshed.expires_in * 1000).toISOString();
-      await supabaseAdmin
-        .from("platform_connections")
-        .update({
-          access_token: accessToken,
-          token_expires_at: newExpiresAt,
-        })
-        .eq("user_id", userId)
-        .eq("platform", "google_calendar");
+      if (!refreshToken) {
+        return { synced: 0, skipped: 0, connected: false, needsReconnect: true };
+      }
+      try {
+        const refreshed = await refreshAccessToken(refreshToken);
+        accessToken = refreshed.access_token;
+        const newExpiresAt = new Date(Date.now() + refreshed.expires_in * 1000).toISOString();
+        await supabaseAdmin
+          .from("platform_connections")
+          .update({
+            access_token: accessToken,
+            token_expires_at: newExpiresAt,
+          })
+          .eq("user_id", userId)
+          .eq("platform", "google_calendar");
+      } catch (err) {
+        if (err instanceof GoogleReauthRequiredError) {
+          await supabaseAdmin
+            .from("platform_connections")
+            .update({
+              access_token: null,
+              refresh_token: null,
+              token_expires_at: null,
+              status: "disconnected",
+            })
+            .eq("user_id", userId)
+            .eq("platform", "google_calendar");
+          return { synced: 0, skipped: 0, connected: false, needsReconnect: true };
+        }
+        throw err;
+      }
     }
 
     // Pull events from now - 1 day → now + 60 days from primary calendar.
