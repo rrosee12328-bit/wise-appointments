@@ -5,8 +5,9 @@ import { supabaseAdmin } from "@/integrations/supabase/admin.server";
 import { signState } from "@/lib/oauth-state.server";
 import { randomBytes } from "crypto";
 
-// Calendly OAuth scopes needed for reading scheduled events
-const CALENDLY_SCOPES = "default";
+// Calendly OAuth scopes needed for reading scheduled events.
+// Space-separated; the OAuth app in Calendly's developer console must have these enabled.
+const CALENDLY_SCOPES = "default users:read scheduled_events:read event_types:read organizations:read";
 
 function getCalendlyRedirectUri(host: string) {
   const configuredOrigin = process.env.CALENDLY_OAUTH_REDIRECT_ORIGIN;
