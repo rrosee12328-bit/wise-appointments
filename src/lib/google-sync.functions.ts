@@ -222,6 +222,13 @@ function detectPlatform(ev: GoogleEvent): DetectedPlatform {
 
 // ── Refresh token ─────────────────────────────────────────────────────────────
 
+class GoogleReauthRequiredError extends Error {
+  constructor(message = "Google reconnection required") {
+    super(message);
+    this.name = "GoogleReauthRequiredError";
+  }
+}
+
 async function refreshAccessToken(refreshToken: string) {
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -235,6 +242,9 @@ async function refreshAccessToken(refreshToken: string) {
   });
   if (!res.ok) {
     const text = await res.text();
+    if (res.status === 400 && text.includes("invalid_grant")) {
+      throw new GoogleReauthRequiredError();
+    }
     throw new Error(`Token refresh failed: ${res.status} ${text}`);
   }
   return (await res.json()) as {
