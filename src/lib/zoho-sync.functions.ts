@@ -3,6 +3,7 @@ import { getRequestHeader } from "@tanstack/react-start/server";
 import { supabaseAdmin } from "@/integrations/supabase/admin.server";
 import { syncGoogleBlocksForUser } from "@/lib/google-writeback.server";
 import { syncOutlookBlocksForUser } from "@/lib/outlook-writeback.server";
+import { stripTimesIfOverridden } from "@/lib/sync-helpers.server";
 
 
 const ZOHO_ACCOUNTS_URL = "https://accounts.zoho.com";
@@ -206,7 +207,7 @@ export const syncZohoBookings = createServerFn({ method: "POST" }).handler(async
 
     const { data: existing } = await supabaseAdmin
       .from("appointments")
-      .select("id")
+      .select("id, local_override")
       .eq("user_id", userId)
       .eq("source_platform", "zoho")
       .eq("external_id", externalId)
@@ -227,7 +228,8 @@ export const syncZohoBookings = createServerFn({ method: "POST" }).handler(async
 
 
     if (existing) {
-      const { error } = await supabaseAdmin.from("appointments").update(row).eq("id", existing.id);
+      const payload = stripTimesIfOverridden(row, existing);
+      const { error } = await supabaseAdmin.from("appointments").update(payload).eq("id", existing.id);
       if (error) {
         console.error("update zoho appointment failed", error);
         continue;

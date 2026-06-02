@@ -3,6 +3,7 @@ import { getRequestHeader } from "@tanstack/react-start/server";
 import { supabaseAdmin } from "@/integrations/supabase/admin.server";
 import { syncGoogleBlocksForUser } from "@/lib/google-writeback.server";
 import { syncOutlookBlocksForUser } from "@/lib/outlook-writeback.server";
+import { stripTimesIfOverridden } from "@/lib/sync-helpers.server";
 
 
 const ACUITY_API_BASE = "https://acuityscheduling.com/api/v1";
