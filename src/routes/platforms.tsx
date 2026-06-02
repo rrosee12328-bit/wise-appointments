@@ -191,6 +191,17 @@ function Platforms() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Outlook connect
+  const connectOutlook = useMutation({
+    mutationFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Please sign in first");
+      const { url } = await getOutlookAuthUrl({ data: {} });
+      window.location.href = url;
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   // Zoho connect
   const connectZoho = useMutation({
     mutationFn: async () => {
