@@ -22,6 +22,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthVerifyRouteImport } from './routes/auth.verify'
 import { Route as ApiOauthZohoCallbackRouteImport } from './routes/api/oauth/zoho/callback'
 import { Route as ApiOauthSquareCallbackRouteImport } from './routes/api/oauth/square/callback'
+import { Route as ApiOauthOutlookCallbackRouteImport } from './routes/api/oauth/outlook/callback'
 import { Route as ApiOauthGoogleCallbackRouteImport } from './routes/api/oauth/google/callback'
 import { Route as ApiOauthCalendlyCallbackRouteImport } from './routes/api/oauth/calendly/callback'
 import { Route as ApiOauthAcuityCallbackRouteImport } from './routes/api/oauth/acuity/callback'
@@ -91,6 +92,11 @@ const ApiOauthSquareCallbackRoute = ApiOauthSquareCallbackRouteImport.update({
   path: '/api/oauth/square/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOauthOutlookCallbackRoute = ApiOauthOutlookCallbackRouteImport.update({
+  id: '/api/oauth/outlook/callback',
+  path: '/api/oauth/outlook/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiOauthGoogleCallbackRoute = ApiOauthGoogleCallbackRouteImport.update({
   id: '/api/oauth/google/callback',
   path: '/api/oauth/google/callback',
@@ -123,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/api/oauth/acuity/callback': typeof ApiOauthAcuityCallbackRoute
   '/api/oauth/calendly/callback': typeof ApiOauthCalendlyCallbackRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
+  '/api/oauth/outlook/callback': typeof ApiOauthOutlookCallbackRoute
   '/api/oauth/square/callback': typeof ApiOauthSquareCallbackRoute
   '/api/oauth/zoho/callback': typeof ApiOauthZohoCallbackRoute
 }
@@ -141,6 +148,7 @@ export interface FileRoutesByTo {
   '/api/oauth/acuity/callback': typeof ApiOauthAcuityCallbackRoute
   '/api/oauth/calendly/callback': typeof ApiOauthCalendlyCallbackRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
+  '/api/oauth/outlook/callback': typeof ApiOauthOutlookCallbackRoute
   '/api/oauth/square/callback': typeof ApiOauthSquareCallbackRoute
   '/api/oauth/zoho/callback': typeof ApiOauthZohoCallbackRoute
 }
@@ -160,6 +168,7 @@ export interface FileRoutesById {
   '/api/oauth/acuity/callback': typeof ApiOauthAcuityCallbackRoute
   '/api/oauth/calendly/callback': typeof ApiOauthCalendlyCallbackRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
+  '/api/oauth/outlook/callback': typeof ApiOauthOutlookCallbackRoute
   '/api/oauth/square/callback': typeof ApiOauthSquareCallbackRoute
   '/api/oauth/zoho/callback': typeof ApiOauthZohoCallbackRoute
 }
@@ -180,6 +189,7 @@ export interface FileRouteTypes {
     | '/api/oauth/acuity/callback'
     | '/api/oauth/calendly/callback'
     | '/api/oauth/google/callback'
+    | '/api/oauth/outlook/callback'
     | '/api/oauth/square/callback'
     | '/api/oauth/zoho/callback'
   fileRoutesByTo: FileRoutesByTo
@@ -198,6 +208,7 @@ export interface FileRouteTypes {
     | '/api/oauth/acuity/callback'
     | '/api/oauth/calendly/callback'
     | '/api/oauth/google/callback'
+    | '/api/oauth/outlook/callback'
     | '/api/oauth/square/callback'
     | '/api/oauth/zoho/callback'
   id:
@@ -216,6 +227,7 @@ export interface FileRouteTypes {
     | '/api/oauth/acuity/callback'
     | '/api/oauth/calendly/callback'
     | '/api/oauth/google/callback'
+    | '/api/oauth/outlook/callback'
     | '/api/oauth/square/callback'
     | '/api/oauth/zoho/callback'
   fileRoutesById: FileRoutesById
@@ -235,6 +247,7 @@ export interface RootRouteChildren {
   ApiOauthAcuityCallbackRoute: typeof ApiOauthAcuityCallbackRoute
   ApiOauthCalendlyCallbackRoute: typeof ApiOauthCalendlyCallbackRoute
   ApiOauthGoogleCallbackRoute: typeof ApiOauthGoogleCallbackRoute
+  ApiOauthOutlookCallbackRoute: typeof ApiOauthOutlookCallbackRoute
   ApiOauthSquareCallbackRoute: typeof ApiOauthSquareCallbackRoute
   ApiOauthZohoCallbackRoute: typeof ApiOauthZohoCallbackRoute
 }
@@ -332,6 +345,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiOauthSquareCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/oauth/outlook/callback': {
+      id: '/api/oauth/outlook/callback'
+      path: '/api/oauth/outlook/callback'
+      fullPath: '/api/oauth/outlook/callback'
+      preLoaderRoute: typeof ApiOauthOutlookCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/oauth/google/callback': {
       id: '/api/oauth/google/callback'
       path: '/api/oauth/google/callback'
@@ -371,6 +391,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiOauthAcuityCallbackRoute: ApiOauthAcuityCallbackRoute,
   ApiOauthCalendlyCallbackRoute: ApiOauthCalendlyCallbackRoute,
   ApiOauthGoogleCallbackRoute: ApiOauthGoogleCallbackRoute,
+  ApiOauthOutlookCallbackRoute: ApiOauthOutlookCallbackRoute,
   ApiOauthSquareCallbackRoute: ApiOauthSquareCallbackRoute,
   ApiOauthZohoCallbackRoute: ApiOauthZohoCallbackRoute,
 }

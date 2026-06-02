@@ -14,6 +14,7 @@ import {
   listConnections,
   disconnectPlatform,
 } from "@/lib/google-oauth.functions";
+import { createOutlookAuthUrl } from "@/lib/outlook-oauth.functions";
 import { createSquareAuthUrl } from "@/lib/square-oauth.functions";
 import { createCalendlyAuthUrl } from "@/lib/calendly-oauth.functions";
 import { createAcuityAuthUrl } from "@/lib/acuity-oauth.functions";
@@ -24,6 +25,7 @@ import { connectZenotiApiKey } from "@/lib/zenoti-apikey.functions";
 export const Route = createFileRoute("/platforms")({
   validateSearch: (s: Record<string, unknown>) => ({
     google: typeof s.google === "string" ? (s.google as string) : undefined,
+    outlook: typeof s.outlook === "string" ? (s.outlook as string) : undefined,
     square: typeof s.square === "string" ? (s.square as string) : undefined,
     calendly: typeof s.calendly === "string" ? (s.calendly as string) : undefined,
     acuity: typeof s.acuity === "string" ? (s.acuity as string) : undefined,
@@ -65,12 +67,12 @@ const CATEGORIES: { label: string; ids: PlatformId[] }[] = [
   },
   {
     label: "General scheduling",
-    ids: ["acuity", "setmore", "calendly", "simplybook", "zoho", "cliniko", "google"],
+    ids: ["acuity", "setmore", "calendly", "simplybook", "zoho", "cliniko", "google", "outlook"],
   },
 ];
 
 // Platforms that have a live OAuth integration (redirect flow)
-const OAUTH_PLATFORMS = new Set<PlatformId>(["google", "square", "calendly", "acuity", "zoho"]);
+const OAUTH_PLATFORMS = new Set<PlatformId>(["google", "outlook", "square", "calendly", "acuity", "zoho"]);
 
 // Platforms that use API key modal
 const APIKEY_PLATFORMS = new Set<PlatformId>(["cliniko", "zenoti"]);
@@ -78,7 +80,9 @@ const APIKEY_PLATFORMS = new Set<PlatformId>(["cliniko", "zenoti"]);
 const LIVE_PLATFORMS = new Set<PlatformId>([...OAUTH_PLATFORMS, ...APIKEY_PLATFORMS]);
 
 function platformToDbKey(id: PlatformId): string {
-  return id === "google" ? "google_calendar" : id;
+  if (id === "google") return "google_calendar";
+  if (id === "outlook") return "outlook_calendar";
+  return id;
 }
 
 function Platforms() {
@@ -89,6 +93,7 @@ function Platforms() {
   const getCalendlyAuthUrl = useServerFn(createCalendlyAuthUrl);
   const getAcuityAuthUrl = useServerFn(createAcuityAuthUrl);
   const getZohoAuthUrl = useServerFn(createZohoAuthUrl);
+  const getOutlookAuthUrl = useServerFn(createOutlookAuthUrl);
   const connectCliniko = useServerFn(connectClinikoApiKey);
   const connectZenoti = useServerFn(connectZenotiApiKey);
   const list = useServerFn(listConnections);
@@ -108,6 +113,17 @@ function Platforms() {
       );
     }
   }, [search.google, search.reason]);
+
+  useEffect(() => {
+    if (search.outlook === "connected") {
+      toast.success("Outlook Calendar connected");
+      qc.invalidateQueries({ queryKey: ["platform-connections"] });
+    } else if (search.outlook === "error") {
+      toast.error(
+        `Outlook Calendar connection failed${search.reason ? `: ${search.reason}` : ""}`,
+      );
+    }
+  }, [search.outlook, search.reason, qc]);
 
   useEffect(() => {
     if (search.zoho === "connected") {
@@ -170,6 +186,17 @@ function Platforms() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Please sign in first");
       const { url } = await getGoogleAuthUrl({ data: {} });
+      window.location.href = url;
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Outlook connect
+  const connectOutlook = useMutation({
+    mutationFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Please sign in first");
+      const { url } = await getOutlookAuthUrl({ data: {} });
       window.location.href = url;
     },
     onError: (e: Error) => toast.error(e.message),
@@ -261,6 +288,10 @@ function Platforms() {
       connectedSet.has(dbKey) ? disconnectPlatformMut.mutate(dbKey) : connectGoogle.mutate();
       return;
     }
+    if (id === "outlook") {
+      connectedSet.has(dbKey) ? disconnectPlatformMut.mutate(dbKey) : connectOutlook.mutate();
+      return;
+    }
     if (id === "square") {
       connectedSet.has(dbKey) ? disconnectPlatformMut.mutate(dbKey) : connectSquare.mutate();
       return;
@@ -299,6 +330,7 @@ function Platforms() {
 
   const isActionPending = (id: PlatformId) => {
     if (id === "google") return connectGoogle.isPending || disconnectPlatformMut.isPending;
+    if (id === "outlook") return connectOutlook.isPending || disconnectPlatformMut.isPending;
     if (id === "square") return connectSquare.isPending || disconnectPlatformMut.isPending;
     if (id === "calendly") return connectCalendly.isPending || disconnectPlatformMut.isPending;
     if (id === "acuity") return connectAcuity.isPending || disconnectPlatformMut.isPending;
