@@ -4,6 +4,7 @@ export type PlatformId =
   | "thecut"
   | "setmore"
   | "google"
+  | "outlook"
   | "squire"
   | "vagaro"
   | "barberly"
