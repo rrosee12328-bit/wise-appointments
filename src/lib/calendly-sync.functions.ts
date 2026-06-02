@@ -292,6 +292,8 @@ export const syncCalendlyEvents = createServerFn({ method: "POST" }).handler(
       .eq("user_id", userId)
       .eq("platform", "calendly");
 
+    try { await syncGoogleBlocksForUser(userId, "calendly"); } catch (e) { console.error("calendly: syncGoogleBlocksForUser failed", e); }
+
     return { synced, skipped, connected: true };
   },
 );
