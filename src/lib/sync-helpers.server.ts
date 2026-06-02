@@ -46,3 +46,51 @@ export async function cleanupCalendarDuplicates(
       .eq("ends_at", s.ends_at as string);
   }
 }
+
+
+
+/** Re-tag recently-synced Google/Outlook events with their true source platform
+ *  when the user has provided a booking-page handle/URL for a relay-only
+ *  platform (Booksy, TheCut, Fresha, …). Matches case-insensitive substrings
+ *  against client_name / service / note. */
+export async function retagRelayEvents(userId: string): Promise<void> {
+  const { data: links } = await supabaseAdmin
+    .from("platform_links")
+    .select("platform, handle, url")
+    .eq("user_id", userId);
+  if (!links?.length) return;
+
+  const sinceIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data: rows } = await supabaseAdmin
+    .from("appointments")
+    .select("id, client_name, service, note")
+    .eq("user_id", userId)
+    .gte("ends_at", sinceIso)
+    .in("source_platform", ["google_calendar", "outlook_calendar"]);
+  if (!rows?.length) return;
+
+  for (const row of rows) {
+    const haystack = [
+      (row.client_name as string | null) ?? "",
+      (row.service as string | null) ?? "",
+      (row.note as string | null) ?? "",
+    ]
+      .join(" ")
+      .toLowerCase();
+    if (!haystack.trim()) continue;
+
+    for (const link of links) {
+      const handle = (link.handle as string | null)?.trim().toLowerCase();
+      const url = (link.url as string | null)?.trim().toLowerCase();
+      const matched =
+        (handle && handle.length >= 3 && haystack.includes(handle)) ||
+        (url && haystack.includes(url));
+      if (!matched) continue;
+      await supabaseAdmin
+        .from("appointments")
+        .update({ source_platform: link.platform as string })
+        .eq("id", row.id as string);
+      break;
+    }
+  }
+}

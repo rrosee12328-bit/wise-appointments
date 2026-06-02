@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { supabaseAdmin } from "@/integrations/supabase/admin.server";
 import { syncOutlookBlocksForUser } from "@/lib/outlook-writeback.server";
-import { cleanupCalendarDuplicates, stripTimesIfOverridden } from "@/lib/sync-helpers.server";
+import { cleanupCalendarDuplicates, retagRelayEvents, stripTimesIfOverridden } from "@/lib/sync-helpers.server";
 
 
 type GoogleEvent = {
@@ -476,6 +476,7 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(
     // Clean up legacy duplicates (google_calendar rows whose time matches an
     // appointment from another booking platform).
     try { await cleanupCalendarDuplicates(userId, "google_calendar"); } catch (e) { console.error("google: cleanupCalendarDuplicates failed", e); }
+    try { await retagRelayEvents(userId); } catch (e) { console.error("google: retagRelayEvents failed", e); }
 
     return { synced, skipped, connected: true };
 

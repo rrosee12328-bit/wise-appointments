@@ -22,6 +22,8 @@ import { createAcuityAuthUrl } from "@/lib/acuity-oauth.functions";
 import { createZohoAuthUrl } from "@/lib/zoho-oauth.functions";
 import { connectClinikoApiKey } from "@/lib/cliniko-apikey.functions";
 import { connectZenotiApiKey } from "@/lib/zenoti-apikey.functions";
+import { linkPlatform } from "@/lib/platform-link.functions";
+import { LinkPlatformDialog } from "@/components/LinkPlatformDialog";
 
 export const Route = createFileRoute("/platforms")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -78,7 +80,17 @@ const OAUTH_PLATFORMS = new Set<PlatformId>(["google", "outlook", "square", "cal
 // Platforms that use API key modal
 const APIKEY_PLATFORMS = new Set<PlatformId>(["cliniko", "zenoti"]);
 
-const LIVE_PLATFORMS = new Set<PlatformId>([...OAUTH_PLATFORMS, ...APIKEY_PLATFORMS]);
+// Relay-only platforms: user provides a booking-page handle, bookings flow
+// through Google/Outlook Calendar.
+const RELAY_PLATFORMS = new Set<PlatformId>([
+  "booksy", "thecut", "setmore", "squire", "vagaro", "barberly",
+  "ringmybarber", "goldie", "glossgenius", "styleseat", "fresha",
+  "mangomint", "boulevard", "simplybook",
+]);
+
+const LIVE_PLATFORMS = new Set<PlatformId>([
+  ...OAUTH_PLATFORMS, ...APIKEY_PLATFORMS, ...RELAY_PLATFORMS,
+]);
 
 function platformToDbKey(id: PlatformId): string {
   if (id === "google") return "google_calendar";
@@ -99,10 +111,15 @@ function Platforms() {
   const connectZenoti = useServerFn(connectZenotiApiKey);
   const list = useServerFn(listConnections);
   const disconnect = useServerFn(disconnectPlatform);
+  const link = useServerFn(linkPlatform);
 
   // Which API key dialog is open
   const [apiKeyDialog, setApiKeyDialog] = useState<"cliniko" | "zenoti" | null>(null);
   const [apiKeyLoading, setApiKeyLoading] = useState(false);
+
+  // Which relay-link dialog is open
+  const [linkDialogPlatform, setLinkDialogPlatform] = useState<PlatformId | null>(null);
+  const [linkLoading, setLinkLoading] = useState(false);
 
   // Toast notifications for OAuth callbacks
   useEffect(() => {
@@ -180,6 +197,8 @@ function Platforms() {
   );
   const accountLabelFor = (dbKey: string) =>
     realConnections?.connections.find((c) => c.platform === dbKey)?.account_email;
+  const hasGoogleOrOutlookConnected =
+    connectedSet.has("google_calendar") || connectedSet.has("outlook_calendar");
 
   // Google connect
   const connectGoogle = useMutation({
@@ -326,6 +345,17 @@ function Platforms() {
       return;
     }
 
+    if (RELAY_PLATFORMS.has(id)) {
+      if (connectedSet.has(dbKey)) {
+        disconnectPlatformMut.mutate(dbKey);
+      } else if (!hasGoogleOrOutlookConnected) {
+        toast.error("Connect Google or Outlook Calendar first.");
+      } else {
+        setLinkDialogPlatform(id);
+      }
+      return;
+    }
+
     toast("Connector coming soon.");
   };
 
@@ -337,7 +367,23 @@ function Platforms() {
     if (id === "acuity") return connectAcuity.isPending || disconnectPlatformMut.isPending;
     if (id === "zoho") return connectZoho.isPending || disconnectPlatformMut.isPending;
     if (id === "cliniko" || id === "zenoti") return apiKeyLoading || disconnectPlatformMut.isPending;
+    if (RELAY_PLATFORMS.has(id)) return linkLoading || disconnectPlatformMut.isPending;
     return false;
+  };
+
+  const handleLinkConnect = async (handle: string) => {
+    if (!linkDialogPlatform) return;
+    setLinkLoading(true);
+    try {
+      await link({ data: { platform: linkDialogPlatform as never, handle } });
+      toast.success(`${PLATFORMS[linkDialogPlatform].label} linked`);
+      qc.invalidateQueries({ queryKey: ["platform-connections"] });
+      setLinkDialogPlatform(null);
+    } catch (e: unknown) {
+      toast.error((e as Error).message ?? "Linking failed");
+    } finally {
+      setLinkLoading(false);
+    }
   };
 
   return (
@@ -490,6 +536,15 @@ function Platforms() {
         onConnect={(values) => handleApiKeyConnect("zenoti", values)}
         isLoading={apiKeyLoading}
         helpUrl="https://docs.zenoti.com/docs/authentication"
+      />
+
+      {/* Relay-platform link dialog */}
+      <LinkPlatformDialog
+        open={linkDialogPlatform !== null}
+        onOpenChange={(open) => !open && setLinkDialogPlatform(null)}
+        platform={linkDialogPlatform}
+        onConnect={handleLinkConnect}
+        isLoading={linkLoading}
       />
     </main>
   );
