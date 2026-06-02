@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { supabaseAdmin } from "@/integrations/supabase/admin.server";
 import { syncOutlookBlocksForUser } from "@/lib/outlook-writeback.server";
+import { cleanupCalendarDuplicates, stripTimesIfOverridden } from "@/lib/sync-helpers.server";
 
 
 type GoogleEvent = {
@@ -423,7 +424,7 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(
       // If the platform changed (re-detection), update the existing row.
       const { data: existing } = await supabaseAdmin
         .from("appointments")
-        .select("id")
+        .select("id, local_override")
         .eq("user_id", userId)
         .eq("external_id", ev.id)
         .or("source_platform.eq.google_calendar,source_platform.eq.thecut,source_platform.eq.booksy,source_platform.eq.glossgenius,source_platform.eq.styleseat,source_platform.eq.goldie,source_platform.eq.vagaro,source_platform.eq.fresha,source_platform.eq.mangomint,source_platform.eq.boulevard,source_platform.eq.squire,source_platform.eq.ringmybarber,source_platform.eq.barberly,source_platform.eq.square,source_platform.eq.acuity,source_platform.eq.calendly,source_platform.eq.setmore,source_platform.eq.simplybook,source_platform.eq.zoho")
@@ -443,9 +444,10 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(
       };
 
       if (existing) {
+        const payload = stripTimesIfOverridden(row, existing);
         const { error } = await supabaseAdmin
           .from("appointments")
-          .update(row)
+          .update(payload)
           .eq("id", existing.id);
         if (error) {
           console.error("update appointment failed", error);
@@ -470,6 +472,10 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(
 
     // Mirror Google appointments onto Outlook as busy blocks.
     try { await syncOutlookBlocksForUser(userId, "google_calendar"); } catch (e) { console.error("google: syncOutlookBlocksForUser failed", e); }
+
+    // Clean up legacy duplicates (google_calendar rows whose time matches an
+    // appointment from another booking platform).
+    try { await cleanupCalendarDuplicates(userId, "google_calendar"); } catch (e) { console.error("google: cleanupCalendarDuplicates failed", e); }
 
     return { synced, skipped, connected: true };
 
