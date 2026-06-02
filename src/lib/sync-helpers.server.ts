@@ -44,7 +44,10 @@ export async function cleanupCalendarDuplicates(
       .eq("source_platform", calendarPlatform)
       .eq("starts_at", s.starts_at as string)
       .eq("ends_at", s.ends_at as string);
+  }
 }
+
+
 
 /** Re-tag recently-synced Google/Outlook events with their true source platform
  *  when the user has provided a booking-page handle/URL for a relay-only
