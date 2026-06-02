@@ -344,6 +344,17 @@ function Platforms() {
       return;
     }
 
+    if (RELAY_PLATFORMS.has(id)) {
+      if (connectedSet.has(dbKey)) {
+        disconnectPlatformMut.mutate(dbKey);
+      } else if (!hasGoogleOrOutlookConnected) {
+        toast.error("Connect Google or Outlook Calendar first.");
+      } else {
+        setLinkDialogPlatform(id);
+      }
+      return;
+    }
+
     toast("Connector coming soon.");
   };
 
@@ -355,7 +366,23 @@ function Platforms() {
     if (id === "acuity") return connectAcuity.isPending || disconnectPlatformMut.isPending;
     if (id === "zoho") return connectZoho.isPending || disconnectPlatformMut.isPending;
     if (id === "cliniko" || id === "zenoti") return apiKeyLoading || disconnectPlatformMut.isPending;
+    if (RELAY_PLATFORMS.has(id)) return linkLoading || disconnectPlatformMut.isPending;
     return false;
+  };
+
+  const handleLinkConnect = async (handle: string) => {
+    if (!linkDialogPlatform) return;
+    setLinkLoading(true);
+    try {
+      await link({ data: { platform: linkDialogPlatform as never, handle } });
+      toast.success(`${PLATFORMS[linkDialogPlatform].label} linked`);
+      qc.invalidateQueries({ queryKey: ["platform-connections"] });
+      setLinkDialogPlatform(null);
+    } catch (e: unknown) {
+      toast.error((e as Error).message ?? "Linking failed");
+    } finally {
+      setLinkLoading(false);
+    }
   };
 
   return (
