@@ -5,6 +5,8 @@ import {
   OutlookReauthRequiredError,
   getValidOutlookAccessToken,
 } from "@/lib/outlook-writeback.server";
+import { syncGoogleBlocksForUser } from "@/lib/google-writeback.server";
+
 
 type OutlookEvent = {
   id: string;
@@ -192,6 +194,10 @@ export const syncOutlookCalendar = createServerFn({ method: "POST" }).handler(
       .eq("user_id", userId)
       .eq("platform", "outlook_calendar");
 
+    // Mirror Outlook appointments onto Google as busy blocks.
+    try { await syncGoogleBlocksForUser(userId, "outlook_calendar"); } catch (e) { console.error("outlook: syncGoogleBlocksForUser failed", e); }
+
     return { synced, skipped, connected: true };
+
   },
 );
