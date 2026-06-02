@@ -7,7 +7,7 @@ import { randomBytes } from "crypto";
 
 // Calendly uses "default" — the token inherits whatever scopes the OAuth app is configured with.
 // Listing extra scope names here causes Calendly to reject the authorize request with an error screen.
-const CALENDLY_SCOPES = "default users:read scheduled_events:read event_types:read organizations:read";
+const CALENDLY_SCOPES = "default";
 
 function getCalendlyRedirectUri(host: string) {
   const configuredOrigin = process.env.CALENDLY_OAUTH_REDIRECT_ORIGIN;
