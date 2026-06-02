@@ -93,6 +93,7 @@ function Platforms() {
   const getCalendlyAuthUrl = useServerFn(createCalendlyAuthUrl);
   const getAcuityAuthUrl = useServerFn(createAcuityAuthUrl);
   const getZohoAuthUrl = useServerFn(createZohoAuthUrl);
+  const getOutlookAuthUrl = useServerFn(createOutlookAuthUrl);
   const connectCliniko = useServerFn(connectClinikoApiKey);
   const connectZenoti = useServerFn(connectZenotiApiKey);
   const list = useServerFn(listConnections);
