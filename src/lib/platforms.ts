@@ -73,6 +73,14 @@ export const PLATFORMS: Record<
     borderClass: "border-l-platform-google",
     domain: "calendar.google.com",
   },
+  outlook: {
+    id: "outlook",
+    label: "Outlook Calendar",
+    colorVar: "var(--platform-outlook, #0078D4)",
+    colorClass: "bg-platform-outlook/15 text-platform-outlook",
+    borderClass: "border-l-platform-outlook",
+    domain: "outlook.live.com",
+  },
   squire: {
     id: "squire",
     label: "SQUIRE",
