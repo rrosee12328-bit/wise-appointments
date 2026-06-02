@@ -201,6 +201,7 @@
   --platform-calendly: oklch(0.7 0.15 255);
   --platform-simplybook: oklch(0.72 0.13 145);
   --platform-zoho: oklch(0.72 0.16 25);
+  --platform-outlook: oklch(0.68 0.14 245);
 }
 
 @layer base {
