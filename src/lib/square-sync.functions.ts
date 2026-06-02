@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { supabaseAdmin } from "@/integrations/supabase/admin.server";
 import { syncGoogleBlocksForUser } from "@/lib/google-writeback.server";
+import { syncOutlookBlocksForUser } from "@/lib/outlook-writeback.server";
+
 
 const SQUARE_API_BASE =
   process.env.SQUARE_ENVIRONMENT === "sandbox"
@@ -253,6 +255,7 @@ export const syncSquareBookings = createServerFn({ method: "POST" }).handler(asy
       user_id: userId,
       source_platform: "square",
       external_id: booking.id,
+      external_url: `https://squareup.com/dashboard/appointments/${booking.id}`,
       client_name: clientName,
       service,
       starts_at: startISO,
@@ -260,6 +263,7 @@ export const syncSquareBookings = createServerFn({ method: "POST" }).handler(asy
       is_block: false,
       note: booking.customer_note ?? null,
     };
+
 
     if (existing) {
       const { error } = await supabaseAdmin.from("appointments").update(row).eq("id", existing.id);
