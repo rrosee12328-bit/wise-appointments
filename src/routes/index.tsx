@@ -414,7 +414,12 @@ function Schedule() {
         open={resolverOpen}
         onOpenChange={setResolverOpen}
         conflicts={conflicts}
-        onReschedule={() => toast("Rescheduling will sync to platforms once connected.")}
+        onReschedule={(id, newStart) => {
+          const appt = sorted.find((a) => a.id === id);
+          if (!appt) return;
+          reschedule.mutate({ id, newStart, durationMin: appt.durationMin });
+          setResolverOpen(false);
+        }}
       />
       <WalkInDialog
         open={walkInOpen}
