@@ -92,6 +92,7 @@ create table public.appointments (
   user_id uuid references auth.users(id) on delete cascade not null,
   source_platform text not null,
   external_id text,
+  external_url text,
   client_name text not null,
   service text,
   price_cents integer,
@@ -103,6 +104,7 @@ create table public.appointments (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
 
 alter table public.appointments enable row level security;
 create index appointments_user_starts_idx on public.appointments (user_id, starts_at);
