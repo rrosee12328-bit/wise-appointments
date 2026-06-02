@@ -91,4 +91,3 @@ export async function retagRelayEvents(userId: string): Promise<void> {
     }
   }
 }
-}
