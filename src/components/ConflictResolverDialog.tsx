@@ -103,7 +103,7 @@ export function ConflictResolverDialog({ open, onOpenChange, conflicts, onResche
           <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Shift by
           </div>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-5 gap-2">
             {SHIFT_OPTIONS.map((m) => (
               <button
                 key={m}
@@ -118,7 +118,43 @@ export function ConflictResolverDialog({ open, onOpenChange, conflicts, onResche
                 +{m}m
               </button>
             ))}
+            <button
+              type="button"
+              onClick={() => {
+                setShift("custom");
+                if (!customWhen) {
+                  setCustomWhen(
+                    toLocalInputValue(new Date(target.start.getTime() + 30 * 60_000)),
+                  );
+                }
+              }}
+              className={`rounded-md border px-2 py-2 text-sm font-medium transition-colors ${
+                shift === "custom"
+                  ? "border-accent bg-accent text-accent-foreground"
+                  : "border-border hover:bg-secondary"
+              }`}
+            >
+              Custom
+            </button>
           </div>
+          {shift === "custom" && (
+            <div className="mt-3">
+              <input
+                type="datetime-local"
+                value={customWhen}
+                onChange={(e) => setCustomWhen(e.target.value)}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              />
+              {!canMoveSource && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {target.platform} doesn't support remote rescheduling — the new
+                  time will be blocked on your Google/Outlook calendar, but the
+                  original booking in {target.platform} won't move. Update it
+                  there too if needed.
+                </p>
+              )}
+            </div>
+          )}
           <div className="mt-3 flex items-center justify-center gap-2 rounded-md bg-secondary p-2 text-sm">
             <span className="font-medium">{formatTime(target.start)}</span>
             <ArrowRight className="h-4 w-4 text-muted-foreground" />
@@ -130,7 +166,7 @@ export function ConflictResolverDialog({ open, onOpenChange, conflicts, onResche
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={() => setStep("confirm")}>
+          <Button onClick={() => setStep("confirm")} disabled={invalidCustom}>
             Review change
           </Button>
         </DialogFooter>
