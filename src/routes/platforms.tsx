@@ -25,6 +25,7 @@ import { connectZenotiApiKey } from "@/lib/zenoti-apikey.functions";
 export const Route = createFileRoute("/platforms")({
   validateSearch: (s: Record<string, unknown>) => ({
     google: typeof s.google === "string" ? (s.google as string) : undefined,
+    outlook: typeof s.outlook === "string" ? (s.outlook as string) : undefined,
     square: typeof s.square === "string" ? (s.square as string) : undefined,
     calendly: typeof s.calendly === "string" ? (s.calendly as string) : undefined,
     acuity: typeof s.acuity === "string" ? (s.acuity as string) : undefined,
