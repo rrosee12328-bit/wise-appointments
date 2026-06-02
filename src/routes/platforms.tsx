@@ -115,6 +115,17 @@ function Platforms() {
   }, [search.google, search.reason]);
 
   useEffect(() => {
+    if (search.outlook === "connected") {
+      toast.success("Outlook Calendar connected");
+      qc.invalidateQueries({ queryKey: ["platform-connections"] });
+    } else if (search.outlook === "error") {
+      toast.error(
+        `Outlook Calendar connection failed${search.reason ? `: ${search.reason}` : ""}`,
+      );
+    }
+  }, [search.outlook, search.reason, qc]);
+
+  useEffect(() => {
     if (search.zoho === "connected") {
       toast.success("Zoho Bookings connected");
       qc.invalidateQueries({ queryKey: ["platform-connections"] });
