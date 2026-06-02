@@ -171,6 +171,12 @@ function Appointments() {
           <MonthGridView appointments={all} />
         </TabsContent>
       </Tabs>
+      <AppointmentDetailDialog
+        appt={detailAppt}
+        open={!!detailAppt}
+        onOpenChange={(o) => !o && setDetailAppt(null)}
+      />
     </main>
   );
 }
+
