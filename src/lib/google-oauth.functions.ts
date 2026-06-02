@@ -61,17 +61,32 @@ export const listConnections = createServerFn({ method: "GET" })
     const { data: userData } = await supabaseAdmin.auth.getUser(token);
     if (!userData.user) return { connections: [] };
 
-    const { data } = await supabaseAdmin
-      .from("platform_connections")
-      .select("platform, account_label, token_expires_at, updated_at")
-      .eq("user_id", userData.user.id);
+    const [oauthRes, linkRes] = await Promise.all([
+      supabaseAdmin
+        .from("platform_connections")
+        .select("platform, account_label, token_expires_at, updated_at")
+        .eq("user_id", userData.user.id),
+      supabaseAdmin
+        .from("platform_links")
+        .select("platform, handle, updated_at")
+        .eq("user_id", userData.user.id),
+    ]);
+
     return {
-      connections: (data ?? []).map((row) => ({
-        platform: row.platform,
-        account_email: row.account_label,
-        expires_at: row.token_expires_at,
-        updated_at: row.updated_at,
-      })),
+      connections: [
+        ...((oauthRes.data ?? []).map((row) => ({
+          platform: row.platform as string,
+          account_email: row.account_label as string | null,
+          expires_at: row.token_expires_at as string | null,
+          updated_at: row.updated_at as string,
+        }))),
+        ...((linkRes.data ?? []).map((row) => ({
+          platform: row.platform as string,
+          account_email: row.handle as string | null,
+          expires_at: null as string | null,
+          updated_at: row.updated_at as string,
+        }))),
+      ],
     };
   });
 
