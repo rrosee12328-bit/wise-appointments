@@ -203,6 +203,8 @@ export const syncClinikoAppointments = createServerFn({ method: "POST" }).handle
       .eq("user_id", userId)
       .eq("platform", "cliniko");
 
+    try { await syncGoogleBlocksForUser(userId, "cliniko"); } catch (e) { console.error("cliniko: syncGoogleBlocksForUser failed", e); }
+
     return { synced, skipped, connected: true };
   },
 );
