@@ -374,30 +374,97 @@ function Platforms() {
                     ? "Not connected"
                     : "Coming soon";
 
+                const tier = PLATFORM_TIER[id];
+                const hasGoogleOrOutlook =
+                  connectedSet.has("google_calendar") || connectedSet.has("outlook_calendar");
+                const tierNeedsRelayWarning =
+                  tier === "relay_only" && !hasGoogleOrOutlook;
+
+                const TierIcon =
+                  tier === "direct_full"
+                    ? CheckCircle2
+                    : tierNeedsRelayWarning
+                      ? AlertTriangle
+                      : Info;
+                const tierColor =
+                  tier === "direct_full"
+                    ? "text-emerald-600 dark:text-emerald-500"
+                    : tierNeedsRelayWarning
+                      ? "text-amber-600 dark:text-amber-500"
+                      : tier === "direct_read"
+                        ? "text-amber-600/80 dark:text-amber-500/80"
+                        : "text-sky-600 dark:text-sky-400";
+
                 return (
                   <li
                     key={id}
-                    className="flex items-center gap-3 rounded-md border border-l-4 bg-card p-4"
+                    className="flex flex-col gap-2 rounded-md border border-l-4 bg-card p-4"
                     style={{ borderLeftColor: p.colorVar }}
                   >
-                    <PlatformLogo platform={id} size={36} />
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-foreground">
-                        {p.label}
+                    <div className="flex items-center gap-3">
+                      <PlatformLogo platform={id} size={36} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-foreground">
+                            {p.label}
+                          </span>
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider",
+                              tierColor,
+                            )}
+                          >
+                            <TierIcon className="h-3 w-3" aria-hidden />
+                            {tierShortLabel(id)}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {subline}
+                        </div>
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        {subline}
-                      </div>
+                      <Button
+                        size="sm"
+                        variant={isConnected ? "outline" : isLive ? "default" : "ghost"}
+                        onClick={() => action(id)}
+                        disabled={!isLive || isActionPending(id)}
+                        className={cn(!isLive && "cursor-not-allowed opacity-50")}
+                      >
+                        {isConnected ? "Disconnect" : isLive ? "Connect" : "Soon"}
+                      </Button>
                     </div>
-                    <Button
-                      size="sm"
-                      variant={isConnected ? "outline" : isLive ? "default" : "ghost"}
-                      onClick={() => action(id)}
-                      disabled={!isLive || isActionPending(id)}
-                      className={cn(!isLive && "cursor-not-allowed opacity-50")}
-                    >
-                      {isConnected ? "Disconnect" : isLive ? "Connect" : "Soon"}
-                    </Button>
+
+                    {tier !== "direct_full" && (
+                      <div
+                        className={cn(
+                          "rounded-md border px-3 py-2 text-xs leading-relaxed",
+                          tierNeedsRelayWarning
+                            ? "border-amber-500/40 bg-amber-500/5 text-amber-900 dark:text-amber-200"
+                            : "border-border bg-muted/40 text-muted-foreground",
+                        )}
+                      >
+                        {tierNote(id)}
+                        {tierNeedsRelayWarning && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => connectGoogle.mutate()}
+                              disabled={connectGoogle.isPending}
+                            >
+                              Connect Google
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => connectOutlook.mutate()}
+                              disabled={connectOutlook.isPending}
+                            >
+                              Connect Outlook
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </li>
                 );
               })}
