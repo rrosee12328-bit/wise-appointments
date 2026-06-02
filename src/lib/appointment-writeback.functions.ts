@@ -180,6 +180,7 @@ export const rescheduleAppointment = createServerFn({ method: "POST" })
 
     let googleUpdated = false;
     let blockEventId: string | null = getBlockEventId(next.synced_to);
+    let outlookBlockEventId: string | null = getOutlookBlockEventId(next.synced_to);
     let reason: string | undefined;
     try {
       const out = await pushToGoogleForAppointment(user.id, next);
@@ -200,7 +201,29 @@ export const rescheduleAppointment = createServerFn({ method: "POST" })
       }
     }
 
-    const newSyncedTo = withBlockEventId(next.synced_to, blockEventId);
+    // Outlook write-back (best-effort, but a hard failure also blocks the reschedule
+    // so the user sees a conflict instead of a silently desynced calendar).
+    try {
+      const out = await pushToOutlookForAppointment(user.id, next);
+      outlookBlockEventId = out.outlookBlockEventId;
+    } catch (err) {
+      if (err instanceof OutlookNotConnectedError) {
+        // ignore — not connected
+      } else if (err instanceof OutlookReauthRequiredError) {
+        throw new Error(
+          "Reschedule blocked: Outlook Calendar needs to be reconnected. Disconnect and reconnect on the Platforms page, then try again.",
+        );
+      } else {
+        throw new Error(
+          `Reschedule blocked: couldn't update Outlook Calendar (${(err as Error).message}). No change was saved.`,
+        );
+      }
+    }
+
+    const newSyncedTo = withOutlookBlockEventId(
+      withBlockEventId(next.synced_to, blockEventId),
+      outlookBlockEventId,
+    );
     const { error: updErr } = await supabaseAdmin
       .from("appointments")
       .update({
