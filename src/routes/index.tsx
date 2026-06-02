@@ -59,6 +59,8 @@ function Schedule() {
   const qc = useQueryClient();
   const fetchAppts = useServerFn(getAppointments);
   const upsertFn = useServerFn(upsertAppointment);
+  const rescheduleFn = useServerFn(rescheduleAppointment);
+  const pushBlockFn = useServerFn(pushAppointmentBlock);
   const fetchProfile = useServerFn(getProfile);
   const syncGoogle = useServerFn(syncGoogleCalendar);
   const syncSquare = useServerFn(syncSquareBookings);
