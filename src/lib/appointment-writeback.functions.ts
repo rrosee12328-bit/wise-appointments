@@ -94,6 +94,60 @@ async function pushToGoogleForAppointment(
   return { googleUpdated: true, blockEventId: newId };
 }
 
+async function pushToOutlookForAppointment(
+  userId: string,
+  appt: {
+    source_platform: string;
+    external_id: string | null;
+    client_name: string;
+    service: string | null;
+    starts_at: string;
+    ends_at: string;
+    synced_to: string[] | null;
+  },
+): Promise<{ outlookUpdated: boolean; outlookBlockEventId: string | null }> {
+  const accessToken = await getValidOutlookAccessToken(userId);
+
+  // Case 1: appointment originated in Outlook → PATCH the original event.
+  if (appt.source_platform === "outlook_calendar" && appt.external_id) {
+    await patchOutlookEvent(accessToken, appt.external_id, {
+      start: { dateTime: appt.starts_at },
+      end: { dateTime: appt.ends_at },
+    });
+    return {
+      outlookUpdated: true,
+      outlookBlockEventId: getOutlookBlockEventId(appt.synced_to),
+    };
+  }
+
+  // Case 2: upsert an Outlook block event for visibility.
+  const existingBlockId = getOutlookBlockEventId(appt.synced_to);
+  const body = {
+    summary: blockSummary(appt.client_name, appt.service),
+    description: blockDescription(appt.source_platform),
+    start: { dateTime: appt.starts_at },
+    end: { dateTime: appt.ends_at },
+    showAs: "busy" as const,
+  };
+
+  if (existingBlockId) {
+    try {
+      await patchOutlookEvent(accessToken, existingBlockId, {
+        start: body.start,
+        end: body.end,
+        subject: body.summary,
+        showAs: "busy",
+      });
+      return { outlookUpdated: true, outlookBlockEventId: existingBlockId };
+    } catch {
+      // Event was deleted in Outlook → fall through to recreate.
+    }
+  }
+  const newId = await insertOutlookEvent(accessToken, body);
+  return { outlookUpdated: true, outlookBlockEventId: newId };
+}
+
+
 /** Reschedule an appointment: writes Google first, then commits to DB. */
 export const rescheduleAppointment = createServerFn({ method: "POST" })
   .inputValidator((input) =>
