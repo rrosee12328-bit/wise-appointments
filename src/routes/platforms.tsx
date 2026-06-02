@@ -21,7 +21,8 @@ import { createCalendlyAuthUrl } from "@/lib/calendly-oauth.functions";
 import { createAcuityAuthUrl } from "@/lib/acuity-oauth.functions";
 import { createZohoAuthUrl } from "@/lib/zoho-oauth.functions";
 import { connectClinikoApiKey } from "@/lib/cliniko-apikey.functions";
-import { connectZenotiApiKey } from "@/lib/zenoti-apikey.functions";
+import { linkPlatform, unlinkPlatform } from "@/lib/platform-link.functions";
+import { LinkPlatformDialog } from "@/components/LinkPlatformDialog";
 
 export const Route = createFileRoute("/platforms")({
   validateSearch: (s: Record<string, unknown>) => ({
