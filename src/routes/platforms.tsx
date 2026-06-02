@@ -537,6 +537,15 @@ function Platforms() {
         isLoading={apiKeyLoading}
         helpUrl="https://docs.zenoti.com/docs/authentication"
       />
+
+      {/* Relay-platform link dialog */}
+      <LinkPlatformDialog
+        open={linkDialogPlatform !== null}
+        onOpenChange={(open) => !open && setLinkDialogPlatform(null)}
+        platform={linkDialogPlatform}
+        onConnect={handleLinkConnect}
+        isLoading={linkLoading}
+      />
     </main>
   );
 }
