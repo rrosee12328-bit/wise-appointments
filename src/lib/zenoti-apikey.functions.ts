@@ -210,6 +210,8 @@ export const syncZenotiAppointments = createServerFn({ method: "POST" }).handler
       .eq("user_id", userId)
       .eq("platform", "zenoti");
 
+    try { await syncGoogleBlocksForUser(userId, "zenoti"); } catch (e) { console.error("zenoti: syncGoogleBlocksForUser failed", e); }
+
     return { synced, skipped, connected: true };
   },
 );
