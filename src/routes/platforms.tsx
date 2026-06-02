@@ -198,6 +198,8 @@ function Platforms() {
   );
   const accountLabelFor = (dbKey: string) =>
     realConnections?.connections.find((c) => c.platform === dbKey)?.account_email;
+  const hasGoogleOrOutlookConnected =
+    connectedSet.has("google_calendar") || connectedSet.has("outlook_calendar");
 
   // Google connect
   const connectGoogle = useMutation({
