@@ -1,29 +1,22 @@
-## Tier the platforms and show per-platform notes
+## Goal
 
-Audit of `src/lib/*` confirms three integration tiers:
+Stop shouting tier explanations on every card. Keep them silent and helpful — only speak up when something is actually wrong.
 
-**Tier 1 — Direct two-way sync**
-Google Calendar, Outlook Calendar
+## Changes (UI only, `src/routes/platforms.tsx`)
 
-**Tier 2 — Direct read; writes relay through Google/Outlook**
-Square, Calendly, Acuity, Zoho
+1. **Remove the per-card explainer box** for `direct_read` and `relay_only` platforms. The big bordered note under every card goes away.
 
-**Tier 3 — No direct API; only visible via Google/Outlook relay**
-Booksy, TheCut, Setmore, SQUIRE, Vagaro, Barberly, RingMyBarber, Goldie, GlossGenius, StyleSeat, Fresha, Mangomint, Boulevard, Zenoti, SimplyBook, Cliniko
+2. **Shrink the tier badge** next to the platform name:
+   - `direct_full` → no badge (it's the default/expected case).
+   - `direct_read` → small muted "Read-only" pill.
+   - `relay_only` → small muted "Via Google/Outlook" pill.
+   Tooltip (`title=`) carries the longer explanation for users who want it.
 
-All Tier 3 apps remain listed and connectable in the UI — we just make the dependency on Google or Outlook explicit so users understand why nothing shows up until they link one.
+3. **Keep the amber warning box** but only render it when the real problem exists: a `relay_only` platform is shown AND the user has no Google or Outlook connected. Wording tightened to one sentence + the two connect buttons:
+   > "Bookings from {Platform} can only reach Jey Link through Google or Outlook Calendar. Connect one to start syncing."
 
-## Changes
+4. **No changes** to `src/lib/platforms.ts`, `PlatformBadge.tsx`, tier data, or any business logic. Tooltips reuse existing `tierNote()`.
 
-1. **`src/lib/platforms.ts`** — add `tier: "direct_full" | "direct_read" | "relay_only"` and a short `relayNote` for each platform.
+## Result
 
-2. **Platforms page card** — render a per-platform note:
-   - Tier 1: green check + "Two-way sync."
-   - Tier 2: amber dot + "Read-only sync. Reschedules from Jey Link block the slot on Google/Outlook but won't move the booking in [App]."
-   - Tier 3: blue info dot + "No direct API. Connect [App] to your Google or Outlook calendar so its bookings flow through — Jey Link reads them from there."
-
-3. **Conditional warning on Tier 3 cards** — if neither Google nor Outlook is connected, swap the info dot for a warning state and surface a "Connect Google" / "Connect Outlook" shortcut button. The platform stays connectable, but the user sees up-front why bookings won't appear yet.
-
-4. **PlatformBadge tooltip** — same one-line tier description wherever the badge is shown (appointment rows, conflict dialog, detail dialog) so the relay relationship is visible in context, not just on the Platforms page.
-
-5. **No changes to sync or writeback logic** — messaging/UX only.
+Cards stay clean. Users only see an explanation when they're about to hit the wall (relay-only app with no relay calendar). Curious users still get the detail via hover.
