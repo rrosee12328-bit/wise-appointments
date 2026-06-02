@@ -127,3 +127,26 @@ create trigger trg_platform_connections_updated before update on public.platform
   for each row execute function public.set_updated_at();
 create trigger trg_appointments_updated before update on public.appointments
   for each row execute function public.set_updated_at();
+
+-- =========================
+-- 6. platform_links (user-entered booking page / handle for relay-only platforms)
+-- =========================
+create table public.platform_links (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  platform text not null,
+  handle text not null,
+  url text,
+  relay text not null check (relay in ('google','outlook')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, platform)
+);
+
+alter table public.platform_links enable row level security;
+
+create policy "Users manage own platform_links" on public.platform_links
+  for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create trigger trg_platform_links_updated before update on public.platform_links
+  for each row execute function public.set_updated_at();
