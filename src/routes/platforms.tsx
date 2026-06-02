@@ -330,6 +330,7 @@ function Platforms() {
 
   const isActionPending = (id: PlatformId) => {
     if (id === "google") return connectGoogle.isPending || disconnectPlatformMut.isPending;
+    if (id === "outlook") return connectOutlook.isPending || disconnectPlatformMut.isPending;
     if (id === "square") return connectSquare.isPending || disconnectPlatformMut.isPending;
     if (id === "calendly") return connectCalendly.isPending || disconnectPlatformMut.isPending;
     if (id === "acuity") return connectAcuity.isPending || disconnectPlatformMut.isPending;
