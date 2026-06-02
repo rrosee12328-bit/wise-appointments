@@ -99,10 +99,17 @@ export const disconnectPlatform = createServerFn({ method: "POST" })
     const { data: userData, error } = await supabaseAdmin.auth.getUser(token);
     if (error || !userData.user) throw new Error("Invalid session");
 
-    await supabaseAdmin
-      .from("platform_connections")
-      .delete()
-      .eq("user_id", userData.user.id)
-      .eq("platform", data.platform);
+    await Promise.all([
+      supabaseAdmin
+        .from("platform_connections")
+        .delete()
+        .eq("user_id", userData.user.id)
+        .eq("platform", data.platform),
+      supabaseAdmin
+        .from("platform_links")
+        .delete()
+        .eq("user_id", userData.user.id)
+        .eq("platform", data.platform),
+    ]);
     return { ok: true };
   });
