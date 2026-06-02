@@ -111,10 +111,16 @@ function Platforms() {
   const connectZenoti = useServerFn(connectZenotiApiKey);
   const list = useServerFn(listConnections);
   const disconnect = useServerFn(disconnectPlatform);
+  const link = useServerFn(linkPlatform);
+  const unlink = useServerFn(unlinkPlatform);
 
   // Which API key dialog is open
   const [apiKeyDialog, setApiKeyDialog] = useState<"cliniko" | "zenoti" | null>(null);
   const [apiKeyLoading, setApiKeyLoading] = useState(false);
+
+  // Which relay-link dialog is open
+  const [linkDialogPlatform, setLinkDialogPlatform] = useState<PlatformId | null>(null);
+  const [linkLoading, setLinkLoading] = useState(false);
 
   // Toast notifications for OAuth callbacks
   useEffect(() => {
