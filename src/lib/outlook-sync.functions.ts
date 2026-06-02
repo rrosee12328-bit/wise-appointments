@@ -17,7 +17,10 @@ type OutlookEvent = {
   end?: { dateTime?: string; timeZone?: string };
   organizer?: { emailAddress?: { name?: string; address?: string } };
   location?: { displayName?: string };
+  webLink?: string;
+  transactionId?: string;
 };
+
 
 function toIso(dt: { dateTime?: string; timeZone?: string } | undefined): string | null {
   if (!dt?.dateTime) return null;
@@ -59,8 +62,9 @@ export const syncOutlookCalendar = createServerFn({ method: "POST" }).handler(
       $top: "250",
       $orderby: "start/dateTime",
       $select:
-        "id,subject,bodyPreview,body,isCancelled,showAs,start,end,organizer,location",
+        "id,subject,bodyPreview,body,isCancelled,showAs,start,end,organizer,location,webLink,transactionId",
     });
+
     const evRes = await fetch(
       `https://graph.microsoft.com/v1.0/me/calendarView?${params}`,
       {
@@ -96,7 +100,47 @@ export const syncOutlookCalendar = createServerFn({ method: "POST" }).handler(
         continue;
       }
 
-      const title = (ev.subject ?? "Untitled").trim();
+      // De-dup: skip Jey-Link-created block events (detected by subject prefix
+      // or by transactionId pointing at an existing appointment).
+      const subject = (ev.subject ?? "").trim();
+      const hasJeyLinkPrefix = subject.startsWith("[Jey Link]");
+      const txnApptId = ev.transactionId?.startsWith("jeylink:")
+        ? ev.transactionId.slice("jeylink:".length)
+        : null;
+      if (hasJeyLinkPrefix || txnApptId) {
+        if (txnApptId) {
+          const { data: apptRow } = await supabaseAdmin
+            .from("appointments")
+            .select("id, synced_to")
+            .eq("id", txnApptId)
+            .eq("user_id", userId)
+            .maybeSingle();
+          if (apptRow) {
+            const synced = (apptRow.synced_to as string[] | null) ?? [];
+            if (!synced.includes(`outlook_block:${ev.id}`)) {
+              await supabaseAdmin
+                .from("appointments")
+                .update({
+                  synced_to: [
+                    ...synced.filter((s) => !s.startsWith("outlook_block:")),
+                    `outlook_block:${ev.id}`,
+                  ],
+                })
+                .eq("id", apptRow.id);
+            }
+          }
+        }
+        await supabaseAdmin
+          .from("appointments")
+          .delete()
+          .eq("user_id", userId)
+          .eq("source_platform", "outlook_calendar")
+          .eq("external_id", ev.id);
+        skipped++;
+        continue;
+      }
+
+      const title = subject || "Untitled";
       const split = title.split(/\s+[—\-:]\s+/);
       const clientName = split[0] || "Untitled";
       const service = split.length > 1 ? split.slice(1).join(" - ") : null;
@@ -113,6 +157,7 @@ export const syncOutlookCalendar = createServerFn({ method: "POST" }).handler(
         user_id: userId,
         source_platform: "outlook_calendar",
         external_id: ev.id,
+        external_url: ev.webLink ?? null,
         client_name: clientName,
         service,
         starts_at: startISO,
@@ -120,6 +165,7 @@ export const syncOutlookCalendar = createServerFn({ method: "POST" }).handler(
         is_block: false,
         note: ev.bodyPreview ?? null,
       };
+
 
       if (existing) {
         const { error } = await supabaseAdmin
