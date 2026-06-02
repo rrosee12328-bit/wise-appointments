@@ -148,9 +148,9 @@ export async function patchOutlookEvent(
 
 export async function insertOutlookEvent(
   accessToken: string,
-  body: { summary: string; description?: string; start: { dateTime: string }; end: { dateTime: string }; showAs?: EventBody["showAs"] },
+  body: { summary: string; description?: string; start: { dateTime: string }; end: { dateTime: string }; showAs?: EventBody["showAs"]; transactionId?: string },
 ): Promise<string> {
-  const payload: EventBody = {
+  const payload: EventBody & { transactionId?: string } = {
     subject: body.summary,
     body: body.description
       ? { contentType: "Text", content: body.description }
@@ -159,6 +159,7 @@ export async function insertOutlookEvent(
     end: toOutlookDateTime(body.end.dateTime),
     showAs: body.showAs ?? "busy",
   };
+  if (body.transactionId) payload.transactionId = body.transactionId;
   const res = await fetch(`${GRAPH_BASE}/me/events`, {
     method: "POST",
     headers: {
@@ -174,6 +175,7 @@ export async function insertOutlookEvent(
   const json = (await res.json()) as { id: string };
   return json.id;
 }
+
 
 export async function deleteOutlookEvent(
   accessToken: string,
