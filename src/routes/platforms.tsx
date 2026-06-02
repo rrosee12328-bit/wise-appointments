@@ -80,7 +80,17 @@ const OAUTH_PLATFORMS = new Set<PlatformId>(["google", "outlook", "square", "cal
 // Platforms that use API key modal
 const APIKEY_PLATFORMS = new Set<PlatformId>(["cliniko", "zenoti"]);
 
-const LIVE_PLATFORMS = new Set<PlatformId>([...OAUTH_PLATFORMS, ...APIKEY_PLATFORMS]);
+// Relay-only platforms: user provides a booking-page handle, bookings flow
+// through Google/Outlook Calendar.
+const RELAY_PLATFORMS = new Set<PlatformId>([
+  "booksy", "thecut", "setmore", "squire", "vagaro", "barberly",
+  "ringmybarber", "goldie", "glossgenius", "styleseat", "fresha",
+  "mangomint", "boulevard", "simplybook",
+]);
+
+const LIVE_PLATFORMS = new Set<PlatformId>([
+  ...OAUTH_PLATFORMS, ...APIKEY_PLATFORMS, ...RELAY_PLATFORMS,
+]);
 
 function platformToDbKey(id: PlatformId): string {
   if (id === "google") return "google_calendar";
