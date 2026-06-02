@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { supabaseAdmin } from "@/integrations/supabase/admin.server";
 import { syncGoogleBlocksForUser } from "@/lib/google-writeback.server";
+import { syncOutlookBlocksForUser } from "@/lib/outlook-writeback.server";
+
 
 const CALENDLY_API_BASE = "https://api.calendly.com";
 
@@ -256,6 +258,7 @@ export const syncCalendlyEvents = createServerFn({ method: "POST" }).handler(
         user_id: userId,
         source_platform: "calendly",
         external_id: externalId,
+        external_url: `https://calendly.com/app/scheduled_events/user/me`,
         client_name: clientName,
         service,
         starts_at: ev.start_time,
@@ -263,6 +266,7 @@ export const syncCalendlyEvents = createServerFn({ method: "POST" }).handler(
         is_block: false,
         note: ev.meeting_notes_plain ?? null,
       };
+
 
       if (existing) {
         const { error } = await supabaseAdmin
@@ -293,6 +297,8 @@ export const syncCalendlyEvents = createServerFn({ method: "POST" }).handler(
       .eq("platform", "calendly");
 
     try { await syncGoogleBlocksForUser(userId, "calendly"); } catch (e) { console.error("calendly: syncGoogleBlocksForUser failed", e); }
+    try { await syncOutlookBlocksForUser(userId, "calendly"); } catch (e) { console.error("calendly: syncOutlookBlocksForUser failed", e); }
+
 
     return { synced, skipped, connected: true };
   },
