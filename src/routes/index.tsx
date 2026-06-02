@@ -14,6 +14,7 @@ import { useAutoSyncPlatforms } from "@/hooks/use-auto-sync-platforms";
 import { type Appointment, findConflicts, formatTime, toUiAppointment } from "@/lib/mock-data";
 import { PLATFORMS, type PlatformId } from "@/lib/platforms";
 import { getAppointments, upsertAppointment } from "@/lib/appointments.functions";
+import { rescheduleAppointment, pushAppointmentBlock } from "@/lib/appointment-writeback.functions";
 import { getProfile } from "@/lib/profile.functions";
 import { syncGoogleCalendar } from "@/lib/google-sync.functions";
 import { syncSquareBookings } from "@/lib/square-sync.functions";
