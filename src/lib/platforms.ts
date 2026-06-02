@@ -214,3 +214,65 @@ export const PLATFORMS: Record<
 export function platformLogoUrl(id: PlatformId): string {
   return `https://www.google.com/s2/favicons?sz=128&domain=${PLATFORMS[id].domain}`;
 }
+
+/**
+ * Integration tier for each booking platform.
+ *
+ * - `direct_full`: Jey Link reads and writes via the platform's API (true 2-way sync).
+ * - `direct_read`: Jey Link reads from the platform's API. Reschedules done in
+ *   Jey Link block the new slot on Google/Outlook but do NOT move the original
+ *   booking inside that platform.
+ * - `relay_only`: No direct API integration. Bookings only appear in Jey Link
+ *   if the user connects the platform to Google or Outlook Calendar AND
+ *   connects that calendar here, so the events flow through as calendar events.
+ */
+export type PlatformTier = "direct_full" | "direct_read" | "relay_only";
+
+export const PLATFORM_TIER: Record<PlatformId, PlatformTier> = {
+  google: "direct_full",
+  outlook: "direct_full",
+  square: "direct_read",
+  calendly: "direct_read",
+  acuity: "direct_read",
+  zoho: "direct_read",
+  cliniko: "direct_read",
+  zenoti: "direct_read",
+  booksy: "relay_only",
+  thecut: "relay_only",
+  setmore: "relay_only",
+  squire: "relay_only",
+  vagaro: "relay_only",
+  barberly: "relay_only",
+  ringmybarber: "relay_only",
+  goldie: "relay_only",
+  glossgenius: "relay_only",
+  styleseat: "relay_only",
+  fresha: "relay_only",
+  mangomint: "relay_only",
+  boulevard: "relay_only",
+  simplybook: "relay_only",
+};
+
+export function tierNote(id: PlatformId): string {
+  const label = PLATFORMS[id].label;
+  switch (PLATFORM_TIER[id]) {
+    case "direct_full":
+      return "Two-way sync — reads bookings and pushes reschedules directly.";
+    case "direct_read":
+      return `Read-only sync. Reschedules from Jey Link block the new slot on Google/Outlook but won't move the original booking in ${label}.`;
+    case "relay_only":
+      return `No direct connection to ${label}. Connect ${label} to your Google or Outlook Calendar so its bookings flow through — Jey Link reads them from there.`;
+  }
+}
+
+export function tierShortLabel(id: PlatformId): string {
+  switch (PLATFORM_TIER[id]) {
+    case "direct_full":
+      return "Two-way sync";
+    case "direct_read":
+      return "Read-only sync";
+    case "relay_only":
+      return "Via Google / Outlook";
+  }
+}
+
