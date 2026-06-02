@@ -284,5 +284,7 @@ export const syncSquareBookings = createServerFn({ method: "POST" }).handler(asy
     .eq("user_id", userId)
     .eq("platform", "square");
 
+  try { await syncGoogleBlocksForUser(userId, "square"); } catch (e) { console.error("square: syncGoogleBlocksForUser failed", e); }
+
   return { synced, skipped, connected: true };
 });
