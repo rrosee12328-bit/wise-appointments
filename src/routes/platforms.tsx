@@ -288,6 +288,10 @@ function Platforms() {
       connectedSet.has(dbKey) ? disconnectPlatformMut.mutate(dbKey) : connectGoogle.mutate();
       return;
     }
+    if (id === "outlook") {
+      connectedSet.has(dbKey) ? disconnectPlatformMut.mutate(dbKey) : connectOutlook.mutate();
+      return;
+    }
     if (id === "square") {
       connectedSet.has(dbKey) ? disconnectPlatformMut.mutate(dbKey) : connectSquare.mutate();
       return;
