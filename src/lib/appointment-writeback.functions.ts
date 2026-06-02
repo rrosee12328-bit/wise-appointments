@@ -230,6 +230,7 @@ export const rescheduleAppointment = createServerFn({ method: "POST" })
         starts_at: data.starts_at,
         ends_at: data.ends_at,
         synced_to: newSyncedTo,
+        local_override: true,
       })
       .eq("id", data.id)
       .eq("user_id", user.id);

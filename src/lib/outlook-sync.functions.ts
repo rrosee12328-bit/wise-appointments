@@ -6,6 +6,7 @@ import {
   getValidOutlookAccessToken,
 } from "@/lib/outlook-writeback.server";
 import { syncGoogleBlocksForUser } from "@/lib/google-writeback.server";
+import { cleanupCalendarDuplicates, stripTimesIfOverridden } from "@/lib/sync-helpers.server";
 
 
 type OutlookEvent = {
@@ -149,7 +150,7 @@ export const syncOutlookCalendar = createServerFn({ method: "POST" }).handler(
 
       const { data: existing } = await supabaseAdmin
         .from("appointments")
-        .select("id")
+        .select("id, local_override")
         .eq("user_id", userId)
         .eq("external_id", ev.id)
         .eq("source_platform", "outlook_calendar")
@@ -170,9 +171,10 @@ export const syncOutlookCalendar = createServerFn({ method: "POST" }).handler(
 
 
       if (existing) {
+        const payload = stripTimesIfOverridden(row, existing);
         const { error } = await supabaseAdmin
           .from("appointments")
-          .update(row)
+          .update(payload)
           .eq("id", existing.id);
         if (error) {
           console.error("update outlook appointment failed", error);
@@ -196,6 +198,7 @@ export const syncOutlookCalendar = createServerFn({ method: "POST" }).handler(
 
     // Mirror Outlook appointments onto Google as busy blocks.
     try { await syncGoogleBlocksForUser(userId, "outlook_calendar"); } catch (e) { console.error("outlook: syncGoogleBlocksForUser failed", e); }
+    try { await cleanupCalendarDuplicates(userId, "outlook_calendar"); } catch (e) { console.error("outlook: cleanupCalendarDuplicates failed", e); }
 
     return { synced, skipped, connected: true };
 
