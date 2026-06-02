@@ -19,6 +19,15 @@ import {
   patchGoogleEvent,
   withBlockEventId,
 } from "@/lib/google-writeback.server";
+import {
+  OutlookNotConnectedError,
+  OutlookReauthRequiredError,
+  getOutlookBlockEventId,
+  getValidOutlookAccessToken,
+  insertOutlookEvent,
+  patchOutlookEvent,
+  withOutlookBlockEventId,
+} from "@/lib/outlook-writeback.server";
 
 type WritebackResult = {
   ok: true;
