@@ -67,12 +67,12 @@ const CATEGORIES: { label: string; ids: PlatformId[] }[] = [
   },
   {
     label: "General scheduling",
-    ids: ["acuity", "setmore", "calendly", "simplybook", "zoho", "cliniko", "google"],
+    ids: ["acuity", "setmore", "calendly", "simplybook", "zoho", "cliniko", "google", "outlook"],
   },
 ];
 
 // Platforms that have a live OAuth integration (redirect flow)
-const OAUTH_PLATFORMS = new Set<PlatformId>(["google", "square", "calendly", "acuity", "zoho"]);
+const OAUTH_PLATFORMS = new Set<PlatformId>(["google", "outlook", "square", "calendly", "acuity", "zoho"]);
 
 // Platforms that use API key modal
 const APIKEY_PLATFORMS = new Set<PlatformId>(["cliniko", "zenoti"]);
@@ -80,7 +80,9 @@ const APIKEY_PLATFORMS = new Set<PlatformId>(["cliniko", "zenoti"]);
 const LIVE_PLATFORMS = new Set<PlatformId>([...OAUTH_PLATFORMS, ...APIKEY_PLATFORMS]);
 
 function platformToDbKey(id: PlatformId): string {
-  return id === "google" ? "google_calendar" : id;
+  if (id === "google") return "google_calendar";
+  if (id === "outlook") return "outlook_calendar";
+  return id;
 }
 
 function Platforms() {
