@@ -1,4 +1,4 @@
-import { PLATFORMS, type PlatformId } from "@/lib/platforms";
+import { PLATFORMS, tierNote, type PlatformId } from "@/lib/platforms";
 import { cn } from "@/lib/utils";
 
 export function PlatformBadge({
@@ -11,6 +11,7 @@ export function PlatformBadge({
   const p = PLATFORMS[platform];
   return (
     <span
+      title={tierNote(platform)}
       className={cn(
         "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium",
         className,
