@@ -254,36 +254,53 @@ export const pushAppointmentBlock = createServerFn({ method: "POST" })
     if (loadErr) throw new Error(loadErr.message);
     if (!appt) throw new Error("Appointment not found");
 
+    let syncedTo = appt.synced_to as string[] | null;
+    let googleUpdated = false;
+    let blockEventId: string | null = getBlockEventId(syncedTo);
+    let reason: string | undefined;
+
+    // Google push
     try {
       const out = await pushToGoogleForAppointment(user.id, {
         ...appt,
-        synced_to: appt.synced_to as string[] | null,
+        synced_to: syncedTo,
       });
-      if (out.blockEventId !== getBlockEventId(appt.synced_to as string[] | null)) {
-        await supabaseAdmin
-          .from("appointments")
-          .update({ synced_to: withBlockEventId(appt.synced_to as string[] | null, out.blockEventId) })
-          .eq("id", data.id)
-          .eq("user_id", user.id);
-      }
-      return { ok: true, googleUpdated: out.googleUpdated, blockEventId: out.blockEventId };
+      googleUpdated = out.googleUpdated;
+      blockEventId = out.blockEventId;
+      syncedTo = withBlockEventId(syncedTo, blockEventId);
     } catch (err) {
       if (err instanceof GoogleNotConnectedError) {
-        return {
-          ok: true,
-          googleUpdated: false,
-          blockEventId: getBlockEventId(appt.synced_to as string[] | null),
-          reason: "Google Calendar isn't connected",
-        };
+        reason = "Google Calendar isn't connected";
+      } else if (err instanceof GoogleReauthRequiredError) {
+        reason = "Google Calendar needs to be reconnected";
+      } else {
+        throw err;
       }
-      if (err instanceof GoogleReauthRequiredError) {
-        return {
-          ok: true,
-          googleUpdated: false,
-          blockEventId: getBlockEventId(appt.synced_to as string[] | null),
-          reason: "Google Calendar needs to be reconnected",
-        };
-      }
-      throw err;
     }
+
+    // Outlook push (best-effort)
+    try {
+      const out = await pushToOutlookForAppointment(user.id, {
+        ...appt,
+        synced_to: syncedTo,
+      });
+      syncedTo = withOutlookBlockEventId(syncedTo, out.outlookBlockEventId);
+    } catch (err) {
+      if (
+        !(err instanceof OutlookNotConnectedError) &&
+        !(err instanceof OutlookReauthRequiredError)
+      ) {
+        console.error("pushAppointmentBlock: outlook push failed", err);
+      }
+    }
+
+    if (JSON.stringify(syncedTo) !== JSON.stringify(appt.synced_to)) {
+      await supabaseAdmin
+        .from("appointments")
+        .update({ synced_to: syncedTo })
+        .eq("id", data.id)
+        .eq("user_id", user.id);
+    }
+
+    return { ok: true, googleUpdated, blockEventId, reason };
   });
