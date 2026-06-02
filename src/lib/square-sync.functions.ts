@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { supabaseAdmin } from "@/integrations/supabase/admin.server";
+import { syncGoogleBlocksForUser } from "@/lib/google-writeback.server";
 
 const SQUARE_API_BASE =
   process.env.SQUARE_ENVIRONMENT === "sandbox"
