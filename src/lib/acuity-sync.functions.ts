@@ -159,6 +159,8 @@ export const syncAcuityAppointments = createServerFn({ method: "POST" }).handler
       .eq("user_id", userId)
       .eq("platform", "acuity");
 
+    try { await syncGoogleBlocksForUser(userId, "acuity"); } catch (e) { console.error("acuity: syncGoogleBlocksForUser failed", e); }
+
     return { synced, skipped, connected: true };
   },
 );
