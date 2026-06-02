@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AppointmentRow } from "@/components/AppointmentCard";
 import { DayTimelineView, MonthGridView } from "@/components/CalendarViews";
+import { AppointmentDetailDialog } from "@/components/AppointmentDetailDialog";
+
 import { useAuth } from "@/hooks/use-auth";
 import { useAutoSyncPlatforms } from "@/hooks/use-auto-sync-platforms";
 import { formatRelativeDay, toUiAppointment, type Appointment } from "@/lib/mock-data";
@@ -39,8 +41,10 @@ function groupByDay(appts: Appointment[]) {
 
 function Appointments() {
   const [q, setQ] = useState("");
+  const [detailAppt, setDetailAppt] = useState<Appointment | null>(null);
   const { session } = useAuth();
   const fetchAppts = useServerFn(getAppointments);
+
 
   useAutoSyncPlatforms(!!session);
 
@@ -167,6 +171,12 @@ function Appointments() {
           <MonthGridView appointments={all} />
         </TabsContent>
       </Tabs>
+      <AppointmentDetailDialog
+        appt={detailAppt}
+        open={!!detailAppt}
+        onOpenChange={(o) => !o && setDetailAppt(null)}
+      />
     </main>
   );
 }
+

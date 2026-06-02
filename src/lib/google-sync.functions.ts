@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { supabaseAdmin } from "@/integrations/supabase/admin.server";
+import { syncOutlookBlocksForUser } from "@/lib/outlook-writeback.server";
+
 
 type GoogleEvent = {
   id: string;
@@ -14,11 +16,13 @@ type GoogleEvent = {
   end?: { dateTime?: string; date?: string };
   transparency?: string; // "transparent" = Free, omitted = Busy
   source?: { title?: string; url?: string };
+  htmlLink?: string;
   extendedProperties?: {
     private?: Record<string, string>;
     shared?: Record<string, string>;
   };
 };
+
 
 // ── Smart platform detection ──────────────────────────────────────────────────
 // Detects which booking platform created a Google Calendar event based on
@@ -328,8 +332,9 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(
       orderBy: "startTime",
       maxResults: "250",
       fields:
-        "items(id,status,summary,description,location,organizer,creator,start,end,transparency,source,extendedProperties)",
+        "items(id,status,summary,description,location,organizer,creator,start,end,transparency,source,htmlLink,extendedProperties)",
     });
+
     const evRes = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/primary/events?${params}`,
       { headers: { Authorization: `Bearer ${accessToken}` } },
@@ -361,6 +366,50 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(
         continue;
       }
 
+      // De-dup: skip events that Jey Link itself wrote as block placeholders
+      // for appointments coming from another platform (Square, Calendly, etc.).
+      // Tagged events carry extendedProperties.private.jey_link === "1".
+      // Legacy untagged events are detected by the "[Jey Link]" subject prefix.
+      const isJeyLinkTagged = ev.extendedProperties?.private?.jey_link === "1";
+      const hasJeyLinkPrefix = (ev.summary ?? "").trim().startsWith("[Jey Link]");
+      if (isJeyLinkTagged || hasJeyLinkPrefix) {
+        const apptId = ev.extendedProperties?.private?.jey_link_appt_id;
+        // Heal stale links: make sure the source appointment row knows about
+        // this Google event id so future writebacks/deletes target the right one.
+        if (apptId) {
+          const { data: apptRow } = await supabaseAdmin
+            .from("appointments")
+            .select("id, synced_to")
+            .eq("id", apptId)
+            .eq("user_id", userId)
+            .maybeSingle();
+          if (apptRow) {
+            const synced = (apptRow.synced_to as string[] | null) ?? [];
+            if (!synced.includes(`google_block:${ev.id}`)) {
+              await supabaseAdmin
+                .from("appointments")
+                .update({
+                  synced_to: [
+                    ...synced.filter((s) => !s.startsWith("google_block:")),
+                    `google_block:${ev.id}`,
+                  ],
+                })
+                .eq("id", apptRow.id);
+            }
+          }
+        }
+        // Clean up any orphaned google_calendar row that was created on a
+        // previous sync before we tagged/detected Jey Link blocks.
+        await supabaseAdmin
+          .from("appointments")
+          .delete()
+          .eq("user_id", userId)
+          .eq("source_platform", "google_calendar")
+          .eq("external_id", ev.id);
+        skipped++;
+        continue;
+      }
+
       // Detect which platform this event came from
       const sourcePlatform = detectPlatform(ev);
 
@@ -384,6 +433,7 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(
         user_id: userId,
         source_platform: sourcePlatform,
         external_id: ev.id,
+        external_url: ev.htmlLink ?? null,
         client_name: clientName,
         service,
         starts_at: startISO,
@@ -411,12 +461,17 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(
       synced++;
     }
 
+
     await supabaseAdmin
       .from("platform_connections")
       .update({ last_synced_at: new Date().toISOString() })
       .eq("user_id", userId)
       .eq("platform", "google_calendar");
 
+    // Mirror Google appointments onto Outlook as busy blocks.
+    try { await syncOutlookBlocksForUser(userId, "google_calendar"); } catch (e) { console.error("google: syncOutlookBlocksForUser failed", e); }
+
     return { synced, skipped, connected: true };
+
   },
 );

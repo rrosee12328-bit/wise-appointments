@@ -9,6 +9,8 @@ import { AppointmentRow } from "@/components/AppointmentCard";
 import { PlatformBadge } from "@/components/PlatformBadge";
 import { ConflictResolverDialog } from "@/components/ConflictResolverDialog";
 import { WalkInDialog } from "@/components/WalkInDialog";
+import { AppointmentDetailDialog } from "@/components/AppointmentDetailDialog";
+
 import { useAuth } from "@/hooks/use-auth";
 import { useAutoSyncPlatforms } from "@/hooks/use-auto-sync-platforms";
 import { type Appointment, findConflicts, formatTime, toUiAppointment } from "@/lib/mock-data";
@@ -121,6 +123,8 @@ function Schedule() {
   const [lastSync, setLastSync] = useState<Date>(new Date());
   const [resolverOpen, setResolverOpen] = useState(false);
   const [walkInOpen, setWalkInOpen] = useState(false);
+  const [detailAppt, setDetailAppt] = useState<Appointment | null>(null);
+
 
   useEffect(() => {
     if (conflicts.length > 0) setResolverOpen(true);
@@ -404,8 +408,14 @@ function Schedule() {
         ) : (
           <div className="flex flex-col gap-2">
             {sorted.map((a) => (
-              <AppointmentRow key={a.id} appt={a} conflict={conflictIds.has(a.id)} />
+              <AppointmentRow
+                key={a.id}
+                appt={a}
+                conflict={conflictIds.has(a.id)}
+                onClick={() => setDetailAppt(a)}
+              />
             ))}
+
           </div>
         )}
       </section>
@@ -426,6 +436,12 @@ function Schedule() {
         onOpenChange={setWalkInOpen}
         onAdd={(appt) => addWalkIn.mutate(appt)}
       />
+      <AppointmentDetailDialog
+        appt={detailAppt}
+        open={!!detailAppt}
+        onOpenChange={(o) => !o && setDetailAppt(null)}
+      />
     </main>
   );
 }
+

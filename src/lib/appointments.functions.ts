@@ -12,6 +12,7 @@ export type AppointmentRow = {
   ends_at: string;
   is_block: boolean;
   note: string | null;
+  external_url: string | null;
 };
 
 export const getAppointments = createServerFn({ method: "GET" })
@@ -19,12 +20,13 @@ export const getAppointments = createServerFn({ method: "GET" })
     const user = await requireUser();
     const { data, error } = await supabaseAdmin
       .from("appointments")
-      .select("id, source_platform, client_name, service, starts_at, ends_at, is_block, note")
+      .select("id, source_platform, client_name, service, starts_at, ends_at, is_block, note, external_url")
       .eq("user_id", user.id)
       .order("starts_at", { ascending: true });
     if (error) throw new Error(error.message);
     return { items: (data ?? []) as AppointmentRow[] };
   });
+
 
 export const upsertAppointment = createServerFn({ method: "POST" })
   .inputValidator((input) =>

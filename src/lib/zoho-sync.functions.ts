@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { supabaseAdmin } from "@/integrations/supabase/admin.server";
 import { syncGoogleBlocksForUser } from "@/lib/google-writeback.server";
+import { syncOutlookBlocksForUser } from "@/lib/outlook-writeback.server";
+
 
 const ZOHO_ACCOUNTS_URL = "https://accounts.zoho.com";
 
@@ -214,6 +216,7 @@ export const syncZohoBookings = createServerFn({ method: "POST" }).handler(async
       user_id: userId,
       source_platform: "zoho",
       external_id: externalId,
+      external_url: "https://bookings.zoho.com/portal#/appointments",
       client_name: clientName,
       service,
       starts_at: startsAt,
@@ -221,6 +224,7 @@ export const syncZohoBookings = createServerFn({ method: "POST" }).handler(async
       is_block: false,
       note: appt.notes ?? null,
     };
+
 
     if (existing) {
       const { error } = await supabaseAdmin.from("appointments").update(row).eq("id", existing.id);
@@ -245,6 +249,8 @@ export const syncZohoBookings = createServerFn({ method: "POST" }).handler(async
     .eq("platform", "zoho");
 
   try { await syncGoogleBlocksForUser(userId, "zoho"); } catch (e) { console.error("zoho: syncGoogleBlocksForUser failed", e); }
+  try { await syncOutlookBlocksForUser(userId, "zoho"); } catch (e) { console.error("zoho: syncOutlookBlocksForUser failed", e); }
+
 
   return { synced, skipped, connected: true };
 });

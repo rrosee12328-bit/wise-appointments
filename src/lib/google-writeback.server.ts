@@ -94,6 +94,10 @@ type EventBody = {
   end: { dateTime: string };
   // "opaque" = blocks the time (Busy). Default on Google.
   transparency?: "opaque" | "transparent";
+  extendedProperties?: {
+    private?: Record<string, string>;
+    shared?: Record<string, string>;
+  };
 };
 
 /** PATCH an existing Google Calendar event (e.g. reschedule). */
@@ -142,6 +146,7 @@ export async function insertGoogleEvent(
   const json = (await res.json()) as { id: string };
   return json.id;
 }
+
 
 export async function deleteGoogleEvent(
   accessToken: string,
@@ -217,7 +222,15 @@ export async function syncGoogleBlocksForUser(
         start: { dateTime: appt.starts_at as string },
         end: { dateTime: appt.ends_at as string },
         transparency: "opaque",
+        extendedProperties: {
+          private: {
+            jey_link: "1",
+            jey_link_source: sourcePlatform,
+            jey_link_appt_id: appt.id as string,
+          },
+        },
       });
+
       await supabaseAdmin
         .from("appointments")
         .update({ synced_to: withBlockEventId(appt.synced_to as string[] | null, eventId) })

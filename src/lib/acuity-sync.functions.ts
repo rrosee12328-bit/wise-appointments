@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { supabaseAdmin } from "@/integrations/supabase/admin.server";
 import { syncGoogleBlocksForUser } from "@/lib/google-writeback.server";
+import { syncOutlookBlocksForUser } from "@/lib/outlook-writeback.server";
+
 
 const ACUITY_API_BASE = "https://acuityscheduling.com/api/v1";
 
@@ -123,6 +125,7 @@ export const syncAcuityAppointments = createServerFn({ method: "POST" }).handler
         user_id: userId,
         source_platform: "acuity",
         external_id: externalId,
+        external_url: `https://secure.acuityscheduling.com/appointments.php?action=appt&id=${externalId}`,
         client_name: clientName,
         service: appt.type ?? null,
         starts_at: startsAt,
@@ -130,6 +133,7 @@ export const syncAcuityAppointments = createServerFn({ method: "POST" }).handler
         is_block: false,
         note: appt.notes ?? null,
       };
+
 
       if (existing) {
         const { error } = await supabaseAdmin
@@ -160,6 +164,8 @@ export const syncAcuityAppointments = createServerFn({ method: "POST" }).handler
       .eq("platform", "acuity");
 
     try { await syncGoogleBlocksForUser(userId, "acuity"); } catch (e) { console.error("acuity: syncGoogleBlocksForUser failed", e); }
+    try { await syncOutlookBlocksForUser(userId, "acuity"); } catch (e) { console.error("acuity: syncOutlookBlocksForUser failed", e); }
+
 
     return { synced, skipped, connected: true };
   },

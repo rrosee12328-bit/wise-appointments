@@ -8,7 +8,9 @@ export type Appointment = {
   service: string;
   platform: PlatformId;
   notes?: string;
+  externalUrl?: string;
 };
+
 
 export function findConflicts(appts: Appointment[]): Appointment[] {
   const sorted = [...appts].sort((a, b) => a.start.getTime() - b.start.getTime());
@@ -55,6 +57,7 @@ export function toUiAppointment(row: {
   starts_at: string;
   ends_at: string;
   note: string | null;
+  external_url?: string | null;
 }): Appointment {
   const start = new Date(row.starts_at);
   const end = new Date(row.ends_at);
@@ -69,5 +72,7 @@ export function toUiAppointment(row: {
     service: row.service ?? "Appointment",
     platform,
     notes: row.note ?? undefined,
+    externalUrl: row.external_url ?? undefined,
   };
 }
+

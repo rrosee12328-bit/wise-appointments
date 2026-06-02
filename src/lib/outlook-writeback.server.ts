@@ -148,9 +148,9 @@ export async function patchOutlookEvent(
 
 export async function insertOutlookEvent(
   accessToken: string,
-  body: { summary: string; description?: string; start: { dateTime: string }; end: { dateTime: string }; showAs?: EventBody["showAs"] },
+  body: { summary: string; description?: string; start: { dateTime: string }; end: { dateTime: string }; showAs?: EventBody["showAs"]; transactionId?: string },
 ): Promise<string> {
-  const payload: EventBody = {
+  const payload: EventBody & { transactionId?: string } = {
     subject: body.summary,
     body: body.description
       ? { contentType: "Text", content: body.description }
@@ -159,6 +159,7 @@ export async function insertOutlookEvent(
     end: toOutlookDateTime(body.end.dateTime),
     showAs: body.showAs ?? "busy",
   };
+  if (body.transactionId) payload.transactionId = body.transactionId;
   const res = await fetch(`${GRAPH_BASE}/me/events`, {
     method: "POST",
     headers: {
@@ -174,6 +175,7 @@ export async function insertOutlookEvent(
   const json = (await res.json()) as { id: string };
   return json.id;
 }
+
 
 export async function deleteOutlookEvent(
   accessToken: string,
@@ -206,3 +208,62 @@ export function withOutlookBlockEventId(
   const filtered = (syncedTo ?? []).filter((s) => !s.startsWith(BLOCK_PREFIX));
   return eventId ? [...filtered, `${BLOCK_PREFIX}${eventId}`] : filtered;
 }
+
+/** Mirror future appointments from a given source platform onto the user's
+ *  Outlook Calendar as busy "[Jey Link]" events. Tagged with transactionId
+ *  so future Outlook syncs recognize and skip them. */
+export async function syncOutlookBlocksForUser(
+  userId: string,
+  sourcePlatform: string,
+): Promise<{ created: number; skipped: number }> {
+  let accessToken: string;
+  try {
+    accessToken = await getValidOutlookAccessToken(userId);
+  } catch (err) {
+    if (err instanceof OutlookNotConnectedError || err instanceof OutlookReauthRequiredError) {
+      return { created: 0, skipped: 0 };
+    }
+    throw err;
+  }
+
+  const nowIso = new Date().toISOString();
+  const { data: appts, error } = await supabaseAdmin
+    .from("appointments")
+    .select("id, client_name, service, starts_at, ends_at, synced_to")
+    .eq("user_id", userId)
+    .eq("source_platform", sourcePlatform)
+    .gte("ends_at", nowIso);
+  if (error) throw new Error(error.message);
+
+  let created = 0;
+  let skipped = 0;
+  for (const appt of appts ?? []) {
+    if (getOutlookBlockEventId(appt.synced_to as string[] | null)) {
+      skipped++;
+      continue;
+    }
+    const svc = (appt.service as string | null)?.trim();
+    const summary = svc
+      ? `[Jey Link] ${appt.client_name} — ${svc}`
+      : `[Jey Link] Blocked — ${appt.client_name}`;
+    try {
+      const eventId = await insertOutlookEvent(accessToken, {
+        summary,
+        description: `Synced by Jey Link from ${sourcePlatform}. This time is blocked to prevent double-booking.`,
+        start: { dateTime: appt.starts_at as string },
+        end: { dateTime: appt.ends_at as string },
+        showAs: "busy",
+        transactionId: `jeylink:${appt.id}`,
+      });
+      await supabaseAdmin
+        .from("appointments")
+        .update({ synced_to: withOutlookBlockEventId(appt.synced_to as string[] | null, eventId) })
+        .eq("id", appt.id);
+      created++;
+    } catch (e) {
+      console.error("syncOutlookBlocksForUser: insert failed", appt.id, e);
+    }
+  }
+  return { created, skipped };
+}
+
