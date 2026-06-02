@@ -21,21 +21,43 @@ type Props = {
 
 const SHIFT_OPTIONS = [15, 30, 45, 60];
 
+// Platforms whose source event we can actually update via API on reschedule.
+// For others, the local DB + Google/Outlook blocks get updated, but the
+// original booking in the source app is not moved.
+const RESCHEDULABLE_SOURCES = new Set(["google", "outlook"]);
+
+function toLocalInputValue(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function ConflictResolverDialog({ open, onOpenChange, conflicts, onReschedule }: Props) {
   const pair = useMemo(() => conflicts.slice(0, 2), [conflicts]);
   const [selectedId, setSelectedId] = useState<string | null>(pair[1]?.id ?? null);
-  const [shift, setShift] = useState<number>(30);
+  const [shift, setShift] = useState<number | "custom">(30);
+  const [customWhen, setCustomWhen] = useState<string>("");
   const [step, setStep] = useState<"pick" | "confirm">("pick");
 
   useEffect(() => {
-    if (open) setStep("pick");
+    if (open) {
+      setStep("pick");
+      setShift(30);
+      setCustomWhen("");
+    }
   }, [open]);
 
   if (pair.length < 2) return null;
 
   const target = pair.find((a) => a.id === selectedId) ?? pair[1];
-  const newStart = new Date(target.start.getTime() + shift * 60_000);
+  const newStart =
+    shift === "custom" && customWhen
+      ? new Date(customWhen)
+      : new Date(
+          target.start.getTime() + (typeof shift === "number" ? shift : 30) * 60_000,
+        );
   const other = pair.find((a) => a.id !== target.id) ?? pair[0];
+  const canMoveSource = RESCHEDULABLE_SOURCES.has(target.platform);
+  const invalidCustom = shift === "custom" && (!customWhen || isNaN(newStart.getTime()));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
