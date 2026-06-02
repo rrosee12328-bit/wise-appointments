@@ -115,7 +115,7 @@ export const syncAcuityAppointments = createServerFn({ method: "POST" }).handler
 
       const { data: existing } = await supabaseAdmin
         .from("appointments")
-        .select("id")
+        .select("id, local_override")
         .eq("user_id", userId)
         .eq("source_platform", "acuity")
         .eq("external_id", externalId)
@@ -136,9 +136,10 @@ export const syncAcuityAppointments = createServerFn({ method: "POST" }).handler
 
 
       if (existing) {
+        const payload = stripTimesIfOverridden(row, existing);
         const { error } = await supabaseAdmin
           .from("appointments")
-          .update(row)
+          .update(payload)
           .eq("id", existing.id);
         if (error) {
           console.error("update acuity appointment failed", error);
