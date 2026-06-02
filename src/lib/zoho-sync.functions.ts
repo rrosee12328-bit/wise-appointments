@@ -244,5 +244,7 @@ export const syncZohoBookings = createServerFn({ method: "POST" }).handler(async
     .eq("user_id", userId)
     .eq("platform", "zoho");
 
+  try { await syncGoogleBlocksForUser(userId, "zoho"); } catch (e) { console.error("zoho: syncGoogleBlocksForUser failed", e); }
+
   return { synced, skipped, connected: true };
 });
