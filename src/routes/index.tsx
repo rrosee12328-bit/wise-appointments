@@ -14,6 +14,7 @@ import { useAutoSyncPlatforms } from "@/hooks/use-auto-sync-platforms";
 import { type Appointment, findConflicts, formatTime, toUiAppointment } from "@/lib/mock-data";
 import { PLATFORMS, type PlatformId } from "@/lib/platforms";
 import { getAppointments, upsertAppointment } from "@/lib/appointments.functions";
+import { rescheduleAppointment, pushAppointmentBlock } from "@/lib/appointment-writeback.functions";
 import { getProfile } from "@/lib/profile.functions";
 import { syncGoogleCalendar } from "@/lib/google-sync.functions";
 import { syncSquareBookings } from "@/lib/square-sync.functions";
@@ -58,6 +59,8 @@ function Schedule() {
   const qc = useQueryClient();
   const fetchAppts = useServerFn(getAppointments);
   const upsertFn = useServerFn(upsertAppointment);
+  const rescheduleFn = useServerFn(rescheduleAppointment);
+  const pushBlockFn = useServerFn(pushAppointmentBlock);
   const fetchProfile = useServerFn(getProfile);
   const syncGoogle = useServerFn(syncGoogleCalendar);
   const syncSquare = useServerFn(syncSquareBookings);
@@ -192,7 +195,7 @@ function Schedule() {
   const addWalkIn = useMutation({
     mutationFn: async (appt: Appointment) => {
       const ends = new Date(appt.start.getTime() + appt.durationMin * 60_000);
-      await upsertFn({
+      const created = await upsertFn({
         data: {
           source_platform: "walk_in",
           client_name: appt.client,
@@ -203,10 +206,45 @@ function Schedule() {
           note: appt.notes ?? null,
         },
       });
+      // Best-effort push to Google so the slot is also blocked there.
+      let blockReason: string | undefined;
+      try {
+        const res = await pushBlockFn({ data: { id: (created as { id: string }).id } });
+        blockReason = res.reason;
+      } catch (e) {
+        blockReason = (e as Error).message;
+      }
+      return { blockReason };
     },
-    onSuccess: () => {
+    onSuccess: ({ blockReason }) => {
       qc.invalidateQueries({ queryKey: ["appointments"] });
-      toast.success("Walk-in added · time blocked");
+      if (blockReason) {
+        toast.success("Walk-in added", { description: `Google block skipped: ${blockReason}` });
+      } else {
+        toast.success("Walk-in added · time blocked on Google");
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const reschedule = useMutation({
+    mutationFn: async (vars: { id: string; newStart: Date; durationMin: number }) => {
+      const ends = new Date(vars.newStart.getTime() + vars.durationMin * 60_000);
+      return await rescheduleFn({
+        data: {
+          id: vars.id,
+          starts_at: vars.newStart.toISOString(),
+          ends_at: ends.toISOString(),
+        },
+      });
+    },
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ["appointments"] });
+      if (res.reason) {
+        toast.success("Rescheduled", { description: res.reason });
+      } else {
+        toast.success("Rescheduled · synced to Google Calendar");
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -376,7 +414,12 @@ function Schedule() {
         open={resolverOpen}
         onOpenChange={setResolverOpen}
         conflicts={conflicts}
-        onReschedule={() => toast("Rescheduling will sync to platforms once connected.")}
+        onReschedule={(id, newStart) => {
+          const appt = sorted.find((a) => a.id === id);
+          if (!appt) return;
+          reschedule.mutate({ id, newStart, durationMin: appt.durationMin });
+          setResolverOpen(false);
+        }}
       />
       <WalkInDialog
         open={walkInOpen}
