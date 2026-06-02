@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { supabaseAdmin } from "@/integrations/supabase/admin.server";
+import { syncGoogleBlocksForUser } from "@/lib/google-writeback.server";
 
 const SQUARE_API_BASE =
   process.env.SQUARE_ENVIRONMENT === "sandbox"
@@ -282,6 +283,8 @@ export const syncSquareBookings = createServerFn({ method: "POST" }).handler(asy
     .update({ last_synced_at: new Date().toISOString() })
     .eq("user_id", userId)
     .eq("platform", "square");
+
+  try { await syncGoogleBlocksForUser(userId, "square"); } catch (e) { console.error("square: syncGoogleBlocksForUser failed", e); }
 
   return { synced, skipped, connected: true };
 });

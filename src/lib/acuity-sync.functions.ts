@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { supabaseAdmin } from "@/integrations/supabase/admin.server";
+import { syncGoogleBlocksForUser } from "@/lib/google-writeback.server";
 
 const ACUITY_API_BASE = "https://acuityscheduling.com/api/v1";
 
@@ -157,6 +158,8 @@ export const syncAcuityAppointments = createServerFn({ method: "POST" }).handler
       .update({ last_synced_at: new Date().toISOString() })
       .eq("user_id", userId)
       .eq("platform", "acuity");
+
+    try { await syncGoogleBlocksForUser(userId, "acuity"); } catch (e) { console.error("acuity: syncGoogleBlocksForUser failed", e); }
 
     return { synced, skipped, connected: true };
   },

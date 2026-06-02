@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/admin.server";
+import { syncGoogleBlocksForUser } from "@/lib/google-writeback.server";
 
 const CLINIKO_API_BASE = "https://api.au1.cliniko.com/v1";
 
@@ -201,6 +202,8 @@ export const syncClinikoAppointments = createServerFn({ method: "POST" }).handle
       .update({ last_synced_at: new Date().toISOString() })
       .eq("user_id", userId)
       .eq("platform", "cliniko");
+
+    try { await syncGoogleBlocksForUser(userId, "cliniko"); } catch (e) { console.error("cliniko: syncGoogleBlocksForUser failed", e); }
 
     return { synced, skipped, connected: true };
   },

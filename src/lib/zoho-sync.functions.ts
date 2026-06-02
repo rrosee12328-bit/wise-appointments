@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { supabaseAdmin } from "@/integrations/supabase/admin.server";
+import { syncGoogleBlocksForUser } from "@/lib/google-writeback.server";
 
 const ZOHO_ACCOUNTS_URL = "https://accounts.zoho.com";
 
@@ -242,6 +243,8 @@ export const syncZohoBookings = createServerFn({ method: "POST" }).handler(async
     .update({ last_synced_at: new Date().toISOString() })
     .eq("user_id", userId)
     .eq("platform", "zoho");
+
+  try { await syncGoogleBlocksForUser(userId, "zoho"); } catch (e) { console.error("zoho: syncGoogleBlocksForUser failed", e); }
 
   return { synced, skipped, connected: true };
 });
