@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { PLATFORMS, PLATFORM_TIER, tierNote, tierShortLabel, type PlatformId } from "@/lib/platforms";
-import { Info, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PlatformLogo } from "@/components/PlatformLogo";
 import { ApiKeyConnectDialog } from "@/components/ApiKeyConnectDialog";
