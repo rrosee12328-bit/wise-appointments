@@ -14,6 +14,7 @@ import {
   listConnections,
   disconnectPlatform,
 } from "@/lib/google-oauth.functions";
+import { createOutlookAuthUrl } from "@/lib/outlook-oauth.functions";
 import { createSquareAuthUrl } from "@/lib/square-oauth.functions";
 import { createCalendlyAuthUrl } from "@/lib/calendly-oauth.functions";
 import { createAcuityAuthUrl } from "@/lib/acuity-oauth.functions";
