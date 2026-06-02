@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { supabaseAdmin } from "@/integrations/supabase/admin.server";
+import { syncOutlookBlocksForUser } from "@/lib/outlook-writeback.server";
+
 
 type GoogleEvent = {
   id: string;
@@ -466,6 +468,10 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(
       .eq("user_id", userId)
       .eq("platform", "google_calendar");
 
+    // Mirror Google appointments onto Outlook as busy blocks.
+    try { await syncOutlookBlocksForUser(userId, "google_calendar"); } catch (e) { console.error("google: syncOutlookBlocksForUser failed", e); }
+
     return { synced, skipped, connected: true };
+
   },
 );
