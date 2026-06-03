@@ -119,6 +119,10 @@ function Platforms() {
   const list = useServerFn(listConnections);
   const disconnect = useServerFn(disconnectPlatform);
   const link = useServerFn(linkPlatform);
+  const connectIcal = useServerFn(connectIcalFeed);
+  const disconnectIcal = useServerFn(disconnectIcalFeed);
+  const listIcal = useServerFn(listIcalFeeds);
+  const refreshIcal = useServerFn(refreshIcalFeed);
 
   // Which API key dialog is open
   const [apiKeyDialog, setApiKeyDialog] = useState<"cliniko" | "zenoti" | null>(null);
