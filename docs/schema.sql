@@ -150,3 +150,30 @@ create policy "Users manage own platform_links" on public.platform_links
 
 create trigger trg_platform_links_updated before update on public.platform_links
   for each row execute function public.set_updated_at();
+
+-- =========================
+-- 7. ical_feeds (direct iCal subscription for Booksy / Fresha / Vagaro)
+-- =========================
+create table public.ical_feeds (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  platform text not null,
+  feed_url text not null,
+  last_synced_at timestamptz,
+  last_error text,
+  consecutive_failures int not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, platform)
+);
+
+grant select, insert, update, delete on public.ical_feeds to authenticated;
+grant all on public.ical_feeds to service_role;
+
+alter table public.ical_feeds enable row level security;
+
+create policy "Users manage own ical_feeds" on public.ical_feeds
+  for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create trigger trg_ical_feeds_updated before update on public.ical_feeds
+  for each row execute function public.set_updated_at();

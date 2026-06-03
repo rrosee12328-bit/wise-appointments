@@ -276,3 +276,47 @@ export function tierShortLabel(id: PlatformId): string {
   }
 }
 
+/** Relay-only platforms that also expose a public iCal feed (`.ics` URL) we
+ *  can poll directly, bypassing the Google/Outlook relay. */
+export const ICAL_SUPPORTED_PLATFORMS: ReadonlySet<PlatformId> = new Set([
+  "booksy",
+  "fresha",
+  "vagaro",
+]);
+
+export function supportsIcal(id: PlatformId): boolean {
+  return ICAL_SUPPORTED_PLATFORMS.has(id);
+}
+
+/** Per-platform copy for finding the iCal export URL. */
+export const ICAL_INSTRUCTIONS: Record<
+  string,
+  { steps: string[]; helpUrl?: string }
+> = {
+  booksy: {
+    steps: [
+      "Open Booksy Biz on web → Settings → Calendar",
+      "Find the “Calendar sync” or “Export calendar” section",
+      "Copy the iCal/ICS URL it shows you",
+    ],
+    helpUrl: "https://booksy.com/biz/help",
+  },
+  fresha: {
+    steps: [
+      "Open Fresha dashboard → Settings → Calendar sync",
+      "Choose “Add to external calendar” → iCal feed",
+      "Copy the link that ends in .ics",
+    ],
+    helpUrl: "https://partners.fresha.com/help",
+  },
+  vagaro: {
+    steps: [
+      "Open Vagaro → Settings → Calendar Sync",
+      "Enable “Subscribe to your calendar” and copy the URL",
+      "Make sure the URL starts with webcal:// or https://",
+    ],
+    helpUrl: "https://sup.vagaro.com",
+  },
+};
+
+

@@ -20,6 +20,7 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AppointmentsRouteImport } from './routes/appointments'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthVerifyRouteImport } from './routes/auth.verify'
+import { Route as ApiPublicCronIcalSyncRouteImport } from './routes/api/public/cron/ical-sync'
 import { Route as ApiOauthZohoCallbackRouteImport } from './routes/api/oauth/zoho/callback'
 import { Route as ApiOauthSquareCallbackRouteImport } from './routes/api/oauth/square/callback'
 import { Route as ApiOauthOutlookCallbackRouteImport } from './routes/api/oauth/outlook/callback'
@@ -82,6 +83,11 @@ const AuthVerifyRoute = AuthVerifyRouteImport.update({
   path: '/auth/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCronIcalSyncRoute = ApiPublicCronIcalSyncRouteImport.update({
+  id: '/api/public/cron/ical-sync',
+  path: '/api/public/cron/ical-sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiOauthZohoCallbackRoute = ApiOauthZohoCallbackRouteImport.update({
   id: '/api/oauth/zoho/callback',
   path: '/api/oauth/zoho/callback',
@@ -132,6 +138,7 @@ export interface FileRoutesByFullPath {
   '/api/oauth/outlook/callback': typeof ApiOauthOutlookCallbackRoute
   '/api/oauth/square/callback': typeof ApiOauthSquareCallbackRoute
   '/api/oauth/zoho/callback': typeof ApiOauthZohoCallbackRoute
+  '/api/public/cron/ical-sync': typeof ApiPublicCronIcalSyncRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -151,6 +158,7 @@ export interface FileRoutesByTo {
   '/api/oauth/outlook/callback': typeof ApiOauthOutlookCallbackRoute
   '/api/oauth/square/callback': typeof ApiOauthSquareCallbackRoute
   '/api/oauth/zoho/callback': typeof ApiOauthZohoCallbackRoute
+  '/api/public/cron/ical-sync': typeof ApiPublicCronIcalSyncRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -171,6 +179,7 @@ export interface FileRoutesById {
   '/api/oauth/outlook/callback': typeof ApiOauthOutlookCallbackRoute
   '/api/oauth/square/callback': typeof ApiOauthSquareCallbackRoute
   '/api/oauth/zoho/callback': typeof ApiOauthZohoCallbackRoute
+  '/api/public/cron/ical-sync': typeof ApiPublicCronIcalSyncRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -192,6 +201,7 @@ export interface FileRouteTypes {
     | '/api/oauth/outlook/callback'
     | '/api/oauth/square/callback'
     | '/api/oauth/zoho/callback'
+    | '/api/public/cron/ical-sync'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -211,6 +221,7 @@ export interface FileRouteTypes {
     | '/api/oauth/outlook/callback'
     | '/api/oauth/square/callback'
     | '/api/oauth/zoho/callback'
+    | '/api/public/cron/ical-sync'
   id:
     | '__root__'
     | '/'
@@ -230,6 +241,7 @@ export interface FileRouteTypes {
     | '/api/oauth/outlook/callback'
     | '/api/oauth/square/callback'
     | '/api/oauth/zoho/callback'
+    | '/api/public/cron/ical-sync'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -250,6 +262,7 @@ export interface RootRouteChildren {
   ApiOauthOutlookCallbackRoute: typeof ApiOauthOutlookCallbackRoute
   ApiOauthSquareCallbackRoute: typeof ApiOauthSquareCallbackRoute
   ApiOauthZohoCallbackRoute: typeof ApiOauthZohoCallbackRoute
+  ApiPublicCronIcalSyncRoute: typeof ApiPublicCronIcalSyncRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -331,6 +344,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/ical-sync': {
+      id: '/api/public/cron/ical-sync'
+      path: '/api/public/cron/ical-sync'
+      fullPath: '/api/public/cron/ical-sync'
+      preLoaderRoute: typeof ApiPublicCronIcalSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/oauth/zoho/callback': {
       id: '/api/oauth/zoho/callback'
       path: '/api/oauth/zoho/callback'
@@ -394,6 +414,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiOauthOutlookCallbackRoute: ApiOauthOutlookCallbackRoute,
   ApiOauthSquareCallbackRoute: ApiOauthSquareCallbackRoute,
   ApiOauthZohoCallbackRoute: ApiOauthZohoCallbackRoute,
+  ApiPublicCronIcalSyncRoute: ApiPublicCronIcalSyncRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

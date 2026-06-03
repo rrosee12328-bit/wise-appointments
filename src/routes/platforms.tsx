@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { PLATFORMS, PLATFORM_TIER, tierNote, tierShortLabel, type PlatformId } from "@/lib/platforms";
+import { PLATFORMS, PLATFORM_TIER, tierNote, tierShortLabel, supportsIcal, type PlatformId } from "@/lib/platforms";
 import { AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PlatformLogo } from "@/components/PlatformLogo";
@@ -23,7 +23,14 @@ import { createZohoAuthUrl } from "@/lib/zoho-oauth.functions";
 import { connectClinikoApiKey } from "@/lib/cliniko-apikey.functions";
 import { connectZenotiApiKey } from "@/lib/zenoti-apikey.functions";
 import { linkPlatform } from "@/lib/platform-link.functions";
+import {
+  connectIcalFeed,
+  disconnectIcalFeed,
+  listIcalFeeds,
+  refreshIcalFeed,
+} from "@/lib/ical-feed.functions";
 import { LinkPlatformDialog } from "@/components/LinkPlatformDialog";
+
 
 export const Route = createFileRoute("/platforms")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -112,6 +119,10 @@ function Platforms() {
   const list = useServerFn(listConnections);
   const disconnect = useServerFn(disconnectPlatform);
   const link = useServerFn(linkPlatform);
+  const connectIcal = useServerFn(connectIcalFeed);
+  const disconnectIcal = useServerFn(disconnectIcalFeed);
+  const listIcal = useServerFn(listIcalFeeds);
+  const refreshIcal = useServerFn(refreshIcalFeed);
 
   // Which API key dialog is open
   const [apiKeyDialog, setApiKeyDialog] = useState<"cliniko" | "zenoti" | null>(null);
@@ -192,6 +203,14 @@ function Platforms() {
     queryFn: () => list(),
   });
 
+  const { data: icalData } = useQuery({
+    queryKey: ["ical-feeds"],
+    queryFn: () => listIcal(),
+  });
+  const icalByPlatform = new Map(
+    (icalData?.feeds ?? []).map((f) => [f.platform as string, f]),
+  );
+
   const connectedSet = new Set(
     (realConnections?.connections ?? []).map((c) => c.platform),
   );
@@ -199,6 +218,7 @@ function Platforms() {
     realConnections?.connections.find((c) => c.platform === dbKey)?.account_email;
   const hasGoogleOrOutlookConnected =
     connectedSet.has("google_calendar") || connectedSet.has("outlook_calendar");
+
 
   // Google connect
   const connectGoogle = useMutation({
@@ -346,8 +366,17 @@ function Platforms() {
     }
 
     if (RELAY_PLATFORMS.has(id)) {
+      const hasIcal = icalByPlatform.has(id);
+      if (hasIcal) {
+        // iCal connected — clicking the action disconnects the feed.
+        disconnectIcalMut.mutate(id);
+        return;
+      }
       if (connectedSet.has(dbKey)) {
         disconnectPlatformMut.mutate(dbKey);
+      } else if (supportsIcal(id)) {
+        // Open the dialog so the user can pick iCal or relay.
+        setLinkDialogPlatform(id);
       } else if (!hasGoogleOrOutlookConnected) {
         toast.error("Connect Google or Outlook Calendar first.");
       } else {
@@ -367,9 +396,32 @@ function Platforms() {
     if (id === "acuity") return connectAcuity.isPending || disconnectPlatformMut.isPending;
     if (id === "zoho") return connectZoho.isPending || disconnectPlatformMut.isPending;
     if (id === "cliniko" || id === "zenoti") return apiKeyLoading || disconnectPlatformMut.isPending;
-    if (RELAY_PLATFORMS.has(id)) return linkLoading || disconnectPlatformMut.isPending;
+    if (RELAY_PLATFORMS.has(id))
+      return linkLoading || disconnectPlatformMut.isPending || disconnectIcalMut.isPending;
     return false;
   };
+
+  const disconnectIcalMut = useMutation({
+    mutationFn: async (platformId: PlatformId) => {
+      await disconnectIcal({ data: { platform: platformId as never } });
+    },
+    onSuccess: () => {
+      toast.success("iCal feed disconnected");
+      qc.invalidateQueries({ queryKey: ["ical-feeds"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const refreshIcalMut = useMutation({
+    mutationFn: async (platformId: PlatformId) => {
+      return refreshIcal({ data: { platform: platformId as never } });
+    },
+    onSuccess: (r) => {
+      toast.success(`Synced — ${r.synced} bookings`);
+      qc.invalidateQueries({ queryKey: ["ical-feeds"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const handleLinkConnect = async (handle: string) => {
     if (!linkDialogPlatform) return;
@@ -385,6 +437,24 @@ function Platforms() {
       setLinkLoading(false);
     }
   };
+
+  const handleIcalConnect = async (feedUrl: string) => {
+    if (!linkDialogPlatform) return;
+    setLinkLoading(true);
+    try {
+      const r = await connectIcal({
+        data: { platform: linkDialogPlatform as never, feedUrl },
+      });
+      toast.success(`${PLATFORMS[linkDialogPlatform].label} connected — ${r.synced} bookings`);
+      qc.invalidateQueries({ queryKey: ["ical-feeds"] });
+      setLinkDialogPlatform(null);
+    } catch (e: unknown) {
+      toast.error((e as Error).message ?? "iCal connection failed");
+    } finally {
+      setLinkLoading(false);
+    }
+  };
+
 
   return (
     <main className="mx-auto max-w-md px-4 pt-8">
@@ -411,22 +481,41 @@ function Platforms() {
               {cat.ids.map((id) => {
                 const p = PLATFORMS[id];
                 const dbKey = platformToDbKey(id);
-                const isConnected = connectedSet.has(dbKey);
-                const label = isConnected ? accountLabelFor(dbKey) : undefined;
+                const ical = icalByPlatform.get(id);
+                const hasIcal = !!ical;
+                const isConnected = connectedSet.has(dbKey) || hasIcal;
+                const label = connectedSet.has(dbKey) ? accountLabelFor(dbKey) : undefined;
                 const isLive = LIVE_PLATFORMS.has(id);
-                const subline = isConnected
-                  ? `Connected${label ? ` · ${label}` : ""}`
-                  : isLive
-                    ? "Not connected"
-                    : "Coming soon";
+
+                let subline: string;
+                if (hasIcal) {
+                  if (ical!.lastError && (ical!.consecutiveFailures ?? 0) >= 3) {
+                    subline = `iCal sync failing — ${ical!.lastError}`;
+                  } else if (ical!.lastSyncedAt) {
+                    const mins = Math.max(
+                      0,
+                      Math.round((Date.now() - Date.parse(ical!.lastSyncedAt)) / 60000),
+                    );
+                    subline = `Synced via iCal · ${mins} min ago`;
+                  } else {
+                    subline = "Connected via iCal";
+                  }
+                } else if (isConnected) {
+                  subline = `Connected${label ? ` · ${label}` : ""}`;
+                } else if (isLive) {
+                  subline = "Not connected";
+                } else {
+                  subline = "Coming soon";
+                }
 
                 const tier = PLATFORM_TIER[id];
                 const hasGoogleOrOutlook =
                   connectedSet.has("google_calendar") || connectedSet.has("outlook_calendar");
                 const tierNeedsRelayWarning =
-                  tier === "relay_only" && !hasGoogleOrOutlook;
+                  tier === "relay_only" && !hasGoogleOrOutlook && !hasIcal && !supportsIcal(id);
 
                 const showBadge = tier !== "direct_full";
+                const icalBadge = hasIcal ? "Direct (iCal)" : null;
 
                 return (
                   <li
@@ -441,19 +530,35 @@ function Platforms() {
                           <span className="text-sm font-medium text-foreground">
                             {p.label}
                           </span>
-                          {showBadge && (
-                            <span
-                              title={tierNote(id)}
-                              className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
-                            >
-                              {tierShortLabel(id)}
+                          {icalBadge ? (
+                            <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300">
+                              {icalBadge}
                             </span>
+                          ) : (
+                            showBadge && (
+                              <span
+                                title={tierNote(id)}
+                                className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+                              >
+                                {tierShortLabel(id)}
+                              </span>
+                            )
                           )}
                         </div>
                         <div className="text-xs text-muted-foreground">
                           {subline}
                         </div>
                       </div>
+                      {hasIcal && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => refreshIcalMut.mutate(id)}
+                          disabled={refreshIcalMut.isPending}
+                        >
+                          Sync
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant={isConnected ? "outline" : isLive ? "default" : "ghost"}
@@ -464,6 +569,7 @@ function Platforms() {
                         {isConnected ? "Disconnect" : isLive ? "Connect" : "Soon"}
                       </Button>
                     </div>
+
 
                     {tierNeedsRelayWarning && (
                       <div className="rounded-md border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
@@ -544,8 +650,11 @@ function Platforms() {
         onOpenChange={(open) => !open && setLinkDialogPlatform(null)}
         platform={linkDialogPlatform}
         onConnect={handleLinkConnect}
+        onConnectIcal={handleIcalConnect}
+        hasRelayCalendar={hasGoogleOrOutlookConnected}
         isLoading={linkLoading}
       />
+
     </main>
   );
 }
