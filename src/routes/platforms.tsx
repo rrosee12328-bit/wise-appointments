@@ -481,22 +481,41 @@ function Platforms() {
               {cat.ids.map((id) => {
                 const p = PLATFORMS[id];
                 const dbKey = platformToDbKey(id);
-                const isConnected = connectedSet.has(dbKey);
-                const label = isConnected ? accountLabelFor(dbKey) : undefined;
+                const ical = icalByPlatform.get(id);
+                const hasIcal = !!ical;
+                const isConnected = connectedSet.has(dbKey) || hasIcal;
+                const label = connectedSet.has(dbKey) ? accountLabelFor(dbKey) : undefined;
                 const isLive = LIVE_PLATFORMS.has(id);
-                const subline = isConnected
-                  ? `Connected${label ? ` · ${label}` : ""}`
-                  : isLive
-                    ? "Not connected"
-                    : "Coming soon";
+
+                let subline: string;
+                if (hasIcal) {
+                  if (ical!.lastError && (ical!.consecutiveFailures ?? 0) >= 3) {
+                    subline = `iCal sync failing — ${ical!.lastError}`;
+                  } else if (ical!.lastSyncedAt) {
+                    const mins = Math.max(
+                      0,
+                      Math.round((Date.now() - Date.parse(ical!.lastSyncedAt)) / 60000),
+                    );
+                    subline = `Synced via iCal · ${mins} min ago`;
+                  } else {
+                    subline = "Connected via iCal";
+                  }
+                } else if (isConnected) {
+                  subline = `Connected${label ? ` · ${label}` : ""}`;
+                } else if (isLive) {
+                  subline = "Not connected";
+                } else {
+                  subline = "Coming soon";
+                }
 
                 const tier = PLATFORM_TIER[id];
                 const hasGoogleOrOutlook =
                   connectedSet.has("google_calendar") || connectedSet.has("outlook_calendar");
                 const tierNeedsRelayWarning =
-                  tier === "relay_only" && !hasGoogleOrOutlook;
+                  tier === "relay_only" && !hasGoogleOrOutlook && !hasIcal && !supportsIcal(id);
 
                 const showBadge = tier !== "direct_full";
+                const icalBadge = hasIcal ? "Direct (iCal)" : null;
 
                 return (
                   <li
@@ -511,19 +530,35 @@ function Platforms() {
                           <span className="text-sm font-medium text-foreground">
                             {p.label}
                           </span>
-                          {showBadge && (
-                            <span
-                              title={tierNote(id)}
-                              className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
-                            >
-                              {tierShortLabel(id)}
+                          {icalBadge ? (
+                            <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300">
+                              {icalBadge}
                             </span>
+                          ) : (
+                            showBadge && (
+                              <span
+                                title={tierNote(id)}
+                                className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+                              >
+                                {tierShortLabel(id)}
+                              </span>
+                            )
                           )}
                         </div>
                         <div className="text-xs text-muted-foreground">
                           {subline}
                         </div>
                       </div>
+                      {hasIcal && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => refreshIcalMut.mutate(id)}
+                          disabled={refreshIcalMut.isPending}
+                        >
+                          Sync
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant={isConnected ? "outline" : isLive ? "default" : "ghost"}
@@ -534,6 +569,7 @@ function Platforms() {
                         {isConnected ? "Disconnect" : isLive ? "Connect" : "Soon"}
                       </Button>
                     </div>
+
 
                     {tierNeedsRelayWarning && (
                       <div className="rounded-md border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
