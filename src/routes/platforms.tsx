@@ -366,8 +366,17 @@ function Platforms() {
     }
 
     if (RELAY_PLATFORMS.has(id)) {
+      const hasIcal = icalByPlatform.has(id);
+      if (hasIcal) {
+        // iCal connected — clicking the action disconnects the feed.
+        disconnectIcalMut.mutate(id);
+        return;
+      }
       if (connectedSet.has(dbKey)) {
         disconnectPlatformMut.mutate(dbKey);
+      } else if (supportsIcal(id)) {
+        // Open the dialog so the user can pick iCal or relay.
+        setLinkDialogPlatform(id);
       } else if (!hasGoogleOrOutlookConnected) {
         toast.error("Connect Google or Outlook Calendar first.");
       } else {
@@ -387,9 +396,32 @@ function Platforms() {
     if (id === "acuity") return connectAcuity.isPending || disconnectPlatformMut.isPending;
     if (id === "zoho") return connectZoho.isPending || disconnectPlatformMut.isPending;
     if (id === "cliniko" || id === "zenoti") return apiKeyLoading || disconnectPlatformMut.isPending;
-    if (RELAY_PLATFORMS.has(id)) return linkLoading || disconnectPlatformMut.isPending;
+    if (RELAY_PLATFORMS.has(id))
+      return linkLoading || disconnectPlatformMut.isPending || disconnectIcalMut.isPending;
     return false;
   };
+
+  const disconnectIcalMut = useMutation({
+    mutationFn: async (platformId: PlatformId) => {
+      await disconnectIcal({ data: { platform: platformId as never } });
+    },
+    onSuccess: () => {
+      toast.success("iCal feed disconnected");
+      qc.invalidateQueries({ queryKey: ["ical-feeds"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const refreshIcalMut = useMutation({
+    mutationFn: async (platformId: PlatformId) => {
+      return refreshIcal({ data: { platform: platformId as never } });
+    },
+    onSuccess: (r) => {
+      toast.success(`Synced — ${r.synced} bookings`);
+      qc.invalidateQueries({ queryKey: ["ical-feeds"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const handleLinkConnect = async (handle: string) => {
     if (!linkDialogPlatform) return;
@@ -405,6 +437,24 @@ function Platforms() {
       setLinkLoading(false);
     }
   };
+
+  const handleIcalConnect = async (feedUrl: string) => {
+    if (!linkDialogPlatform) return;
+    setLinkLoading(true);
+    try {
+      const r = await connectIcal({
+        data: { platform: linkDialogPlatform as never, feedUrl },
+      });
+      toast.success(`${PLATFORMS[linkDialogPlatform].label} connected — ${r.synced} bookings`);
+      qc.invalidateQueries({ queryKey: ["ical-feeds"] });
+      setLinkDialogPlatform(null);
+    } catch (e: unknown) {
+      toast.error((e as Error).message ?? "iCal connection failed");
+    } finally {
+      setLinkLoading(false);
+    }
+  };
+
 
   return (
     <main className="mx-auto max-w-md px-4 pt-8">
