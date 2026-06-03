@@ -650,8 +650,11 @@ function Platforms() {
         onOpenChange={(open) => !open && setLinkDialogPlatform(null)}
         platform={linkDialogPlatform}
         onConnect={handleLinkConnect}
+        onConnectIcal={handleIcalConnect}
+        hasRelayCalendar={hasGoogleOrOutlookConnected}
         isLoading={linkLoading}
       />
+
     </main>
   );
 }
