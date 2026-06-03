@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { PLATFORMS, PLATFORM_TIER, tierNote, tierShortLabel, type PlatformId } from "@/lib/platforms";
+import { PLATFORMS, PLATFORM_TIER, tierNote, tierShortLabel, supportsIcal, type PlatformId } from "@/lib/platforms";
 import { AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PlatformLogo } from "@/components/PlatformLogo";
@@ -23,7 +23,14 @@ import { createZohoAuthUrl } from "@/lib/zoho-oauth.functions";
 import { connectClinikoApiKey } from "@/lib/cliniko-apikey.functions";
 import { connectZenotiApiKey } from "@/lib/zenoti-apikey.functions";
 import { linkPlatform } from "@/lib/platform-link.functions";
+import {
+  connectIcalFeed,
+  disconnectIcalFeed,
+  listIcalFeeds,
+  refreshIcalFeed,
+} from "@/lib/ical-feed.functions";
 import { LinkPlatformDialog } from "@/components/LinkPlatformDialog";
+
 
 export const Route = createFileRoute("/platforms")({
   validateSearch: (s: Record<string, unknown>) => ({
