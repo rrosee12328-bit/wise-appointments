@@ -203,6 +203,14 @@ function Platforms() {
     queryFn: () => list(),
   });
 
+  const { data: icalData } = useQuery({
+    queryKey: ["ical-feeds"],
+    queryFn: () => listIcal(),
+  });
+  const icalByPlatform = new Map(
+    (icalData?.feeds ?? []).map((f) => [f.platform as string, f]),
+  );
+
   const connectedSet = new Set(
     (realConnections?.connections ?? []).map((c) => c.platform),
   );
@@ -210,6 +218,7 @@ function Platforms() {
     realConnections?.connections.find((c) => c.platform === dbKey)?.account_email;
   const hasGoogleOrOutlookConnected =
     connectedSet.has("google_calendar") || connectedSet.has("outlook_calendar");
+
 
   // Google connect
   const connectGoogle = useMutation({
