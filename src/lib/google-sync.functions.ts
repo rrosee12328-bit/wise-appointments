@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { supabaseAdmin } from "@/integrations/supabase/admin.server";
 import { syncOutlookBlocksForUser } from "@/lib/outlook-writeback.server";
-import { cleanupCalendarDuplicates, retagRelayEvents, stripTimesIfOverridden } from "@/lib/sync-helpers.server";
+import { cleanupCalendarDuplicates, dedupeCrossCalendarRows, retagRelayEvents, stripTimesIfOverridden } from "@/lib/sync-helpers.server";
 
 
 type GoogleEvent = {
