@@ -6,7 +6,7 @@ import {
   getValidOutlookAccessToken,
 } from "@/lib/outlook-writeback.server";
 import { syncGoogleBlocksForUser } from "@/lib/google-writeback.server";
-import { cleanupCalendarDuplicates, retagRelayEvents, stripTimesIfOverridden } from "@/lib/sync-helpers.server";
+import { cleanupCalendarDuplicates, dedupeCrossCalendarRows, retagRelayEvents, stripTimesIfOverridden } from "@/lib/sync-helpers.server";
 
 
 type OutlookEvent = {
@@ -199,6 +199,7 @@ export const syncOutlookCalendar = createServerFn({ method: "POST" }).handler(
     // Mirror Outlook appointments onto Google as busy blocks.
     try { await syncGoogleBlocksForUser(userId, "outlook_calendar"); } catch (e) { console.error("outlook: syncGoogleBlocksForUser failed", e); }
     try { await cleanupCalendarDuplicates(userId, "outlook_calendar"); } catch (e) { console.error("outlook: cleanupCalendarDuplicates failed", e); }
+    try { await dedupeCrossCalendarRows(userId, "outlook_calendar"); } catch (e) { console.error("outlook: dedupeCrossCalendarRows failed", e); }
     try { await retagRelayEvents(userId); } catch (e) { console.error("outlook: retagRelayEvents failed", e); }
 
     return { synced, skipped, connected: true };
