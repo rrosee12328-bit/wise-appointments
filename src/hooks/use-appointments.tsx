@@ -17,13 +17,18 @@ type Row = {
 function rowToAppt(r: Row): Appointment {
   const start = new Date(r.starts_at);
   const end = new Date(r.ends_at);
+  const sourcePlatform = r.source_platform === "google_calendar"
+    ? "google"
+    : r.source_platform === "outlook_calendar"
+      ? "outlook"
+      : r.source_platform;
   return {
     id: r.id,
     start,
     durationMin: Math.max(1, Math.round((end.getTime() - start.getTime()) / 60000)),
     client: r.client_name,
     service: r.service ?? "Appointment",
-    platform: r.source_platform as PlatformId,
+    platform: sourcePlatform as PlatformId,
     notes: r.note ?? undefined,
   };
 }
