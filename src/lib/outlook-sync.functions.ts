@@ -6,7 +6,7 @@ import {
   getValidOutlookAccessToken,
 } from "@/lib/outlook-writeback.server";
 import { syncGoogleBlocksForUser } from "@/lib/google-writeback.server";
-import { cleanupCalendarDuplicates, retagRelayEvents, stripTimesIfOverridden } from "@/lib/sync-helpers.server";
+import { cleanupCalendarDuplicates, dedupeCrossCalendarRows, retagRelayEvents, stripTimesIfOverridden } from "@/lib/sync-helpers.server";
 
 
 type OutlookEvent = {
