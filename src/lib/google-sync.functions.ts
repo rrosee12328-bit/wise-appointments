@@ -476,6 +476,7 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(
     // Clean up legacy duplicates (google_calendar rows whose time matches an
     // appointment from another booking platform).
     try { await cleanupCalendarDuplicates(userId, "google_calendar"); } catch (e) { console.error("google: cleanupCalendarDuplicates failed", e); }
+    try { await dedupeCrossCalendarRows(userId, "outlook_calendar"); } catch (e) { console.error("google: dedupeCrossCalendarRows failed", e); }
     try { await retagRelayEvents(userId); } catch (e) { console.error("google: retagRelayEvents failed", e); }
 
     return { synced, skipped, connected: true };
