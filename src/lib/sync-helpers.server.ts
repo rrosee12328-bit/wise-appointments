@@ -47,6 +47,51 @@ export async function cleanupCalendarDuplicates(
   }
 }
 
+/** Dedupe overlapping Google/Outlook rows for the same user. When both a
+ *  google_calendar and an outlook_calendar row exist with the same start/end
+ *  time (the same underlying event mirrored across both calendars), keep the
+ *  one matching `prefer` and delete the other. Outlook is preferred when the
+ *  user has Outlook connected, so events show their true origin. */
+export async function dedupeCrossCalendarRows(
+  userId: string,
+  prefer: "outlook_calendar" | "google_calendar" = "outlook_calendar",
+): Promise<void> {
+  const sinceIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data: rows, error } = await supabaseAdmin
+    .from("appointments")
+    .select("id, source_platform, starts_at, ends_at")
+    .eq("user_id", userId)
+    .gte("ends_at", sinceIso)
+    .in("source_platform", ["google_calendar", "outlook_calendar"]);
+  if (error || !rows?.length) return;
+
+  const byTime = new Map<string, { google?: string; outlook?: string }>();
+  for (const r of rows) {
+    const key = `${r.starts_at}__${r.ends_at}`;
+    const entry = byTime.get(key) ?? {};
+    if (r.source_platform === "google_calendar") entry.google = r.id as string;
+    else if (r.source_platform === "outlook_calendar") entry.outlook = r.id as string;
+    byTime.set(key, entry);
+  }
+
+  const loserKey = prefer === "outlook_calendar" ? "google" : "outlook";
+  const idsToDelete: string[] = [];
+  for (const entry of byTime.values()) {
+    if (entry.google && entry.outlook) {
+      const id = entry[loserKey];
+      if (id) idsToDelete.push(id);
+    }
+  }
+  if (idsToDelete.length) {
+    await supabaseAdmin
+      .from("appointments")
+      .delete()
+      .in("id", idsToDelete);
+  }
+}
+
+
+
 
 
 /** Re-tag recently-synced Google/Outlook events with their true source platform
