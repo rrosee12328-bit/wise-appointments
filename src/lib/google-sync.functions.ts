@@ -48,6 +48,7 @@ type DetectedPlatform =
   | "simplybook"
   | "zoho"
   | "setmore"
+  | "outlook_calendar"
   | "google_calendar";
 
 interface PlatformSignal {
@@ -186,7 +187,21 @@ const PLATFORM_SIGNALS: PlatformSignal[] = [
     descriptionPatterns: ["zohobookings.com", "Zoho Bookings"],
     titlePatterns: ["via Zoho Bookings"],
   },
+  {
+    platform: "outlook_calendar",
+    emailPatterns: [
+      "outlook.com",
+      "hotmail.com",
+      "live.com",
+      "office365.com",
+      "onmicrosoft.com",
+      "microsoft.com",
+    ],
+    urlPatterns: ["outlook.office.com", "outlook.live.com", "outlook.office365.com"],
+    descriptionPatterns: ["Microsoft Outlook", "outlook.office.com", "outlook.live.com"],
+  },
 ];
+
 
 function detectPlatform(ev: GoogleEvent): DetectedPlatform {
   const searchText = [
