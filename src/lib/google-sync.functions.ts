@@ -48,6 +48,7 @@ type DetectedPlatform =
   | "simplybook"
   | "zoho"
   | "setmore"
+  | "outlook_calendar"
   | "google_calendar";
 
 interface PlatformSignal {
