@@ -18,7 +18,7 @@ export function AppHeader() {
 
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/65">
-      <div className="mx-auto flex max-w-md sm:max-w-2xl md:max-w-3xl lg:max-w-4xl items-center justify-between px-5 py-3.5">
+      <div className="mx-auto flex max-w-md items-center justify-between px-5 py-3.5">
         <Link to="/" search={{ verify: undefined }} aria-label="Jey Link home" className="flex items-center gap-2">
           <img src={logo} alt="Jey Link" className="h-20 w-auto" />
         </Link>

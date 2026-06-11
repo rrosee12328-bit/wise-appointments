@@ -260,7 +260,7 @@ function Schedule() {
 
 
   return (
-    <main className="mx-auto max-w-md sm:max-w-2xl md:max-w-3xl lg:max-w-4xl px-5 pb-10 pt-8">
+    <main className="mx-auto max-w-md px-5 pb-10 pt-8">
       <header className="mb-8">
         <p
           className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-accent"
