@@ -17,7 +17,7 @@ export function BottomNav() {
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       aria-label="Primary"
     >
-      <ul className="mx-auto flex max-w-md items-stretch justify-between px-2">
+      <ul className="mx-auto flex max-w-md sm:max-w-2xl md:max-w-3xl lg:max-w-4xl items-stretch justify-between px-2">
         {items.map(({ to, label, icon: Icon, exact }) => (
           <li key={to} className="flex-1">
             <Link
