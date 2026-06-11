@@ -35,7 +35,7 @@ function Support() {
   };
 
   return (
-    <main className="mx-auto max-w-md sm:max-w-2xl md:max-w-3xl lg:max-w-4xl px-4 pt-8">
+    <main className="mx-auto max-w-md px-4 pt-8">
       <header className="mb-6">
         <h1 className="text-xl font-semibold text-foreground">Support</h1>
         <p className="text-sm text-muted-foreground">We're here when you need us.</p>
