@@ -46,14 +46,25 @@ export const Route = createFileRoute("/")({
   component: Schedule,
 });
 
-function isToday(d: Date) {
-  const now = new Date();
-  return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  );
+function startOfToday() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
 }
+function endOfToday() {
+  const d = new Date();
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+/** True when the appointment overlaps today's local-day window — covers
+ *  events that started yesterday and run into today, events that start
+ *  today, and events that start today and end tomorrow. The home schedule
+ *  needs all of these, not just events whose start_at is today. */
+function overlapsToday(start: Date, durationMin: number) {
+  const end = new Date(start.getTime() + durationMin * 60_000);
+  return end > startOfToday() && start <= endOfToday();
+}
+
 
 function Schedule() {
   const search = useSearch({ from: "/" });
