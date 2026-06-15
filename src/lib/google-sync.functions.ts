@@ -217,8 +217,19 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(
         continue;
       }
 
-      // Detect which platform this event came from
-      const sourcePlatform = detectPlatform(ev);
+      // Detect which platform this event actually came from
+      const sourcePlatform = detectSourcePlatform({
+        fallback: "google_calendar",
+        title: ev.summary,
+        description: ev.description,
+        organizerEmail: ev.organizer?.email,
+        organizerName: ev.organizer?.displayName,
+        creatorEmail: ev.creator?.email,
+        creatorName: ev.creator?.displayName,
+        location: ev.location,
+        sourceUrl: ev.source?.url,
+        sourceTitle: ev.source?.title,
+      });
 
       const title = (ev.summary ?? "Untitled").trim();
       // Allow "Client — Service" or "Client - Service" or "Client: Service" splits.
