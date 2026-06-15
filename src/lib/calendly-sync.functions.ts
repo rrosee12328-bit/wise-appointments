@@ -179,7 +179,11 @@ export const syncCalendlyEvents = createServerFn({ method: "POST" }).handler(
       Date.now() + 180 * 24 * 60 * 60 * 1000,
     ).toISOString();
 
-    const params = new URLSearchParams({
+    // Fetch ALL pages of scheduled events. Calendly returns at most 100 per
+    // page; without following next_page_token, busy accounts silently lose
+    // their later events (including today's, since sort=start_time:asc starts
+    // from min_start_time 30 days ago).
+    const baseParams = new URLSearchParams({
       user: userUri,
       status: "active",
       min_start_time: minStart,
@@ -192,25 +196,29 @@ export const syncCalendlyEvents = createServerFn({ method: "POST" }).handler(
       `[calendly-sync] user=${userId} userUri=${userUri} window=${minStart}..${maxStart}`,
     );
 
-    const eventsRes = await fetch(
-      `${CALENDLY_API_BASE}/scheduled_events?${params}`,
-      {
+    const events: CalendlyEvent[] = [];
+    let nextUrl: string | null = `${CALENDLY_API_BASE}/scheduled_events?${baseParams}`;
+    let pageGuard = 0;
+    while (nextUrl && pageGuard < 50) {
+      pageGuard++;
+      const eventsRes: Response = await fetch(nextUrl, {
         headers: { Authorization: `Bearer ${accessToken}` },
-      },
-    );
-
-    if (!eventsRes.ok) {
-      const text = await eventsRes.text();
-      throw new Error(
-        `Calendly events fetch failed: ${eventsRes.status} ${text}`,
-      );
+      });
+      if (!eventsRes.ok) {
+        const text = await eventsRes.text();
+        throw new Error(
+          `Calendly events fetch failed: ${eventsRes.status} ${text}`,
+        );
+      }
+      const pageData = (await eventsRes.json()) as {
+        collection?: CalendlyEvent[];
+        pagination?: { next_page?: string | null };
+      };
+      events.push(...(pageData.collection ?? []));
+      nextUrl = pageData.pagination?.next_page ?? null;
     }
+    console.log(`[calendly-sync] fetched ${events.length} events across ${pageGuard} page(s)`);
 
-    const eventsData = (await eventsRes.json()) as {
-      collection?: CalendlyEvent[];
-    };
-    const events = eventsData.collection ?? [];
-    console.log(`[calendly-sync] fetched ${events.length} events from Calendly`);
 
     let synced = 0;
     let skipped = 0;
