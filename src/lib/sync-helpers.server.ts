@@ -2,6 +2,101 @@
 
 import { supabaseAdmin } from "@/integrations/supabase/admin.server";
 
+// ── Smart platform detection ──────────────────────────────────────────────────
+// Detects which booking platform created a calendar event based on signals
+// in the event title, description/body, organizer/creator info, location,
+// and source URL. Shared by Google + Outlook syncs so events show their true
+// origin instead of just the calendar they happened to land in.
+
+export type DetectedPlatform =
+  | "thecut"
+  | "booksy"
+  | "glossgenius"
+  | "styleseat"
+  | "goldie"
+  | "vagaro"
+  | "fresha"
+  | "mangomint"
+  | "boulevard"
+  | "squire"
+  | "ringmybarber"
+  | "barberly"
+  | "square"
+  | "acuity"
+  | "calendly"
+  | "simplybook"
+  | "zoho"
+  | "setmore"
+  | "outlook_calendar"
+  | "google_calendar";
+
+interface PlatformSignal {
+  platform: DetectedPlatform;
+  emailPatterns?: string[];
+  urlPatterns?: string[];
+  descriptionPatterns?: string[];
+  titlePatterns?: string[];
+}
+
+const PLATFORM_SIGNALS: PlatformSignal[] = [
+  { platform: "thecut", emailPatterns: ["thecut.co"], urlPatterns: ["thecut.co"], descriptionPatterns: ["thecut.co", "thecut", "the cut app"], titlePatterns: ["via thecut", "- thecut"] },
+  { platform: "booksy", emailPatterns: ["booksy.com"], urlPatterns: ["booksy.com"], descriptionPatterns: ["booksy.com", "booksy appointment", "booked via booksy", "booksy biz"], titlePatterns: ["via booksy", "- booksy", "booksy"] },
+  { platform: "glossgenius", emailPatterns: ["glossgenius.com"], urlPatterns: ["glossgenius.com"], descriptionPatterns: ["glossgenius.com", "glossgenius", "gloss genius"], titlePatterns: ["via glossgenius", "- glossgenius"] },
+  { platform: "styleseat", emailPatterns: ["styleseat.com"], urlPatterns: ["styleseat.com"], descriptionPatterns: ["styleseat.com", "styleseat"], titlePatterns: ["via styleseat", "- styleseat"] },
+  { platform: "goldie", emailPatterns: ["heygoldie.com"], urlPatterns: ["heygoldie.com", "goldie.app"], descriptionPatterns: ["heygoldie.com", "goldie app", "via goldie"], titlePatterns: ["via goldie", "- goldie"] },
+  { platform: "vagaro", emailPatterns: ["vagaro.com"], urlPatterns: ["vagaro.com"], descriptionPatterns: ["vagaro.com", "vagaro appointment", "vagaro"], titlePatterns: ["via vagaro", "- vagaro"] },
+  { platform: "fresha", emailPatterns: ["fresha.com"], urlPatterns: ["fresha.com"], descriptionPatterns: ["fresha.com", "fresha appointment", "fresha"], titlePatterns: ["via fresha", "- fresha"] },
+  { platform: "mangomint", emailPatterns: ["mangomint.com"], urlPatterns: ["mangomint.com"], descriptionPatterns: ["mangomint.com", "mangomint"], titlePatterns: ["via mangomint", "- mangomint"] },
+  { platform: "boulevard", emailPatterns: ["joinblvd.com"], urlPatterns: ["joinblvd.com", "boulevard.app"], descriptionPatterns: ["joinblvd.com", "boulevard appointment"], titlePatterns: ["via boulevard", "- boulevard"] },
+  { platform: "squire", emailPatterns: ["getsquire.com"], urlPatterns: ["getsquire.com"], descriptionPatterns: ["getsquire.com", "squire appointment"], titlePatterns: ["via squire", "- squire"] },
+  { platform: "ringmybarber", emailPatterns: ["ringmybarber.com"], urlPatterns: ["ringmybarber.com"], descriptionPatterns: ["ringmybarber.com", "ring my barber"], titlePatterns: ["via ring my barber"] },
+  { platform: "barberly", emailPatterns: ["barberly.com"], urlPatterns: ["barberly.com"], descriptionPatterns: ["barberly.com", "barberly"], titlePatterns: ["via barberly"] },
+  { platform: "square", emailPatterns: ["squareup.com", "messaging.squareup.com"], urlPatterns: ["squareup.com", "square.site", "squ.re"], descriptionPatterns: ["squareup.com", "square appointment", "square appointments", "book with square", "powered by square"], titlePatterns: ["via square", "- square appointments", "square appointment"] },
+  { platform: "acuity", emailPatterns: ["acuityscheduling.com"], urlPatterns: ["acuityscheduling.com", "app.acuityscheduling.com"], descriptionPatterns: ["acuityscheduling.com", "acuity scheduling", "powered by acuity"], titlePatterns: ["via acuity", "- acuity", "acuity"] },
+  { platform: "calendly", emailPatterns: ["calendly.com"], urlPatterns: ["calendly.com"], descriptionPatterns: ["calendly.com", "calendly meeting", "calendly event", "scheduled by calendly", "powered by calendly"], titlePatterns: ["via calendly", "calendly"] },
+  { platform: "setmore", emailPatterns: ["setmore.com"], urlPatterns: ["setmore.com"], descriptionPatterns: ["setmore.com", "setmore appointment"], titlePatterns: ["via setmore", "- setmore"] },
+  { platform: "simplybook", emailPatterns: ["simplybook.me"], urlPatterns: ["simplybook.me"], descriptionPatterns: ["simplybook.me", "simplybook"], titlePatterns: ["via simplybook"] },
+  { platform: "zoho", emailPatterns: ["zoho.com", "zohobookings.com"], urlPatterns: ["zohobookings.com", "zoho.com/bookings"], descriptionPatterns: ["zohobookings.com", "zoho bookings"], titlePatterns: ["via zoho bookings"] },
+];
+
+export interface DetectInput {
+  /** Calendar this event was pulled from. Used as the fallback. */
+  fallback: "google_calendar" | "outlook_calendar";
+  title?: string | null;
+  description?: string | null;
+  organizerEmail?: string | null;
+  organizerName?: string | null;
+  creatorEmail?: string | null;
+  creatorName?: string | null;
+  location?: string | null;
+  sourceUrl?: string | null;
+  sourceTitle?: string | null;
+}
+
+export function detectSourcePlatform(input: DetectInput): DetectedPlatform {
+  const searchText = [
+    input.description ?? "",
+    input.organizerEmail ?? "",
+    input.organizerName ?? "",
+    input.creatorEmail ?? "",
+    input.creatorName ?? "",
+    input.sourceUrl ?? "",
+    input.sourceTitle ?? "",
+    input.location ?? "",
+  ]
+    .join(" ")
+    .toLowerCase();
+  const titleText = (input.title ?? "").toLowerCase();
+
+  for (const signal of PLATFORM_SIGNALS) {
+    if (signal.emailPatterns?.some((p) => searchText.includes(p.toLowerCase()))) return signal.platform;
+    if (signal.urlPatterns?.some((p) => searchText.includes(p.toLowerCase()))) return signal.platform;
+    if (signal.descriptionPatterns?.some((p) => searchText.includes(p.toLowerCase()))) return signal.platform;
+    if (signal.titlePatterns?.some((p) => titleText.includes(p.toLowerCase()))) return signal.platform;
+  }
+  return input.fallback;
+}
+
 /** If a row was manually rescheduled in Jey Link, drop starts_at/ends_at from
  *  the upsert payload so the sync from the source platform doesn't revert the
  *  user's local change. */
