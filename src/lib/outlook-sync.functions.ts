@@ -6,7 +6,13 @@ import {
   getValidOutlookAccessToken,
 } from "@/lib/outlook-writeback.server";
 import { syncGoogleBlocksForUser } from "@/lib/google-writeback.server";
-import { cleanupCalendarDuplicates, dedupeCrossCalendarRows, retagRelayEvents, stripTimesIfOverridden } from "@/lib/sync-helpers.server";
+import {
+  cleanupCalendarDuplicates,
+  dedupeCrossCalendarRows,
+  detectSourcePlatform,
+  retagRelayEvents,
+  stripTimesIfOverridden,
+} from "@/lib/sync-helpers.server";
 
 
 type OutlookEvent = {
@@ -148,17 +154,35 @@ export const syncOutlookCalendar = createServerFn({ method: "POST" }).handler(
       const clientName = split[0] || "Untitled";
       const service = split.length > 1 ? split.slice(1).join(" - ") : null;
 
+      // Detect which platform this event actually came from (Booksy, Square,
+      // Calendly, etc.) rather than always tagging it as outlook_calendar.
+      const bodyText =
+        ev.body?.content && ev.body.contentType === "text"
+          ? ev.body.content
+          : (ev.bodyPreview ?? "");
+      const sourcePlatform = detectSourcePlatform({
+        fallback: "outlook_calendar",
+        title: subject,
+        description: bodyText,
+        organizerEmail: ev.organizer?.emailAddress?.address,
+        organizerName: ev.organizer?.emailAddress?.name,
+        location: ev.location?.displayName,
+        sourceUrl: ev.webLink,
+      });
+
       const { data: existing } = await supabaseAdmin
         .from("appointments")
         .select("id, local_override")
         .eq("user_id", userId)
         .eq("external_id", ev.id)
-        .eq("source_platform", "outlook_calendar")
+        .or(
+          "source_platform.eq.outlook_calendar,source_platform.eq.thecut,source_platform.eq.booksy,source_platform.eq.glossgenius,source_platform.eq.styleseat,source_platform.eq.goldie,source_platform.eq.vagaro,source_platform.eq.fresha,source_platform.eq.mangomint,source_platform.eq.boulevard,source_platform.eq.squire,source_platform.eq.ringmybarber,source_platform.eq.barberly,source_platform.eq.square,source_platform.eq.acuity,source_platform.eq.calendly,source_platform.eq.setmore,source_platform.eq.simplybook,source_platform.eq.zoho",
+        )
         .maybeSingle();
 
       const row = {
         user_id: userId,
-        source_platform: "outlook_calendar",
+        source_platform: sourcePlatform,
         external_id: ev.id,
         external_url: ev.webLink ?? null,
         client_name: clientName,
