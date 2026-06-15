@@ -97,7 +97,7 @@ function Schedule() {
 
   const todayAppts: Appointment[] = useMemo(() => {
     const rows = data?.items ?? [];
-    return rows.map(toUiAppointment).filter((a) => isToday(a.start));
+    return rows.map(toUiAppointment).filter((a) => overlapsToday(a.start, a.durationMin));
   }, [data]);
 
   const [hiddenPlatforms, setHiddenPlatforms] = useState<Set<PlatformId>>(new Set());
