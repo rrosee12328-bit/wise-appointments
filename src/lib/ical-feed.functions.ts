@@ -15,6 +15,15 @@ async function getUserId(): Promise<string> {
   return data.user.id;
 }
 
+async function getUserIdOrNull(): Promise<string | null> {
+  const authHeader = getRequestHeader("authorization");
+  const token = authHeader?.replace(/^Bearer\s+/i, "");
+  if (!token) return null;
+  const { data, error } = await supabaseAdmin.auth.getUser(token);
+  if (error || !data.user) return null;
+  return data.user.id;
+}
+
 const connectSchema = z.object({
   platform: z.enum(ICAL_PLATFORMS),
   feedUrl: z
