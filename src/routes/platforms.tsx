@@ -258,6 +258,10 @@ function Platforms() {
     else if (platform === "outlook_calendar") connectOutlook.mutate();
   };
 
+  const handleDisconnect = (platform: string) => {
+    disconnectPlatformMut.mutate(platform);
+  };
+
   // Google connect
   const connectGoogle = useMutation({
     mutationFn: async () => {
@@ -518,6 +522,7 @@ function Platforms() {
             ) as Parameters<typeof SyncStatusPanel>[0]["connections"]}
             onSyncNow={handleSyncNow}
             onReconnect={handleReconnect}
+            onDisconnect={handleDisconnect}
             isSyncing={isSyncing}
           />
         </div>

@@ -1,9 +1,9 @@
 /**
  * SyncStatusPanel — shows Google Calendar and Outlook Calendar connection
- * status, last synced time, sync errors, and a manual "Sync Now" button.
+ * status, last synced time, sync errors, manual Sync Now, Disconnect, and Reconnect buttons.
  */
 import { useState } from "react";
-import { RefreshCw, CheckCircle2, XCircle, AlertCircle, Clock, Wifi, WifiOff } from "lucide-react";
+import { RefreshCw, CheckCircle2, XCircle, AlertCircle, Clock, Wifi, WifiOff, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +20,7 @@ type Props = {
   connections: SyncConnection[];
   onSyncNow: (platform: string) => Promise<void>;
   onReconnect: (platform: string) => void;
+  onDisconnect: (platform: string) => void;
   isSyncing: boolean;
 };
 
@@ -59,7 +60,7 @@ function shortenSyncError(err: string | null): string {
 }
 
 
-export function SyncStatusPanel({ connections, onSyncNow, onReconnect, isSyncing }: Props) {
+export function SyncStatusPanel({ connections, onSyncNow, onReconnect, onDisconnect, isSyncing }: Props) {
   const [syncingPlatform, setSyncingPlatform] = useState<string | null>(null);
 
   const connMap = new Map(connections.map((c) => [c.platform, c]));
@@ -117,7 +118,7 @@ export function SyncStatusPanel({ connections, onSyncNow, onReconnect, isSyncing
               )}
             >
               <div className="flex items-start gap-2.5">
-                {/* Status dot */}
+                {/* Status icon */}
                 <div className="mt-0.5 shrink-0">
                   {hasError || expired ? (
                     <AlertCircle className="h-4 w-4 text-destructive" />
@@ -171,7 +172,7 @@ export function SyncStatusPanel({ connections, onSyncNow, onReconnect, isSyncing
                     </div>
                   )}
 
-                  {/* Error message (short, full text on hover) */}
+                  {/* Error message */}
                   {hasError && (
                     <div
                       className="mt-1 truncate rounded-md bg-destructive/10 px-2 py-1 text-[11px] text-destructive"
@@ -183,33 +184,62 @@ export function SyncStatusPanel({ connections, onSyncNow, onReconnect, isSyncing
                 </div>
               </div>
 
-              {/* Action button — full width, always visible below content */}
-              <div className="mt-2 flex justify-end">
+              {/* Action buttons — always visible below content */}
+              <div className="mt-2.5 flex items-center justify-end gap-2">
+                {/* When connected and healthy: Sync Now + Disconnect */}
                 {isConnected && !needsReconnect && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 gap-1 text-[11px]"
-                    disabled={isSyncingThis || isSyncing}
-                    onClick={() => handleSync(cal.id)}
-                  >
-                    <RefreshCw className={cn("h-3 w-3", isSyncingThis && "animate-spin")} />
-                    {isSyncingThis ? "Syncing…" : "Sync Now"}
-                  </Button>
+                  <>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 gap-1 text-[11px] text-muted-foreground hover:text-destructive"
+                      onClick={() => onDisconnect(cal.id)}
+                      title="Disconnect this calendar"
+                    >
+                      <LogOut className="h-3 w-3" />
+                      Disconnect
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 gap-1 text-[11px]"
+                      disabled={isSyncingThis || isSyncing}
+                      onClick={() => handleSync(cal.id)}
+                    >
+                      <RefreshCw className={cn("h-3 w-3", isSyncingThis && "animate-spin")} />
+                      {isSyncingThis ? "Syncing…" : "Sync Now"}
+                    </Button>
+                  </>
                 )}
+
+                {/* When disconnected/expired/error: Reconnect */}
                 {needsReconnect && (
-                  <Button
-                    size="sm"
-                    variant={hasError || expired ? "destructive" : "default"}
-                    className="h-7 text-[11px]"
-                    onClick={() => onReconnect(cal.id)}
-                  >
-                    {!conn ? "Connect" : "Reconnect"}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {/* Show disconnect even when errored so user can cleanly remove it */}
+                    {conn && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 gap-1 text-[11px] text-muted-foreground hover:text-destructive"
+                        onClick={() => onDisconnect(cal.id)}
+                        title="Disconnect this calendar"
+                      >
+                        <LogOut className="h-3 w-3" />
+                        Disconnect
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant={hasError || expired ? "destructive" : "default"}
+                      className="h-7 text-[11px]"
+                      onClick={() => onReconnect(cal.id)}
+                    >
+                      {!conn ? "Connect" : "Reconnect"}
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>
-
           );
         })}
       </div>
