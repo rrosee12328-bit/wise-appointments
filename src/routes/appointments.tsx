@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
-import { Search, List, CalendarDays, CalendarRange } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Search, List, CalendarDays, CalendarRange, CalendarCheck2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AppointmentRow } from "@/components/AppointmentCard";
-import { DayTimelineView, MonthGridView } from "@/components/CalendarViews";
+import { DayTimelineView, WeekView, MonthGridView } from "@/components/CalendarViews";
 import { AppointmentDetailDialog } from "@/components/AppointmentDetailDialog";
+import { WalkInDialog } from "@/components/WalkInDialog";
 
 import { useAuth } from "@/hooks/use-auth";
 import { useAutoSyncPlatforms } from "@/hooks/use-auto-sync-platforms";
@@ -42,9 +43,11 @@ function groupByDay(appts: Appointment[]) {
 function Appointments() {
   const [q, setQ] = useState("");
   const [detailAppt, setDetailAppt] = useState<Appointment | null>(null);
+  const [walkInDate, setWalkInDate] = useState<Date | null>(null);
+  const [localWalkIns, setLocalWalkIns] = useState<Appointment[]>([]);
   const { session } = useAuth();
   const fetchAppts = useServerFn(getAppointments);
-
+  const queryClient = useQueryClient();
 
   useAutoSyncPlatforms(!!session);
 
@@ -52,9 +55,15 @@ function Appointments() {
     queryKey: ["appointments"],
     queryFn: () => fetchAppts(),
     enabled: !!session,
+    // Refresh every 5 minutes so new calendar events appear without manual reload
+    refetchInterval: 5 * 60 * 1000,
+    refetchIntervalInBackground: false,
   });
 
-  const all: Appointment[] = useMemo(() => (data?.items ?? []).map(toUiAppointment), [data]);
+  const all: Appointment[] = useMemo(
+    () => [...(data?.items ?? []).map(toUiAppointment), ...localWalkIns],
+    [data, localWalkIns],
+  );
 
   const filter = useCallback(
     (list: Appointment[]) =>
@@ -86,8 +95,19 @@ function Appointments() {
     [all, filter, now],
   );
 
+  function handleAddNew(date: Date) {
+    setWalkInDate(date);
+  }
+
+  function handleWalkInAdd(appt: Appointment) {
+    // Merge walk-in into local list; it will also be persisted via WalkInDialog's existing logic
+    setLocalWalkIns((prev) => [...prev, appt]);
+    // Refresh appointments from server to pick up any DB writes
+    void queryClient.invalidateQueries({ queryKey: ["appointments"] });
+  }
+
   return (
-    <main className="mx-auto max-w-md px-4 pt-8">
+    <main className="mx-auto max-w-2xl px-4 pt-8">
       <header className="mb-4">
         <h1 className="text-xl font-semibold text-foreground">Appointments</h1>
       </header>
@@ -103,12 +123,15 @@ function Appointments() {
       </div>
 
       <Tabs defaultValue="list" className="mb-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="list" className="gap-1.5">
             <List className="h-3.5 w-3.5" /> List
           </TabsTrigger>
           <TabsTrigger value="day" className="gap-1.5">
             <CalendarDays className="h-3.5 w-3.5" /> Day
+          </TabsTrigger>
+          <TabsTrigger value="week" className="gap-1.5">
+            <CalendarCheck2 className="h-3.5 w-3.5" /> Week
           </TabsTrigger>
           <TabsTrigger value="month" className="gap-1.5">
             <CalendarRange className="h-3.5 w-3.5" /> Month
@@ -164,19 +187,44 @@ function Appointments() {
         </TabsContent>
 
         <TabsContent value="day" className="mt-4">
-          <DayTimelineView appointments={all} />
+          <DayTimelineView
+            appointments={all}
+            onSelect={setDetailAppt}
+            onAddNew={handleAddNew}
+          />
+        </TabsContent>
+
+        <TabsContent value="week" className="mt-4">
+          <WeekView
+            appointments={all}
+            onSelect={setDetailAppt}
+            onAddNew={handleAddNew}
+          />
         </TabsContent>
 
         <TabsContent value="month" className="mt-4">
-          <MonthGridView appointments={all} />
+          <MonthGridView
+            appointments={all}
+            onSelectDay={(d) => {
+              // Switch to day view for that date — for now open walk-in dialog
+              handleAddNew(d);
+            }}
+            onAddNew={handleAddNew}
+          />
         </TabsContent>
       </Tabs>
+
       <AppointmentDetailDialog
         appt={detailAppt}
         open={!!detailAppt}
         onOpenChange={(o) => !o && setDetailAppt(null)}
       />
+
+      <WalkInDialog
+        open={!!walkInDate}
+        onOpenChange={(o) => !o && setWalkInDate(null)}
+        onAdd={handleWalkInAdd}
+      />
     </main>
   );
 }
-

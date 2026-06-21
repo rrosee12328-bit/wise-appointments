@@ -64,7 +64,7 @@ export const listConnections = createServerFn({ method: "GET" })
     const [oauthRes, linkRes] = await Promise.all([
       supabaseAdmin
         .from("platform_connections")
-        .select("platform, account_label, token_expires_at, updated_at")
+        .select("platform, account_label, token_expires_at, last_synced_at, status, metadata, updated_at")
         .eq("user_id", userData.user.id),
       supabaseAdmin
         .from("platform_links")
@@ -78,12 +78,18 @@ export const listConnections = createServerFn({ method: "GET" })
           platform: row.platform as string,
           account_email: row.account_label as string | null,
           expires_at: row.token_expires_at as string | null,
+          last_synced_at: row.last_synced_at as string | null,
+          status: row.status as string | null,
+          sync_error: (row.metadata as Record<string, unknown> | null)?.sync_error as string | null ?? null,
           updated_at: row.updated_at as string,
         }))),
         ...((linkRes.data ?? []).map((row) => ({
           platform: row.platform as string,
           account_email: row.handle as string | null,
           expires_at: null as string | null,
+          last_synced_at: null as string | null,
+          status: "connected" as string | null,
+          sync_error: null as string | null,
           updated_at: row.updated_at as string,
         }))),
       ],

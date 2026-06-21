@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { supabaseAdmin } from "@/integrations/supabase/admin.server";
 import {
+  OutlookNotConnectedError,
   OutlookReauthRequiredError,
   getValidOutlookAccessToken,
 } from "@/lib/outlook-writeback.server";
@@ -30,6 +31,13 @@ type OutlookEvent = {
   transactionId?: string;
 };
 
+type OutlookCalendar = {
+  id: string;
+  name?: string;
+  isDefaultCalendar?: boolean;
+  canEdit?: boolean;
+};
+
 
 function toIso(dt: { dateTime?: string; timeZone?: string } | undefined): string | null {
   if (!dt?.dateTime) return null;
@@ -42,6 +50,71 @@ function toIso(dt: { dateTime?: string; timeZone?: string } | undefined): string
   return isNaN(d.getTime()) ? null : d.toISOString();
 }
 
+// ── Fetch all calendars the user has ─────────────────────────────────────────
+
+async function fetchOutlookCalendars(accessToken: string): Promise<OutlookCalendar[]> {
+  const res = await fetch(
+    "https://graph.microsoft.com/v1.0/me/calendars?$select=id,name,isDefaultCalendar,canEdit&$top=50",
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (!res.ok) return [];
+  const data = (await res.json()) as { value?: OutlookCalendar[] };
+  return data.value ?? [];
+}
+
+// ── Fetch events from a single calendar with pagination ───────────────────────
+
+async function fetchAllEventsFromOutlookCalendar(
+  accessToken: string,
+  calendarId: string,
+  startWindow: string,
+  endWindow: string,
+): Promise<OutlookEvent[]> {
+  const allItems: OutlookEvent[] = [];
+  const baseUrl =
+    calendarId === "default"
+      ? "https://graph.microsoft.com/v1.0/me/calendarView"
+      : `https://graph.microsoft.com/v1.0/me/calendars/${encodeURIComponent(calendarId)}/calendarView`;
+
+  let nextLink: string | undefined;
+  const params = new URLSearchParams({
+    startDateTime: startWindow,
+    endDateTime: endWindow,
+    $top: "250",
+    $orderby: "start/dateTime",
+    $select:
+      "id,subject,bodyPreview,body,isCancelled,showAs,start,end,organizer,location,webLink,transactionId",
+  });
+
+  let url: string = `${baseUrl}?${params}`;
+
+  do {
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Prefer: 'outlook.timezone="UTC"',
+      },
+    });
+
+    if (!res.ok) {
+      // Non-primary calendar may return 403 if no access — skip gracefully
+      if (res.status === 403 || res.status === 404) break;
+      const text = await res.text();
+      throw new Error(`Outlook Calendar fetch failed (${calendarId}): ${res.status} ${text}`);
+    }
+
+    const payload = (await res.json()) as {
+      value?: OutlookEvent[];
+      "@odata.nextLink"?: string;
+    };
+    allItems.push(...(payload.value ?? []));
+    nextLink = payload["@odata.nextLink"];
+    url = nextLink ?? "";
+  } while (nextLink);
+
+  return allItems;
+}
+
 export const syncOutlookCalendar = createServerFn({ method: "POST" }).handler(
   async () => {
     const authHeader = getRequestHeader("authorization");
@@ -52,44 +125,80 @@ export const syncOutlookCalendar = createServerFn({ method: "POST" }).handler(
     if (userErr || !userData.user) throw new Error("Invalid session");
     const userId = userData.user.id;
 
+    // Fetch current connection metadata for error tracking
+    const { data: connMeta } = await supabaseAdmin
+      .from("platform_connections")
+      .select("metadata")
+      .eq("user_id", userId)
+      .eq("platform", "outlook_calendar")
+      .maybeSingle();
+
     let accessToken: string;
     try {
       accessToken = await getValidOutlookAccessToken(userId);
     } catch (err) {
       if (err instanceof OutlookReauthRequiredError) {
+        await supabaseAdmin
+          .from("platform_connections")
+          .update({
+            status: "disconnected",
+            metadata: {
+              ...(connMeta?.metadata as Record<string, unknown> ?? {}),
+              sync_error: "Outlook authorization expired — please reconnect",
+              sync_error_at: new Date().toISOString(),
+            },
+          })
+          .eq("user_id", userId)
+          .eq("platform", "outlook_calendar");
         return { synced: 0, skipped: 0, connected: false, needsReconnect: true };
       }
-      // Not connected → return cleanly.
+      if (err instanceof OutlookNotConnectedError) {
+        // Not connected → return cleanly.
+        return { synced: 0, skipped: 0, connected: false };
+      }
+      // Transient error
+      await supabaseAdmin
+        .from("platform_connections")
+        .update({
+          metadata: {
+            ...(connMeta?.metadata as Record<string, unknown> ?? {}),
+            sync_error: `Sync failed: ${(err as Error).message}`,
+            sync_error_at: new Date().toISOString(),
+          },
+        })
+        .eq("user_id", userId)
+        .eq("platform", "outlook_calendar");
       return { synced: 0, skipped: 0, connected: false };
     }
 
     const startWindow = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const endWindow = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString();
-    const params = new URLSearchParams({
-      startDateTime: startWindow,
-      endDateTime: endWindow,
-      $top: "250",
-      $orderby: "start/dateTime",
-      $select:
-        "id,subject,bodyPreview,body,isCancelled,showAs,start,end,organizer,location,webLink,transactionId",
-    });
 
-    const evRes = await fetch(
-      `https://graph.microsoft.com/v1.0/me/calendarView?${params}`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Prefer: 'outlook.timezone="UTC"',
-        },
-      },
-    );
-    if (!evRes.ok) {
-      const text = await evRes.text();
-      throw new Error(`Outlook Calendar fetch failed: ${evRes.status} ${text}`);
+    // Fetch all Outlook calendars (not just default)
+    const outlookCalendars = await fetchOutlookCalendars(accessToken);
+    const calendarIds: string[] = outlookCalendars.length > 0
+      ? outlookCalendars.map((c) => c.id)
+      : ["default"];
+
+    // Fetch events from all calendars, de-duplicate by event id
+    const eventMap = new Map<string, OutlookEvent>();
+    for (const calId of calendarIds) {
+      try {
+        const events = await fetchAllEventsFromOutlookCalendar(
+          accessToken,
+          calId,
+          startWindow,
+          endWindow,
+        );
+        for (const ev of events) {
+          if (!eventMap.has(ev.id)) eventMap.set(ev.id, ev);
+        }
+      } catch (e) {
+        console.error(`outlook: failed to fetch calendar ${calId}`, e);
+      }
     }
-    const payload = (await evRes.json()) as { value?: OutlookEvent[] };
-    const items = payload.value ?? [];
 
+    const items = Array.from(eventMap.values());
     let synced = 0;
     let skipped = 0;
 
@@ -214,9 +323,19 @@ export const syncOutlookCalendar = createServerFn({ method: "POST" }).handler(
       synced++;
     }
 
+    // Update last_synced_at and clear any previous sync error
     await supabaseAdmin
       .from("platform_connections")
-      .update({ last_synced_at: new Date().toISOString() })
+      .update({
+        last_synced_at: new Date().toISOString(),
+        status: "connected",
+        metadata: {
+          ...(connMeta?.metadata as Record<string, unknown> ?? {}),
+          sync_error: null,
+          sync_error_at: null,
+          calendars_synced: calendarIds.length,
+        },
+      })
       .eq("user_id", userId)
       .eq("platform", "outlook_calendar");
 
@@ -226,7 +345,7 @@ export const syncOutlookCalendar = createServerFn({ method: "POST" }).handler(
     try { await dedupeCrossCalendarRows(userId, "outlook_calendar"); } catch (e) { console.error("outlook: dedupeCrossCalendarRows failed", e); }
     try { await retagRelayEvents(userId); } catch (e) { console.error("outlook: retagRelayEvents failed", e); }
 
-    return { synced, skipped, connected: true };
+    return { synced, skipped, connected: true, calendarsScanned: calendarIds.length };
 
   },
 );

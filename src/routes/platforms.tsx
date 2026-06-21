@@ -16,6 +16,9 @@ import {
   disconnectPlatform,
 } from "@/lib/google-oauth.functions";
 import { createOutlookAuthUrl } from "@/lib/outlook-oauth.functions";
+import { syncGoogleCalendar } from "@/lib/google-sync.functions";
+import { syncOutlookCalendar } from "@/lib/outlook-sync.functions";
+import { SyncStatusPanel } from "@/components/SyncStatusPanel";
 import { createSquareAuthUrl } from "@/lib/square-oauth.functions";
 import { createCalendlyAuthUrl } from "@/lib/calendly-oauth.functions";
 import { createAcuityAuthUrl } from "@/lib/acuity-oauth.functions";
@@ -123,6 +126,8 @@ function Platforms() {
   const disconnectIcal = useServerFn(disconnectIcalFeed);
   const listIcal = useServerFn(listIcalFeeds);
   const refreshIcal = useServerFn(refreshIcalFeed);
+  const syncGoogle = useServerFn(syncGoogleCalendar);
+  const syncOutlook = useServerFn(syncOutlookCalendar);
 
   // Which API key dialog is open
   const [apiKeyDialog, setApiKeyDialog] = useState<"cliniko" | "zenoti" | null>(null);
@@ -219,6 +224,39 @@ function Platforms() {
   const hasGoogleOrOutlookConnected =
     connectedSet.has("google_calendar") || connectedSet.has("outlook_calendar");
 
+  // Manual sync handler for SyncStatusPanel
+  const [isSyncing, setIsSyncing] = useState(false);
+  const handleSyncNow = async (platform: string) => {
+    setIsSyncing(true);
+    try {
+      if (platform === "google_calendar") {
+        const result = await syncGoogle();
+        if ((result as { needsReconnect?: boolean }).needsReconnect) {
+          toast.error("Google Calendar needs to be reconnected.");
+        } else {
+          toast.success(`Google Calendar synced — ${(result as { synced?: number }).synced ?? 0} events`);
+        }
+      } else if (platform === "outlook_calendar") {
+        const result = await syncOutlook();
+        if ((result as { needsReconnect?: boolean }).needsReconnect) {
+          toast.error("Outlook Calendar needs to be reconnected.");
+        } else {
+          toast.success(`Outlook Calendar synced — ${(result as { synced?: number }).synced ?? 0} events`);
+        }
+      }
+      qc.invalidateQueries({ queryKey: ["platform-connections"] });
+      qc.invalidateQueries({ queryKey: ["appointments"] });
+    } catch (e) {
+      toast.error(`Sync failed: ${(e as Error).message}`);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleReconnect = (platform: string) => {
+    if (platform === "google_calendar") connectGoogle.mutate();
+    else if (platform === "outlook_calendar") connectOutlook.mutate();
+  };
 
   // Google connect
   const connectGoogle = useMutation({
@@ -468,6 +506,20 @@ function Platforms() {
       {connectedSet.size === 0 && (
         <div className="mb-6 rounded-md border border-dashed border-border bg-card p-4 text-sm text-muted-foreground">
           No platforms connected yet. Connect Square or Google Calendar below.
+        </div>
+      )}
+
+      {/* Calendar Sync Status Panel — always visible when Google or Outlook is connected */}
+      {hasGoogleOrOutlookConnected && (
+        <div className="mb-6">
+          <SyncStatusPanel
+            connections={(realConnections?.connections ?? []).filter(
+              (c) => c.platform === "google_calendar" || c.platform === "outlook_calendar",
+            ) as Parameters<typeof SyncStatusPanel>[0]["connections"]}
+            onSyncNow={handleSyncNow}
+            onReconnect={handleReconnect}
+            isSyncing={isSyncing}
+          />
         </div>
       )}
 
