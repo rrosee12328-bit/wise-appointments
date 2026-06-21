@@ -45,6 +45,20 @@ function isTokenExpired(expiresAt: string | null): boolean {
   return new Date(expiresAt).getTime() < Date.now();
 }
 
+function shortenSyncError(err: string | null): string {
+  if (!err) return "";
+  const s = err.toLowerCase();
+  if (s.includes("reconnect") || s.includes("invalid_grant") || s.includes("authorization expired"))
+    return "Authorization expired";
+  if (s.includes("refresh token")) return "Reconnect required";
+  if (s.includes("401") || s.includes("unauthorized")) return "Unauthorized — reconnect";
+  if (s.includes("403") || s.includes("forbidden")) return "Permission denied";
+  if (s.includes("network") || s.includes("fetch")) return "Network error";
+  if (s.includes("token refresh")) return "Token refresh failed";
+  return "Sync failed";
+}
+
+
 export function SyncStatusPanel({ connections, onSyncNow, onReconnect, isSyncing }: Props) {
   const [syncingPlatform, setSyncingPlatform] = useState<string | null>(null);
 
@@ -102,99 +116,100 @@ export function SyncStatusPanel({ connections, onSyncNow, onReconnect, isSyncing
                     : "border-border/50 bg-muted/30",
               )}
             >
-              <div className="flex items-start justify-between gap-2">
-                {/* Left: icon + info */}
-                <div className="flex items-start gap-2.5">
-                  {/* Status dot */}
-                  <div className="mt-0.5 shrink-0">
-                    {hasError || expired ? (
-                      <AlertCircle className="h-4 w-4 text-destructive" />
-                    ) : isConnected ? (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </div>
-
-                  <div className="flex flex-col gap-0.5">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className="h-2 w-2 rounded-full"
-                        style={{ background: cal.color }}
-                      />
-                      <span className="text-sm font-medium text-foreground">
-                        {cal.label}
-                      </span>
-                    </div>
-
-                    {/* Account email */}
-                    {conn?.account_email && (
-                      <span className="text-[11px] text-muted-foreground">
-                        {conn.account_email}
-                      </span>
-                    )}
-
-                    {/* Status line */}
-                    <div className="flex items-center gap-1 text-[11px]">
-                      {isConnected && !hasError && !expired ? (
-                        <>
-                          <Wifi className="h-3 w-3 text-emerald-500" />
-                          <span className="text-emerald-600 dark:text-emerald-400">Connected</span>
-                        </>
-                      ) : (
-                        <>
-                          <WifiOff className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-muted-foreground">
-                            {!conn ? "Not connected" : expired ? "Token expired" : "Disconnected"}
-                          </span>
-                        </>
-                      )}
-                    </div>
-
-                    {/* Last synced */}
-                    {isConnected && (
-                      <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        <span>Last synced: {formatRelativeTime(conn?.last_synced_at ?? null)}</span>
-                      </div>
-                    )}
-
-                    {/* Error message */}
-                    {hasError && (
-                      <div className="mt-1 rounded-md bg-destructive/10 px-2 py-1 text-[11px] text-destructive">
-                        {conn!.sync_error}
-                      </div>
-                    )}
-                  </div>
+              <div className="flex items-start gap-2.5">
+                {/* Status dot */}
+                <div className="mt-0.5 shrink-0">
+                  {hasError || expired ? (
+                    <AlertCircle className="h-4 w-4 text-destructive" />
+                  ) : isConnected ? (
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-muted-foreground" />
+                  )}
                 </div>
 
-                {/* Right: action buttons */}
-                <div className="flex shrink-0 flex-col gap-1.5">
-                  {isConnected && !needsReconnect && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 gap-1 text-[11px]"
-                      disabled={isSyncingThis || isSyncing}
-                      onClick={() => handleSync(cal.id)}
-                    >
-                      <RefreshCw className={cn("h-3 w-3", isSyncingThis && "animate-spin")} />
-                      {isSyncingThis ? "Syncing…" : "Sync Now"}
-                    </Button>
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ background: cal.color }}
+                    />
+                    <span className="truncate text-sm font-medium text-foreground">
+                      {cal.label}
+                    </span>
+                  </div>
+
+                  {/* Account email */}
+                  {conn?.account_email && (
+                    <span className="truncate text-[11px] text-muted-foreground">
+                      {conn.account_email}
+                    </span>
                   )}
-                  {needsReconnect && (
-                    <Button
-                      size="sm"
-                      variant={hasError || expired ? "destructive" : "default"}
-                      className="h-7 text-[11px]"
-                      onClick={() => onReconnect(cal.id)}
+
+                  {/* Status line */}
+                  <div className="flex items-center gap-1 text-[11px]">
+                    {isConnected && !hasError && !expired ? (
+                      <>
+                        <Wifi className="h-3 w-3 shrink-0 text-emerald-500" />
+                        <span className="text-emerald-600 dark:text-emerald-400">Connected</span>
+                      </>
+                    ) : (
+                      <>
+                        <WifiOff className="h-3 w-3 shrink-0 text-muted-foreground" />
+                        <span className="text-muted-foreground">
+                          {!conn ? "Not connected" : expired ? "Token expired" : "Disconnected"}
+                        </span>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Last synced */}
+                  {isConnected && (
+                    <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                      <Clock className="h-3 w-3 shrink-0" />
+                      <span className="truncate">Last synced: {formatRelativeTime(conn?.last_synced_at ?? null)}</span>
+                    </div>
+                  )}
+
+                  {/* Error message (short, full text on hover) */}
+                  {hasError && (
+                    <div
+                      className="mt-1 truncate rounded-md bg-destructive/10 px-2 py-1 text-[11px] text-destructive"
+                      title={conn!.sync_error ?? ""}
                     >
-                      {!conn ? "Connect" : "Reconnect"}
-                    </Button>
+                      {shortenSyncError(conn!.sync_error)}
+                    </div>
                   )}
                 </div>
               </div>
+
+              {/* Action button — full width, always visible below content */}
+              <div className="mt-2 flex justify-end">
+                {isConnected && !needsReconnect && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 gap-1 text-[11px]"
+                    disabled={isSyncingThis || isSyncing}
+                    onClick={() => handleSync(cal.id)}
+                  >
+                    <RefreshCw className={cn("h-3 w-3", isSyncingThis && "animate-spin")} />
+                    {isSyncingThis ? "Syncing…" : "Sync Now"}
+                  </Button>
+                )}
+                {needsReconnect && (
+                  <Button
+                    size="sm"
+                    variant={hasError || expired ? "destructive" : "default"}
+                    className="h-7 text-[11px]"
+                    onClick={() => onReconnect(cal.id)}
+                  >
+                    {!conn ? "Connect" : "Reconnect"}
+                  </Button>
+                )}
+              </div>
             </div>
+
           );
         })}
       </div>
