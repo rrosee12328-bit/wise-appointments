@@ -9,6 +9,8 @@ import { syncAcuityAppointments } from "@/lib/acuity-sync.functions";
 import { syncZohoBookings } from "@/lib/zoho-sync.functions";
 import { listIcalFeeds, refreshIcalFeed } from "@/lib/ical-feed.functions";
 
+const SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
 export function useAutoSyncPlatforms(enabled: boolean) {
   const hasRun = useRef(false);
   const queryClient = useQueryClient();
@@ -22,34 +24,33 @@ export function useAutoSyncPlatforms(enabled: boolean) {
   const refreshFeed = useServerFn(refreshIcalFeed);
 
   useEffect(() => {
-    if (!enabled || hasRun.current) return;
+    if (!enabled) return;
 
-    hasRun.current = true;
-    let cancelled = false;
-
-    // Kick off iCal feed refreshes in parallel with the OAuth platform syncs.
-    const icalPromise = listFeeds()
-      .then(({ feeds }) =>
-        Promise.allSettled(
-          feeds.map((f) =>
-            refreshFeed({ data: { platform: f.platform } }).then(() => true),
+    async function runSync(cancelled: { value: boolean }) {
+      // Kick off iCal feed refreshes in parallel with the OAuth platform syncs.
+      const icalPromise = listFeeds()
+        .then(({ feeds }) =>
+          Promise.allSettled(
+            feeds.map((f) =>
+              refreshFeed({ data: { platform: f.platform } }).then(() => true),
+            ),
           ),
-        ),
-      )
-      .catch((err) => {
-        console.error("iCal feed list failed", err);
-        return [] as PromiseSettledResult<boolean>[];
-      });
+        )
+        .catch((err) => {
+          console.error("iCal feed list failed", err);
+          return [] as PromiseSettledResult<boolean>[];
+        });
 
-    void Promise.allSettled([
-      syncGoogle(),
-      syncOutlook(),
-      syncSquare(),
-      syncCalendly(),
-      syncAcuity(),
-      syncZoho(),
-    ]).then(async (results) => {
-      if (cancelled) return;
+      const results = await Promise.allSettled([
+        syncGoogle(),
+        syncOutlook(),
+        syncSquare(),
+        syncCalendly(),
+        syncAcuity(),
+        syncZoho(),
+      ]);
+
+      if (cancelled.value) return;
 
       const icalResults = await icalPromise;
       const syncedAnyIcal = Array.isArray(icalResults)
@@ -66,6 +67,8 @@ export function useAutoSyncPlatforms(enabled: boolean) {
       if (syncedAnyConnectedPlatform) {
         void queryClient.invalidateQueries({ queryKey: ["appointments"] });
         void queryClient.invalidateQueries({ queryKey: ["ical-feeds"] });
+        // Also refresh platform connection status (last_synced_at, sync_error)
+        void queryClient.invalidateQueries({ queryKey: ["platform-connections"] });
       }
 
       results.forEach((result) => {
@@ -80,10 +83,26 @@ export function useAutoSyncPlatforms(enabled: boolean) {
           }
         });
       }
-    });
+    }
+
+    const cancelled = { value: false };
+
+    // Run immediately on first mount
+    if (!hasRun.current) {
+      hasRun.current = true;
+      void runSync(cancelled);
+    }
+
+    // Then run every 5 minutes
+    const intervalId = setInterval(() => {
+      if (!cancelled.value) {
+        void runSync(cancelled);
+      }
+    }, SYNC_INTERVAL_MS);
 
     return () => {
-      cancelled = true;
+      cancelled.value = true;
+      clearInterval(intervalId);
     };
   }, [enabled, queryClient, syncGoogle, syncOutlook, syncSquare, syncCalendly, syncAcuity, syncZoho, listFeeds, refreshFeed]);
 }

@@ -6,7 +6,7 @@ import { signState } from "@/lib/oauth-state.server";
 import { randomBytes } from "crypto";
 
 const GOOGLE_SCOPES = [
-  "https://www.googleapis.com/auth/calendar.readonly",
+  "https://www.googleapis.com/auth/calendar",
   "openid",
   "email",
 ].join(" ");

@@ -77,6 +77,20 @@ export const Route = createFileRoute("/api/oauth/google/callback")({
 
         const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
+        // Google only returns refresh_token on first auth or when prompt=consent.
+        // If no new refresh_token was returned, preserve the existing one so
+        // future auto-refreshes keep working.
+        let refreshTokenToStore = tokens.refresh_token ?? null;
+        if (!refreshTokenToStore) {
+          const { data: existing } = await supabaseAdmin
+            .from("platform_connections")
+            .select("refresh_token")
+            .eq("user_id", payload.userId)
+            .eq("platform", "google_calendar")
+            .maybeSingle();
+          refreshTokenToStore = (existing?.refresh_token as string | null) ?? null;
+        }
+
         const { error: upsertErr } = await supabaseAdmin
           .from("platform_connections")
           .upsert(
@@ -85,10 +99,14 @@ export const Route = createFileRoute("/api/oauth/google/callback")({
               platform: "google_calendar",
               status: "connected",
               access_token: tokens.access_token,
-              refresh_token: tokens.refresh_token ?? null,
+              refresh_token: refreshTokenToStore,
               token_expires_at: expiresAt,
               account_label: accountEmail,
-              metadata: { scope: tokens.scope },
+              metadata: {
+                scope: tokens.scope,
+                sync_error: null,
+                sync_error_at: null,
+              },
               updated_at: new Date().toISOString(),
             },
             { onConflict: "user_id,platform" },

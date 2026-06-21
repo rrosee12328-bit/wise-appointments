@@ -70,6 +70,19 @@ export const Route = createFileRoute("/api/oauth/outlook/callback")({
 
         const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
+        // Microsoft may not return a new refresh_token on every auth.
+        // Preserve the existing one so token refresh keeps working.
+        let refreshTokenToStore = tokens.refresh_token ?? null;
+        if (!refreshTokenToStore) {
+          const { data: existing } = await supabaseAdmin
+            .from("platform_connections")
+            .select("refresh_token")
+            .eq("user_id", payload.userId)
+            .eq("platform", "outlook_calendar")
+            .maybeSingle();
+          refreshTokenToStore = (existing?.refresh_token as string | null) ?? null;
+        }
+
         const { error: upsertErr } = await supabaseAdmin
           .from("platform_connections")
           .upsert(
@@ -78,10 +91,14 @@ export const Route = createFileRoute("/api/oauth/outlook/callback")({
               platform: "outlook_calendar",
               status: "connected",
               access_token: tokens.access_token,
-              refresh_token: tokens.refresh_token ?? null,
+              refresh_token: refreshTokenToStore,
               token_expires_at: expiresAt,
               account_label: accountEmail,
-              metadata: { scope: tokens.scope },
+              metadata: {
+                scope: tokens.scope,
+                sync_error: null,
+                sync_error_at: null,
+              },
               updated_at: new Date().toISOString(),
             },
             { onConflict: "user_id,platform" },
