@@ -80,7 +80,7 @@ const CATEGORIES: { label: string; ids: PlatformId[] }[] = [
   },
   {
     label: "General scheduling",
-    ids: ["acuity", "setmore", "calendly", "simplybook", "zoho", "cliniko", "google", "outlook"],
+    ids: ["acuity", "setmore", "calendly", "simplybook", "zoho", "cliniko"],
   },
 ];
 
