@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Search, List, CalendarDays, CalendarRange, CalendarCheck2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -13,7 +14,8 @@ import { WalkInDialog } from "@/components/WalkInDialog";
 import { useAuth } from "@/hooks/use-auth";
 import { useAutoSyncPlatforms } from "@/hooks/use-auto-sync-platforms";
 import { formatRelativeDay, toUiAppointment, type Appointment } from "@/lib/mock-data";
-import { getAppointments } from "@/lib/appointments.functions";
+import { getAppointments, upsertAppointment } from "@/lib/appointments.functions";
+import { pushAppointmentBlock } from "@/lib/appointment-writeback.functions";
 
 export const Route = createFileRoute("/appointments")({
   head: () => ({
@@ -44,10 +46,11 @@ function Appointments() {
   const [q, setQ] = useState("");
   const [detailAppt, setDetailAppt] = useState<Appointment | null>(null);
   const [walkInDate, setWalkInDate] = useState<Date | null>(null);
-  const [localWalkIns, setLocalWalkIns] = useState<Appointment[]>([]);
   const { session } = useAuth();
   const fetchAppts = useServerFn(getAppointments);
-  const queryClient = useQueryClient();
+  const upsertFn = useServerFn(upsertAppointment);
+  const pushBlockFn = useServerFn(pushAppointmentBlock);
+  const qc = useQueryClient();
 
   useAutoSyncPlatforms(!!session);
 
@@ -61,8 +64,8 @@ function Appointments() {
   });
 
   const all: Appointment[] = useMemo(
-    () => [...(data?.items ?? []).map(toUiAppointment), ...localWalkIns],
-    [data, localWalkIns],
+    () => (data?.items ?? []).map(toUiAppointment),
+    [data],
   );
 
   const filter = useCallback(
@@ -95,15 +98,47 @@ function Appointments() {
     [all, filter, now],
   );
 
+  // Walk-in mutation: saves to DB then pushes block to Google + Outlook
+  const addWalkIn = useMutation({
+    mutationFn: async (appt: Appointment) => {
+      const ends = new Date(appt.start.getTime() + appt.durationMin * 60_000);
+      // 1. Save to Supabase
+      const created = await upsertFn({
+        data: {
+          source_platform: "walk_in",
+          client_name: appt.client,
+          service: appt.service,
+          starts_at: appt.start.toISOString(),
+          ends_at: ends.toISOString(),
+          is_block: true,
+          note: appt.notes ?? null,
+        },
+      });
+      // 2. Push block to Google Calendar + Outlook Calendar
+      let blockReason: string | undefined;
+      try {
+        const res = await pushBlockFn({ data: { id: (created as { id: string }).id } });
+        blockReason = res.reason;
+      } catch (e) {
+        blockReason = (e as Error).message;
+      }
+      return { blockReason };
+    },
+    onSuccess: ({ blockReason }) => {
+      void qc.invalidateQueries({ queryKey: ["appointments"] });
+      if (blockReason) {
+        toast.success("Appointment added", {
+          description: `Calendar block skipped: ${blockReason}`,
+        });
+      } else {
+        toast.success("Appointment added · time blocked on Google & Outlook");
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   function handleAddNew(date: Date) {
     setWalkInDate(date);
-  }
-
-  function handleWalkInAdd(appt: Appointment) {
-    // Merge walk-in into local list; it will also be persisted via WalkInDialog's existing logic
-    setLocalWalkIns((prev) => [...prev, appt]);
-    // Refresh appointments from server to pick up any DB writes
-    void queryClient.invalidateQueries({ queryKey: ["appointments"] });
   }
 
   return (
@@ -205,10 +240,7 @@ function Appointments() {
         <TabsContent value="month" className="mt-4">
           <MonthGridView
             appointments={all}
-            onSelectDay={(d) => {
-              // Switch to day view for that date — for now open walk-in dialog
-              handleAddNew(d);
-            }}
+            onSelectDay={handleAddNew}
             onAddNew={handleAddNew}
           />
         </TabsContent>
@@ -223,7 +255,7 @@ function Appointments() {
       <WalkInDialog
         open={!!walkInDate}
         onOpenChange={(o) => !o && setWalkInDate(null)}
-        onAdd={handleWalkInAdd}
+        onAdd={(appt) => addWalkIn.mutate(appt)}
       />
     </main>
   );
