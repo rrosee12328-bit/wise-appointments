@@ -15,6 +15,15 @@ async function getUserId(): Promise<string> {
   return data.user.id;
 }
 
+async function getUserIdOrNull(): Promise<string | null> {
+  const authHeader = getRequestHeader("authorization");
+  const token = authHeader?.replace(/^Bearer\s+/i, "");
+  if (!token) return null;
+  const { data, error } = await supabaseAdmin.auth.getUser(token);
+  if (error || !data.user) return null;
+  return data.user.id;
+}
+
 const connectSchema = z.object({
   platform: z.enum(ICAL_PLATFORMS),
   feedUrl: z
@@ -96,7 +105,8 @@ export const disconnectIcalFeed = createServerFn({ method: "POST" })
 
 export const listIcalFeeds = createServerFn({ method: "GET" }).handler(
   async () => {
-    const userId = await getUserId();
+    const userId = await getUserIdOrNull();
+    if (!userId) return { feeds: [] };
     const { data, error } = await supabaseAdmin
       .from("ical_feeds")
       .select("platform, feed_url, last_synced_at, last_error, consecutive_failures")
