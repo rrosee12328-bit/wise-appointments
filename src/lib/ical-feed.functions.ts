@@ -105,7 +105,8 @@ export const disconnectIcalFeed = createServerFn({ method: "POST" })
 
 export const listIcalFeeds = createServerFn({ method: "GET" }).handler(
   async () => {
-    const userId = await getUserId();
+    const userId = await getUserIdOrNull();
+    if (!userId) return { feeds: [] };
     const { data, error } = await supabaseAdmin
       .from("ical_feeds")
       .select("platform, feed_url, last_synced_at, last_error, consecutive_failures")
