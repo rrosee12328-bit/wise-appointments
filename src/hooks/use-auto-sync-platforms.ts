@@ -56,10 +56,13 @@ export function useAutoSyncPlatforms(enabled: boolean) {
         : false;
 
       const syncedAnyConnectedPlatform =
-        results.some(
-          (result) =>
-            result.status === "fulfilled" && (result.value as { connected?: boolean }).connected,
-        ) || syncedAnyIcal;
+        results.some((result) => {
+          if (result.status !== "fulfilled" || !result.value || typeof result.value !== "object") {
+            return false;
+          }
+
+          return Boolean((result.value as { connected?: boolean }).connected);
+        }) || syncedAnyIcal;
 
       if (syncedAnyConnectedPlatform) {
         void queryClient.invalidateQueries({ queryKey: ["appointments"] });
