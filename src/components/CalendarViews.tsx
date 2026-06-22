@@ -511,14 +511,22 @@ export function MonthGridView({
           if (!c.date) {
             return <div key={i} className="min-h-16 bg-card/40" />;
           }
-          const k = `${c.date.getFullYear()}-${c.date.getMonth()}-${c.date.getDate()}`;
+          const cellDate = c.date;
+          const k = `${cellDate.getFullYear()}-${cellDate.getMonth()}-${cellDate.getDate()}`;
           const list = byDay.get(k) ?? [];
-          const isToday = sameDay(c.date, today);
+          const isToday = sameDay(cellDate, today);
           return (
-            <button
+            <div
               key={i}
-              type="button"
-              onClick={() => onSelectDay?.(c.date!)}
+              role="button"
+              tabIndex={0}
+              onClick={() => onSelectDay?.(cellDate)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelectDay?.(cellDate);
+                }
+              }}
               className="group relative flex min-h-16 flex-col items-start gap-1 bg-card p-1.5 text-left transition-colors hover:bg-accent/5"
             >
               <div className="flex w-full items-center justify-between">
@@ -536,7 +544,7 @@ export function MonthGridView({
                     className="rounded p-0.5 opacity-0 transition-opacity group-hover:opacity-60 hover:!opacity-100"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onAddNew(c.date!);
+                      onAddNew(cellDate);
                     }}
                     aria-label="Add appointment"
                   >
@@ -566,7 +574,7 @@ export function MonthGridView({
                   <span className="text-[9px] text-muted-foreground">+{list.length - 2} more</span>
                 )}
               </div>
-            </button>
+            </div>
           );
         })}
       </div>
