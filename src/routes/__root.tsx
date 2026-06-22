@@ -1,6 +1,6 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts, useRouter } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { Component, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -65,6 +65,42 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
       </div>
     </div>
   );
+}
+
+class ClientErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error(error);
+  }
+
+  render() {
+    if (!this.state.hasError) return this.props.children;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4 text-foreground">
+        <div className="max-w-md text-center">
+          <h1 className="text-2xl font-bold">Jey Link couldn’t load</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Refresh the page or sign in again.</p>
+          <div className="mt-6 flex justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+            >
+              Refresh
+            </button>
+            <a href="/signin" className="rounded-md border border-border px-4 py-2 text-sm font-medium">
+              Sign in
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 }
 
 export const Route = createRootRoute({
@@ -137,14 +173,16 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   const [queryClient] = useState(() => new QueryClient());
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ThemeProvider>
-          <AppShell />
-          <Toaster />
-        </ThemeProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <ClientErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <ThemeProvider>
+            <AppShell />
+            <Toaster />
+          </ThemeProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ClientErrorBoundary>
   );
 }
 
