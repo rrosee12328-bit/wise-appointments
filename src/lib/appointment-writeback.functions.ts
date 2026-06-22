@@ -36,6 +36,17 @@ type WritebackResult = {
   reason?: string;
 };
 
+type AppointmentWritebackRow = {
+  id: string;
+  source_platform: string;
+  external_id: string | null;
+  client_name: string;
+  service: string | null;
+  starts_at: string;
+  ends_at: string;
+  synced_to: string[] | null;
+};
+
 function blockSummary(clientName: string, service: string | null | undefined) {
   const svc = service?.trim();
   return svc ? `[Jey Link] ${clientName} — ${svc}` : `[Jey Link] Blocked — ${clientName}`;
@@ -306,3 +317,77 @@ export const pushAppointmentBlock = createServerFn({ method: "POST" })
 
     return { ok: true, googleUpdated, blockEventId, reason };
   });
+
+export const syncAppointmentBlocks = createServerFn({ method: "POST" }).handler(async () => {
+  const user = await requireUser();
+  const nowIso = new Date().toISOString();
+
+  const { data: appts, error } = await supabaseAdmin
+    .from("appointments")
+    .select("id, source_platform, external_id, client_name, service, starts_at, ends_at, synced_to")
+    .eq("user_id", user.id)
+    .gte("ends_at", nowIso)
+    .order("starts_at", { ascending: true });
+  if (error) throw new Error(error.message);
+
+  let googleUpdated = 0;
+  let outlookUpdated = 0;
+  let skipped = 0;
+  const reasons = new Set<string>();
+
+  for (const appt of (appts ?? []) as AppointmentWritebackRow[]) {
+    let syncedTo = appt.synced_to as string[] | null;
+
+    if (appt.source_platform !== "google_calendar") {
+      try {
+        const out = await pushToGoogleForAppointment(user.id, { ...appt, synced_to: syncedTo });
+        syncedTo = withBlockEventId(syncedTo, out.blockEventId);
+        if (out.googleUpdated) googleUpdated++;
+      } catch (err) {
+        if (err instanceof GoogleNotConnectedError) {
+          reasons.add("Google Calendar isn't connected");
+        } else if (err instanceof GoogleReauthRequiredError) {
+          reasons.add("Google Calendar needs to be reconnected");
+        } else {
+          reasons.add(`Google block failed: ${(err as Error).message}`);
+        }
+      }
+    } else {
+      skipped++;
+    }
+
+    if (appt.source_platform !== "outlook_calendar") {
+      try {
+        const out = await pushToOutlookForAppointment(user.id, { ...appt, synced_to: syncedTo });
+        syncedTo = withOutlookBlockEventId(syncedTo, out.outlookBlockEventId);
+        if (out.outlookUpdated) outlookUpdated++;
+      } catch (err) {
+        if (err instanceof OutlookNotConnectedError) {
+          reasons.add("Outlook Calendar isn't connected");
+        } else if (err instanceof OutlookReauthRequiredError) {
+          reasons.add("Outlook Calendar needs to be reconnected");
+        } else {
+          reasons.add(`Outlook block failed: ${(err as Error).message}`);
+        }
+      }
+    } else {
+      skipped++;
+    }
+
+    if (JSON.stringify(syncedTo) !== JSON.stringify(appt.synced_to)) {
+      await supabaseAdmin
+        .from("appointments")
+        .update({ synced_to: syncedTo })
+        .eq("id", appt.id)
+        .eq("user_id", user.id);
+    }
+  }
+
+  return {
+    ok: true,
+    googleUpdated,
+    outlookUpdated,
+    skipped,
+    reasons: Array.from(reasons),
+  };
+});

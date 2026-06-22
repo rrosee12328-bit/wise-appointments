@@ -8,6 +8,7 @@ import { syncCalendlyEvents } from "@/lib/calendly-sync.functions";
 import { syncAcuityAppointments } from "@/lib/acuity-sync.functions";
 import { syncZohoBookings } from "@/lib/zoho-sync.functions";
 import { listIcalFeeds, refreshIcalFeed } from "@/lib/ical-feed.functions";
+import { syncAppointmentBlocks } from "@/lib/appointment-writeback.functions";
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -22,6 +23,7 @@ export function useAutoSyncPlatforms(enabled: boolean) {
   const syncZoho = useServerFn(syncZohoBookings);
   const listFeeds = useServerFn(listIcalFeeds);
   const refreshFeed = useServerFn(refreshIcalFeed);
+  const syncBlocks = useServerFn(syncAppointmentBlocks);
 
   useEffect(() => {
     if (!enabled) return;
@@ -47,6 +49,10 @@ export function useAutoSyncPlatforms(enabled: boolean) {
         syncAcuity(),
         syncZoho(),
       ]);
+      const blockResult = await syncBlocks().catch((err) => {
+        console.error("Automatic block sync failed", err);
+        return null;
+      });
 
       if (cancelled.value) return;
 
@@ -62,7 +68,9 @@ export function useAutoSyncPlatforms(enabled: boolean) {
           }
 
           return Boolean((result.value as { connected?: boolean }).connected);
-        }) || syncedAnyIcal;
+        }) ||
+        syncedAnyIcal ||
+        Boolean(blockResult?.googleUpdated || blockResult?.outlookUpdated);
 
       if (syncedAnyConnectedPlatform) {
         void queryClient.invalidateQueries({ queryKey: ["appointments"] });
@@ -115,5 +123,6 @@ export function useAutoSyncPlatforms(enabled: boolean) {
     syncZoho,
     listFeeds,
     refreshFeed,
+    syncBlocks,
   ]);
 }

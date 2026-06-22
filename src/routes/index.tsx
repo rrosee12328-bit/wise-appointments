@@ -25,7 +25,11 @@ import { useAutoSyncPlatforms } from "@/hooks/use-auto-sync-platforms";
 import { type Appointment, findConflicts, formatTime, toUiAppointment } from "@/lib/mock-data";
 import { PLATFORMS, type PlatformId } from "@/lib/platforms";
 import { getAppointments, upsertAppointment } from "@/lib/appointments.functions";
-import { rescheduleAppointment, pushAppointmentBlock } from "@/lib/appointment-writeback.functions";
+import {
+  rescheduleAppointment,
+  pushAppointmentBlock,
+  syncAppointmentBlocks,
+} from "@/lib/appointment-writeback.functions";
 import { getProfile } from "@/lib/profile.functions";
 import { syncGoogleCalendar } from "@/lib/google-sync.functions";
 import { syncOutlookCalendar } from "@/lib/outlook-sync.functions";
@@ -84,6 +88,7 @@ function Schedule() {
   const upsertFn = useServerFn(upsertAppointment);
   const rescheduleFn = useServerFn(rescheduleAppointment);
   const pushBlockFn = useServerFn(pushAppointmentBlock);
+  const syncBlocks = useServerFn(syncAppointmentBlocks);
   const fetchProfile = useServerFn(getProfile);
   const syncGoogle = useServerFn(syncGoogleCalendar);
   const syncOutlook = useServerFn(syncOutlookCalendar);
@@ -233,7 +238,16 @@ function Schedule() {
         });
       }
 
-      if (anyConnected || totalSynced > 0) {
+      const blockResult = await syncBlocks();
+      const blocksUpdated = blockResult.googleUpdated > 0 || blockResult.outlookUpdated > 0;
+      if (blockResult.googleUpdated || blockResult.outlookUpdated) {
+        perPlatform.push(
+          `Blocks: Google ${blockResult.googleUpdated}, Outlook ${blockResult.outlookUpdated}`,
+        );
+      }
+      blockResult.reasons.forEach((reason) => errors.push(reason));
+
+      if (anyConnected || totalSynced > 0 || blocksUpdated) {
         await Promise.all([
           qc.invalidateQueries({ queryKey: ["appointments"] }),
           qc.invalidateQueries({ queryKey: ["ical-feeds"] }),

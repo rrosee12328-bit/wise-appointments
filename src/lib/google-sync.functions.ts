@@ -49,6 +49,11 @@ export class GoogleReauthRequiredError extends Error {
   }
 }
 
+function hasCalendarScope(metadata: unknown) {
+  const scope = (metadata as { scope?: unknown } | null)?.scope;
+  return typeof scope === "string" && scope.split(/\s+/).some((s) => s.includes("/auth/calendar"));
+}
+
 async function refreshAccessToken(refreshToken: string) {
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -156,6 +161,23 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(asy
   let accessToken = conn.access_token as string | null;
   const refreshToken = conn.refresh_token as string | null;
   const expiresAt = conn.token_expires_at ? new Date(conn.token_expires_at as string).getTime() : 0;
+  const metadata = (conn.metadata as Record<string, unknown>) ?? {};
+
+  if (!hasCalendarScope(metadata)) {
+    await supabaseAdmin
+      .from("platform_connections")
+      .update({
+        status: "disconnected",
+        metadata: {
+          ...metadata,
+          sync_error: "Google Calendar permission missing — please reconnect Google Calendar",
+          sync_error_at: new Date().toISOString(),
+        },
+      })
+      .eq("user_id", userId)
+      .eq("platform", "google_calendar");
+    return { synced: 0, skipped: 0, connected: false, needsReconnect: true };
+  }
 
   if (!accessToken || expiresAt - Date.now() < 60_000) {
     if (!refreshToken) {
@@ -164,7 +186,7 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(asy
         .update({
           status: "disconnected",
           metadata: {
-            ...((conn.metadata as Record<string, unknown>) ?? {}),
+            ...metadata,
             sync_error: "No refresh token — please reconnect Google Calendar",
             sync_error_at: new Date().toISOString(),
           },
@@ -184,7 +206,7 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(asy
           token_expires_at: newExpiresAt,
           // Clear any previous error on successful refresh
           metadata: {
-            ...((conn.metadata as Record<string, unknown>) ?? {}),
+            ...metadata,
             sync_error: null,
             sync_error_at: null,
           },
@@ -201,7 +223,7 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(asy
             token_expires_at: null,
             status: "disconnected",
             metadata: {
-              ...((conn.metadata as Record<string, unknown>) ?? {}),
+              ...metadata,
               sync_error: "Google authorization expired — please reconnect",
               sync_error_at: new Date().toISOString(),
             },
@@ -215,7 +237,7 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(asy
         .from("platform_connections")
         .update({
           metadata: {
-            ...((conn.metadata as Record<string, unknown>) ?? {}),
+            ...metadata,
             sync_error: `Token refresh failed: ${(err as Error).message}`,
             sync_error_at: new Date().toISOString(),
           },
@@ -398,7 +420,7 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(asy
       last_synced_at: new Date().toISOString(),
       status: "connected",
       metadata: {
-        ...((conn.metadata as Record<string, unknown>) ?? {}),
+        ...metadata,
         sync_error: null,
         sync_error_at: null,
         calendars_seen: calendarIds.length,
