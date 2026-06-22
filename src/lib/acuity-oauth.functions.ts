@@ -5,8 +5,7 @@ import { supabaseAdmin } from "@/integrations/supabase/admin.server";
 
 function getAcuityRedirectUri(host: string) {
   const configuredOrigin = process.env.ACUITY_OAUTH_REDIRECT_ORIGIN;
-  if (configuredOrigin)
-    return `${configuredOrigin.replace(/\/$/, "")}/api/oauth/acuity/callback`;
+  if (configuredOrigin) return `${configuredOrigin.replace(/\/$/, "")}/api/oauth/acuity/callback`;
   const isLocal = host.includes("localhost");
   const origin = isLocal ? `http://${host}` : "https://jeylink.vektiss.com";
   return `${origin}/api/oauth/acuity/callback`;
@@ -27,18 +26,16 @@ export const createAcuityAuthUrl = createServerFn({ method: "POST" })
 
     // Store userId in a pending_acuity_oauth row so we can retrieve it in the callback
     // Acuity's OAuth does not support the `state` parameter
-    await supabaseAdmin
-      .from("platform_connections")
-      .upsert(
-        {
-          user_id: data.user.id,
-          platform: "acuity_pending",
-          status: "pending",
-          access_token: null,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id,platform" },
-      );
+    await supabaseAdmin.from("platform_connections").upsert(
+      {
+        user_id: data.user.id,
+        platform: "acuity_pending",
+        status: "pending",
+        access_token: null,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,platform" },
+    );
 
     // Acuity OAuth URL — no state parameter (not supported)
     const url =

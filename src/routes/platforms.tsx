@@ -4,7 +4,14 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { PLATFORMS, PLATFORM_TIER, tierNote, tierShortLabel, supportsIcal, type PlatformId } from "@/lib/platforms";
+import {
+  PLATFORMS,
+  PLATFORM_TIER,
+  tierNote,
+  tierShortLabel,
+  supportsIcal,
+  type PlatformId,
+} from "@/lib/platforms";
 import { AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PlatformLogo } from "@/components/PlatformLogo";
@@ -34,7 +41,6 @@ import {
 } from "@/lib/ical-feed.functions";
 import { LinkPlatformDialog } from "@/components/LinkPlatformDialog";
 
-
 export const Route = createFileRoute("/platforms")({
   validateSearch: (s: Record<string, unknown>) => ({
     google: typeof s.google === "string" ? (s.google as string) : undefined,
@@ -52,8 +58,7 @@ export const Route = createFileRoute("/platforms")({
       { property: "og:title", content: "Platforms — Jey Link" },
       {
         property: "og:description",
-        content:
-          "Manage Square, Booksy, TheCut, Setmore and Google Calendar connections.",
+        content: "Manage Square, Booksy, TheCut, Setmore and Google Calendar connections.",
       },
     ],
   }),
@@ -63,16 +68,7 @@ export const Route = createFileRoute("/platforms")({
 const CATEGORIES: { label: string; ids: PlatformId[] }[] = [
   {
     label: "Barber",
-    ids: [
-      "thecut",
-      "booksy",
-      "squire",
-      "square",
-      "vagaro",
-      "barberly",
-      "ringmybarber",
-      "goldie",
-    ],
+    ids: ["thecut", "booksy", "squire", "square", "vagaro", "barberly", "ringmybarber", "goldie"],
   },
   {
     label: "Beauty & Salon",
@@ -85,7 +81,14 @@ const CATEGORIES: { label: string; ids: PlatformId[] }[] = [
 ];
 
 // Platforms that have a live OAuth integration (redirect flow)
-const OAUTH_PLATFORMS = new Set<PlatformId>(["google", "outlook", "square", "calendly", "acuity", "zoho"]);
+const OAUTH_PLATFORMS = new Set<PlatformId>([
+  "google",
+  "outlook",
+  "square",
+  "calendly",
+  "acuity",
+  "zoho",
+]);
 
 // Platforms that use API key modal
 const APIKEY_PLATFORMS = new Set<PlatformId>(["cliniko", "zenoti"]);
@@ -93,13 +96,26 @@ const APIKEY_PLATFORMS = new Set<PlatformId>(["cliniko", "zenoti"]);
 // Relay-only platforms: user provides a booking-page handle, bookings flow
 // through Google/Outlook Calendar.
 const RELAY_PLATFORMS = new Set<PlatformId>([
-  "booksy", "thecut", "setmore", "squire", "vagaro", "barberly",
-  "ringmybarber", "goldie", "glossgenius", "styleseat", "fresha",
-  "mangomint", "boulevard", "simplybook",
+  "booksy",
+  "thecut",
+  "setmore",
+  "squire",
+  "vagaro",
+  "barberly",
+  "ringmybarber",
+  "goldie",
+  "glossgenius",
+  "styleseat",
+  "fresha",
+  "mangomint",
+  "boulevard",
+  "simplybook",
 ]);
 
 const LIVE_PLATFORMS = new Set<PlatformId>([
-  ...OAUTH_PLATFORMS, ...APIKEY_PLATFORMS, ...RELAY_PLATFORMS,
+  ...OAUTH_PLATFORMS,
+  ...APIKEY_PLATFORMS,
+  ...RELAY_PLATFORMS,
 ]);
 
 function platformToDbKey(id: PlatformId): string {
@@ -142,9 +158,7 @@ function Platforms() {
     if (search.google === "connected") {
       toast.success("Google Calendar connected");
     } else if (search.google === "error") {
-      toast.error(
-        `Google Calendar connection failed${search.reason ? `: ${search.reason}` : ""}`,
-      );
+      toast.error(`Google Calendar connection failed${search.reason ? `: ${search.reason}` : ""}`);
     }
   }, [search.google, search.reason]);
 
@@ -153,9 +167,7 @@ function Platforms() {
       toast.success("Outlook Calendar connected");
       qc.invalidateQueries({ queryKey: ["platform-connections"] });
     } else if (search.outlook === "error") {
-      toast.error(
-        `Outlook Calendar connection failed${search.reason ? `: ${search.reason}` : ""}`,
-      );
+      toast.error(`Outlook Calendar connection failed${search.reason ? `: ${search.reason}` : ""}`);
     }
   }, [search.outlook, search.reason, qc]);
 
@@ -164,9 +176,7 @@ function Platforms() {
       toast.success("Zoho Bookings connected");
       qc.invalidateQueries({ queryKey: ["platform-connections"] });
     } else if (search.zoho === "error") {
-      toast.error(
-        `Zoho Bookings connection failed${search.reason ? `: ${search.reason}` : ""}`,
-      );
+      toast.error(`Zoho Bookings connection failed${search.reason ? `: ${search.reason}` : ""}`);
     }
   }, [search.zoho, search.reason, qc]);
 
@@ -175,9 +185,7 @@ function Platforms() {
       toast.success("Acuity connected");
       qc.invalidateQueries({ queryKey: ["platform-connections"] });
     } else if (search.acuity === "error") {
-      toast.error(
-        `Acuity connection failed${search.reason ? `: ${search.reason}` : ""}`,
-      );
+      toast.error(`Acuity connection failed${search.reason ? `: ${search.reason}` : ""}`);
     }
   }, [search.acuity, search.reason, qc]);
 
@@ -186,9 +194,7 @@ function Platforms() {
       toast.success("Calendly connected");
       qc.invalidateQueries({ queryKey: ["platform-connections"] });
     } else if (search.calendly === "error") {
-      toast.error(
-        `Calendly connection failed${search.reason ? `: ${search.reason}` : ""}`,
-      );
+      toast.error(`Calendly connection failed${search.reason ? `: ${search.reason}` : ""}`);
     }
   }, [search.calendly, search.reason, qc]);
 
@@ -197,9 +203,7 @@ function Platforms() {
       toast.success("Square connected");
       qc.invalidateQueries({ queryKey: ["platform-connections"] });
     } else if (search.square === "error") {
-      toast.error(
-        `Square connection failed${search.reason ? `: ${search.reason}` : ""}`,
-      );
+      toast.error(`Square connection failed${search.reason ? `: ${search.reason}` : ""}`);
     }
   }, [search.square, search.reason, qc]);
 
@@ -212,13 +216,9 @@ function Platforms() {
     queryKey: ["ical-feeds"],
     queryFn: () => listIcal(),
   });
-  const icalByPlatform = new Map(
-    (icalData?.feeds ?? []).map((f) => [f.platform as string, f]),
-  );
+  const icalByPlatform = new Map((icalData?.feeds ?? []).map((f) => [f.platform as string, f]));
 
-  const connectedSet = new Set(
-    (realConnections?.connections ?? []).map((c) => c.platform),
-  );
+  const connectedSet = new Set((realConnections?.connections ?? []).map((c) => c.platform));
   const accountLabelFor = (dbKey: string) =>
     realConnections?.connections.find((c) => c.platform === dbKey)?.account_email;
   const hasGoogleOrOutlookConnected =
@@ -234,14 +234,18 @@ function Platforms() {
         if ((result as { needsReconnect?: boolean }).needsReconnect) {
           toast.error("Google Calendar needs to be reconnected.");
         } else {
-          toast.success(`Google Calendar synced — ${(result as { synced?: number }).synced ?? 0} events`);
+          toast.success(
+            `Google Calendar synced — ${(result as { synced?: number }).synced ?? 0} events`,
+          );
         }
       } else if (platform === "outlook_calendar") {
         const result = await syncOutlook();
         if ((result as { needsReconnect?: boolean }).needsReconnect) {
           toast.error("Outlook Calendar needs to be reconnected.");
         } else {
-          toast.success(`Outlook Calendar synced — ${(result as { synced?: number }).synced ?? 0} events`);
+          toast.success(
+            `Outlook Calendar synced — ${(result as { synced?: number }).synced ?? 0} events`,
+          );
         }
       }
       qc.invalidateQueries({ queryKey: ["platform-connections"] });
@@ -265,7 +269,9 @@ function Platforms() {
   // Google connect
   const connectGoogle = useMutation({
     mutationFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) throw new Error("Please sign in first");
       const { url } = await getGoogleAuthUrl({ data: {} });
       window.location.href = url;
@@ -276,7 +282,9 @@ function Platforms() {
   // Outlook connect
   const connectOutlook = useMutation({
     mutationFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) throw new Error("Please sign in first");
       const { url } = await getOutlookAuthUrl({ data: {} });
       window.location.href = url;
@@ -287,7 +295,9 @@ function Platforms() {
   // Zoho connect
   const connectZoho = useMutation({
     mutationFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) throw new Error("Please sign in first");
       const { url } = await getZohoAuthUrl({ data: {} });
       window.location.href = url;
@@ -298,7 +308,9 @@ function Platforms() {
   // Acuity connect
   const connectAcuity = useMutation({
     mutationFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) throw new Error("Please sign in first");
       const { url } = await getAcuityAuthUrl({ data: {} });
       window.location.href = url;
@@ -309,7 +321,9 @@ function Platforms() {
   // Calendly connect
   const connectCalendly = useMutation({
     mutationFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) throw new Error("Please sign in first");
       const { url } = await getCalendlyAuthUrl({ data: {} });
       window.location.href = url;
@@ -320,7 +334,9 @@ function Platforms() {
   // Square connect
   const connectSquare = useMutation({
     mutationFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) throw new Error("Please sign in first");
       const { url } = await getSquareAuthUrl({ data: {} });
       window.location.href = url;
@@ -367,27 +383,51 @@ function Platforms() {
     const dbKey = platformToDbKey(id);
 
     if (id === "google") {
-      connectedSet.has(dbKey) ? disconnectPlatformMut.mutate(dbKey) : connectGoogle.mutate();
+      if (connectedSet.has(dbKey)) {
+        disconnectPlatformMut.mutate(dbKey);
+      } else {
+        connectGoogle.mutate();
+      }
       return;
     }
     if (id === "outlook") {
-      connectedSet.has(dbKey) ? disconnectPlatformMut.mutate(dbKey) : connectOutlook.mutate();
+      if (connectedSet.has(dbKey)) {
+        disconnectPlatformMut.mutate(dbKey);
+      } else {
+        connectOutlook.mutate();
+      }
       return;
     }
     if (id === "square") {
-      connectedSet.has(dbKey) ? disconnectPlatformMut.mutate(dbKey) : connectSquare.mutate();
+      if (connectedSet.has(dbKey)) {
+        disconnectPlatformMut.mutate(dbKey);
+      } else {
+        connectSquare.mutate();
+      }
       return;
     }
     if (id === "calendly") {
-      connectedSet.has(dbKey) ? disconnectPlatformMut.mutate(dbKey) : connectCalendly.mutate();
+      if (connectedSet.has(dbKey)) {
+        disconnectPlatformMut.mutate(dbKey);
+      } else {
+        connectCalendly.mutate();
+      }
       return;
     }
     if (id === "acuity") {
-      connectedSet.has(dbKey) ? disconnectPlatformMut.mutate(dbKey) : connectAcuity.mutate();
+      if (connectedSet.has(dbKey)) {
+        disconnectPlatformMut.mutate(dbKey);
+      } else {
+        connectAcuity.mutate();
+      }
       return;
     }
     if (id === "zoho") {
-      connectedSet.has(dbKey) ? disconnectPlatformMut.mutate(dbKey) : connectZoho.mutate();
+      if (connectedSet.has(dbKey)) {
+        disconnectPlatformMut.mutate(dbKey);
+      } else {
+        connectZoho.mutate();
+      }
       return;
     }
     if (id === "cliniko") {
@@ -437,7 +477,8 @@ function Platforms() {
     if (id === "calendly") return connectCalendly.isPending || disconnectPlatformMut.isPending;
     if (id === "acuity") return connectAcuity.isPending || disconnectPlatformMut.isPending;
     if (id === "zoho") return connectZoho.isPending || disconnectPlatformMut.isPending;
-    if (id === "cliniko" || id === "zenoti") return apiKeyLoading || disconnectPlatformMut.isPending;
+    if (id === "cliniko" || id === "zenoti")
+      return apiKeyLoading || disconnectPlatformMut.isPending;
     if (RELAY_PLATFORMS.has(id))
       return linkLoading || disconnectPlatformMut.isPending || disconnectIcalMut.isPending;
     return false;
@@ -497,14 +538,11 @@ function Platforms() {
     }
   };
 
-
   return (
     <main className="mx-auto max-w-md px-4 pt-8">
       <header className="mb-6">
         <h1 className="text-xl font-semibold text-foreground">Platforms</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage your connected services.
-        </p>
+        <p className="text-sm text-muted-foreground">Manage your connected services.</p>
       </header>
 
       {connectedSet.size === 0 && (
@@ -517,9 +555,11 @@ function Platforms() {
       {hasGoogleOrOutlookConnected && (
         <div className="mb-6">
           <SyncStatusPanel
-            connections={(realConnections?.connections ?? []).filter(
-              (c) => c.platform === "google_calendar" || c.platform === "outlook_calendar",
-            ) as Parameters<typeof SyncStatusPanel>[0]["connections"]}
+            connections={
+              (realConnections?.connections ?? []).filter(
+                (c) => c.platform === "google_calendar" || c.platform === "outlook_calendar",
+              ) as Parameters<typeof SyncStatusPanel>[0]["connections"]
+            }
             onSyncNow={handleSyncNow}
             onReconnect={handleReconnect}
             onDisconnect={handleDisconnect}
@@ -584,9 +624,7 @@ function Platforms() {
                       <PlatformLogo platform={id} size={36} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-medium text-foreground">
-                            {p.label}
-                          </span>
+                          <span className="text-sm font-medium text-foreground">{p.label}</span>
                           {icalBadge ? (
                             <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300">
                               {icalBadge}
@@ -602,9 +640,7 @@ function Platforms() {
                             )
                           )}
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {subline}
-                        </div>
+                        <div className="text-xs text-muted-foreground">{subline}</div>
                       </div>
                       {hasIcal && (
                         <Button
@@ -627,13 +663,13 @@ function Platforms() {
                       </Button>
                     </div>
 
-
                     {tierNeedsRelayWarning && (
                       <div className="rounded-md border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
                         <div className="flex items-start gap-2">
                           <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" aria-hidden />
                           <span>
-                            Bookings from {p.label} can only reach Jey Link through Google or Outlook Calendar. Connect one to start syncing.
+                            Bookings from {p.label} can only reach Jey Link through Google or
+                            Outlook Calendar. Connect one to start syncing.
                           </span>
                         </div>
                         <div className="mt-2 flex flex-wrap gap-2">
@@ -656,7 +692,6 @@ function Platforms() {
                         </div>
                       </div>
                     )}
-
                   </li>
                 );
               })}
@@ -711,7 +746,6 @@ function Platforms() {
         hasRelayCalendar={hasGoogleOrOutlookConnected}
         isLoading={linkLoading}
       />
-
     </main>
   );
 }

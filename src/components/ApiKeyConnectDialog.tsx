@@ -54,8 +54,7 @@ export function ApiKeyConnectDialog({
         <DialogHeader>
           <DialogTitle>Connect {platformName}</DialogTitle>
           <DialogDescription>
-            Enter your {platformName} API credentials to sync your appointments
-            with Jey Link.
+            Enter your {platformName} API credentials to sync your appointments with Jey Link.
             {helpUrl && (
               <>
                 {" "}
@@ -80,14 +79,10 @@ export function ApiKeyConnectDialog({
                 type="password"
                 placeholder={field.placeholder}
                 value={values[field.key]}
-                onChange={(e) =>
-                  setValues((prev) => ({ ...prev, [field.key]: e.target.value }))
-                }
+                onChange={(e) => setValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
                 autoComplete="off"
               />
-              {field.helpText && (
-                <p className="text-xs text-muted-foreground">{field.helpText}</p>
-              )}
+              {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
             </div>
           ))}
           <DialogFooter className="pt-2">

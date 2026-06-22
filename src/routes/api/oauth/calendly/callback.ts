@@ -4,8 +4,7 @@ import { verifyState } from "@/lib/oauth-state.server";
 
 function getCalendlyRedirectUri(url: URL) {
   const configuredOrigin = process.env.CALENDLY_OAUTH_REDIRECT_ORIGIN;
-  if (configuredOrigin)
-    return `${configuredOrigin.replace(/\/$/, "")}/api/oauth/calendly/callback`;
+  if (configuredOrigin) return `${configuredOrigin.replace(/\/$/, "")}/api/oauth/calendly/callback`;
   const isLocal = url.hostname.includes("localhost");
   const origin = isLocal ? `http://${url.host}` : "https://jeylink.vektiss.com";
   return `${origin}/api/oauth/calendly/callback`;
@@ -21,9 +20,7 @@ export const Route = createFileRoute("/api/oauth/calendly/callback")({
         const error = url.searchParams.get("error");
 
         if (error) {
-          return redirectTo(
-            `/platforms?calendly=error&reason=${encodeURIComponent(error)}`,
-          );
+          return redirectTo(`/platforms?calendly=error&reason=${encodeURIComponent(error)}`);
         }
 
         if (!code || !state) {
@@ -89,10 +86,7 @@ export const Route = createFileRoute("/api/oauth/calendly/callback")({
                 current_organization?: string;
               };
             };
-            accountLabel =
-              userData.resource?.name ??
-              userData.resource?.email ??
-              null;
+            accountLabel = userData.resource?.name ?? userData.resource?.email ?? null;
             userUri = userData.resource?.uri ?? null;
             orgUri = userData.resource?.current_organization ?? null;
           }
@@ -105,26 +99,24 @@ export const Route = createFileRoute("/api/oauth/calendly/callback")({
           ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
           : new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
 
-        const { error: upsertErr } = await supabaseAdmin
-          .from("platform_connections")
-          .upsert(
-            {
-              user_id: payload.userId,
-              platform: "calendly",
-              status: "connected",
-              access_token: tokens.access_token,
-              refresh_token: tokens.refresh_token ?? null,
-              token_expires_at: expiresAt,
-              account_label: accountLabel,
-              metadata: {
-                user_uri: userUri,
-                organization_uri: orgUri,
-                scope: tokens.scope ?? null,
-              },
-              updated_at: new Date().toISOString(),
+        const { error: upsertErr } = await supabaseAdmin.from("platform_connections").upsert(
+          {
+            user_id: payload.userId,
+            platform: "calendly",
+            status: "connected",
+            access_token: tokens.access_token,
+            refresh_token: tokens.refresh_token ?? null,
+            token_expires_at: expiresAt,
+            account_label: accountLabel,
+            metadata: {
+              user_uri: userUri,
+              organization_uri: orgUri,
+              scope: tokens.scope ?? null,
             },
-            { onConflict: "user_id,platform" },
-          );
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id,platform" },
+        );
 
         if (upsertErr) {
           console.error("Failed to save Calendly connection:", upsertErr);

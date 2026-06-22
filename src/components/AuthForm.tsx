@@ -10,6 +10,10 @@ import { toast } from "sonner";
 
 type Mode = "signin" | "signup";
 
+function errorMessage(err: unknown, fallback: string) {
+  return err instanceof Error ? err.message : fallback;
+}
+
 export function AuthForm({ mode }: { mode: Mode }) {
   const navigate = useNavigate();
   const { session, loading } = useAuth();
@@ -57,8 +61,8 @@ export function AuthForm({ mode }: { mode: Mode }) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
-    } catch (err: any) {
-      toast.error(err.message ?? "Authentication failed");
+    } catch (err: unknown) {
+      toast.error(errorMessage(err, "Authentication failed"));
     } finally {
       setSubmitting(false);
     }
@@ -110,7 +114,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="first-name">First name</Label>
-                  <Input
+                    <Input
                       id="first-name"
                       required
                       maxLength={60}
@@ -203,7 +207,9 @@ export function AuthForm({ mode }: { mode: Mode }) {
             </Link>
           </p>
           <p className="text-center text-xs text-muted-foreground">
-            <Link to="/" search={{ verify: undefined }}>Back to home</Link>
+            <Link to="/" search={{ verify: undefined }}>
+              Back to home
+            </Link>
           </p>
         </CardContent>
       </Card>

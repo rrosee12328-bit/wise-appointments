@@ -35,10 +35,7 @@ export const Route = createFileRoute("/api/public/cron/ical-sync")({
             })),
           });
         } catch (e) {
-          return Response.json(
-            { ok: false, error: (e as Error).message },
-            { status: 500 },
-          );
+          return Response.json({ ok: false, error: (e as Error).message }, { status: 500 });
         }
       },
     },

@@ -38,9 +38,7 @@ type WritebackResult = {
 
 function blockSummary(clientName: string, service: string | null | undefined) {
   const svc = service?.trim();
-  return svc
-    ? `[Jey Link] ${clientName} — ${svc}`
-    : `[Jey Link] Blocked — ${clientName}`;
+  return svc ? `[Jey Link] ${clientName} — ${svc}` : `[Jey Link] Blocked — ${clientName}`;
 }
 
 function blockDescription(sourcePlatform: string) {
@@ -147,7 +145,6 @@ async function pushToOutlookForAppointment(
   return { outlookUpdated: true, outlookBlockEventId: newId };
 }
 
-
 /** Reschedule an appointment: writes Google first, then commits to DB. */
 export const rescheduleAppointment = createServerFn({ method: "POST" })
   .inputValidator((input) =>
@@ -164,7 +161,9 @@ export const rescheduleAppointment = createServerFn({ method: "POST" })
 
     const { data: appt, error: loadErr } = await supabaseAdmin
       .from("appointments")
-      .select("id, source_platform, external_id, client_name, service, starts_at, ends_at, synced_to")
+      .select(
+        "id, source_platform, external_id, client_name, service, starts_at, ends_at, synced_to",
+      )
       .eq("id", data.id)
       .eq("user_id", user.id)
       .maybeSingle();
@@ -248,7 +247,9 @@ export const pushAppointmentBlock = createServerFn({ method: "POST" })
 
     const { data: appt, error: loadErr } = await supabaseAdmin
       .from("appointments")
-      .select("id, source_platform, external_id, client_name, service, starts_at, ends_at, synced_to")
+      .select(
+        "id, source_platform, external_id, client_name, service, starts_at, ends_at, synced_to",
+      )
       .eq("id", data.id)
       .eq("user_id", user.id)
       .maybeSingle();

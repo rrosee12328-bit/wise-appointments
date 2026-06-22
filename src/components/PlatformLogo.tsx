@@ -30,9 +30,7 @@ export function PlatformLogo({
       style={{
         width: size,
         height: size,
-        backgroundColor: errored
-          ? `color-mix(in oklab, ${p.colorVar} 18%, transparent)`
-          : "white",
+        backgroundColor: errored ? `color-mix(in oklab, ${p.colorVar} 18%, transparent)` : "white",
         color: p.colorVar,
         border: "1px solid var(--color-border)",
       }}

@@ -109,9 +109,7 @@ function SettingsPage() {
           </div>
           <div className="min-w-0">
             <div className="text-sm font-medium text-foreground">{fullName}</div>
-            <div className="truncate text-xs text-muted-foreground">
-              {profile?.email ?? ""}
-            </div>
+            <div className="truncate text-xs text-muted-foreground">{profile?.email ?? ""}</div>
           </div>
         </div>
 

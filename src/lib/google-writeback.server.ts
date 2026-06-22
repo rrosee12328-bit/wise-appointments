@@ -52,9 +52,7 @@ export async function getValidGoogleAccessToken(userId: string): Promise<string>
 
   let accessToken = conn.access_token as string | null;
   const refreshToken = conn.refresh_token as string | null;
-  const expiresAt = conn.token_expires_at
-    ? new Date(conn.token_expires_at as string).getTime()
-    : 0;
+  const expiresAt = conn.token_expires_at ? new Date(conn.token_expires_at as string).getTime() : 0;
 
   if (!accessToken || expiresAt - Date.now() < 60_000) {
     if (!refreshToken) throw new GoogleReauthRequiredError();
@@ -124,21 +122,15 @@ export async function patchGoogleEvent(
 }
 
 /** Create a new event on the user's primary Google Calendar. Returns event id. */
-export async function insertGoogleEvent(
-  accessToken: string,
-  body: EventBody,
-): Promise<string> {
-  const res = await fetch(
-    `https://www.googleapis.com/calendar/v3/calendars/primary/events`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
+export async function insertGoogleEvent(accessToken: string, body: EventBody): Promise<string> {
+  const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
     },
-  );
+    body: JSON.stringify(body),
+  });
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Google event POST failed: ${res.status} ${text}`);
@@ -147,11 +139,7 @@ export async function insertGoogleEvent(
   return json.id;
 }
 
-
-export async function deleteGoogleEvent(
-  accessToken: string,
-  eventId: string,
-): Promise<void> {
+export async function deleteGoogleEvent(accessToken: string, eventId: string): Promise<void> {
   const res = await fetch(
     `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}`,
     { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } },
@@ -210,7 +198,10 @@ export async function syncGoogleBlocksForUser(
   let created = 0;
   let skipped = 0;
   for (const appt of appts ?? []) {
-    if (getBlockEventId(appt.synced_to as string[] | null)) { skipped++; continue; }
+    if (getBlockEventId(appt.synced_to as string[] | null)) {
+      skipped++;
+      continue;
+    }
     const svc = (appt.service as string | null)?.trim();
     const summary = svc
       ? `[Jey Link] ${appt.client_name} — ${svc}`

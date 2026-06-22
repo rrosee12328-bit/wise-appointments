@@ -17,11 +17,12 @@ type Row = {
 function rowToAppt(r: Row): Appointment {
   const start = new Date(r.starts_at);
   const end = new Date(r.ends_at);
-  const sourcePlatform = r.source_platform === "google_calendar"
-    ? "google"
-    : r.source_platform === "outlook_calendar"
-      ? "outlook"
-      : r.source_platform;
+  const sourcePlatform =
+    r.source_platform === "google_calendar"
+      ? "google"
+      : r.source_platform === "outlook_calendar"
+        ? "outlook"
+        : r.source_platform;
   return {
     id: r.id,
     start,
@@ -72,12 +73,9 @@ export function useAppointments(range: "today" | "upcoming" = "today") {
     };
   }, [user, authLoading, range]);
 
-  const addLocal = (a: Appointment) =>
-    setAppointments((prev) => [...(prev ?? []), a]);
+  const addLocal = (a: Appointment) => setAppointments((prev) => [...(prev ?? []), a]);
   const updateLocal = (id: string, patch: Partial<Appointment>) =>
-    setAppointments((prev) =>
-      (prev ?? []).map((a) => (a.id === id ? { ...a, ...patch } : a)),
-    );
+    setAppointments((prev) => (prev ?? []).map((a) => (a.id === id ? { ...a, ...patch } : a)));
 
   return { appointments: appointments ?? [], loading, addLocal, updateLocal };
 }

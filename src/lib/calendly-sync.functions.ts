@@ -5,7 +5,6 @@ import { syncGoogleBlocksForUser } from "@/lib/google-writeback.server";
 import { syncOutlookBlocksForUser } from "@/lib/outlook-writeback.server";
 import { stripTimesIfOverridden } from "@/lib/sync-helpers.server";
 
-
 const CALENDLY_API_BASE = "https://api.calendly.com";
 
 interface CalendlyEvent {
@@ -65,251 +64,244 @@ async function refreshCalendlyToken(refreshToken: string): Promise<{
 
   return {
     access_token: data.access_token,
-    expires_at: new Date(
-      Date.now() + (data.expires_in ?? 7200) * 1000,
-    ).toISOString(),
+    expires_at: new Date(Date.now() + (data.expires_in ?? 7200) * 1000).toISOString(),
   };
 }
 
+export const syncCalendlyEvents = createServerFn({ method: "POST" }).handler(async () => {
+  const authHeader = getRequestHeader("authorization");
+  const token = authHeader?.replace(/^Bearer\s+/i, "");
+  if (!token) throw new Error("Not authenticated");
 
-export const syncCalendlyEvents = createServerFn({ method: "POST" }).handler(
-  async () => {
-    const authHeader = getRequestHeader("authorization");
-    const token = authHeader?.replace(/^Bearer\s+/i, "");
-    if (!token) throw new Error("Not authenticated");
+  const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
+  if (userErr || !userData.user) throw new Error("Invalid session");
 
-    const { data: userData, error: userErr } =
-      await supabaseAdmin.auth.getUser(token);
-    if (userErr || !userData.user) throw new Error("Invalid session");
+  const userId = userData.user.id;
 
-    const userId = userData.user.id;
+  // Load the Calendly connection for this user
+  const { data: conn, error: connErr } = await supabaseAdmin
+    .from("platform_connections")
+    .select("access_token, refresh_token, token_expires_at, metadata")
+    .eq("user_id", userId)
+    .eq("platform", "calendly")
+    .maybeSingle();
 
-    // Load the Calendly connection for this user
-    const { data: conn, error: connErr } = await supabaseAdmin
-      .from("platform_connections")
-      .select("access_token, refresh_token, token_expires_at, metadata")
-      .eq("user_id", userId)
-      .eq("platform", "calendly")
-      .maybeSingle();
+  if (connErr) throw new Error(connErr.message);
+  if (!conn) return { synced: 0, skipped: 0, connected: false };
 
-    if (connErr) throw new Error(connErr.message);
-    if (!conn) return { synced: 0, skipped: 0, connected: false };
+  let accessToken = conn.access_token as string | null;
+  const refreshToken = conn.refresh_token as string | null;
+  const expiresAt = conn.token_expires_at ? new Date(conn.token_expires_at as string).getTime() : 0;
 
-    let accessToken = conn.access_token as string | null;
-    const refreshToken = conn.refresh_token as string | null;
-    const expiresAt = conn.token_expires_at
-      ? new Date(conn.token_expires_at as string).getTime()
-      : 0;
-
-    // Refresh if expired or about to expire
-    if (!accessToken || expiresAt - Date.now() < 60_000) {
-      if (!refreshToken) {
-        return { synced: 0, skipped: 0, connected: false, needsReconnect: true };
-      }
-      try {
-        const refreshed = await refreshCalendlyToken(refreshToken);
-        accessToken = refreshed.access_token;
+  // Refresh if expired or about to expire
+  if (!accessToken || expiresAt - Date.now() < 60_000) {
+    if (!refreshToken) {
+      return { synced: 0, skipped: 0, connected: false, needsReconnect: true };
+    }
+    try {
+      const refreshed = await refreshCalendlyToken(refreshToken);
+      accessToken = refreshed.access_token;
+      await supabaseAdmin
+        .from("platform_connections")
+        .update({
+          access_token: accessToken,
+          token_expires_at: refreshed.expires_at,
+        })
+        .eq("user_id", userId)
+        .eq("platform", "calendly");
+    } catch (err) {
+      if (err instanceof CalendlyReauthRequiredError) {
         await supabaseAdmin
           .from("platform_connections")
-          .update({
-            access_token: accessToken,
-            token_expires_at: refreshed.expires_at,
-          })
+          .update({ access_token: null, refresh_token: null, token_expires_at: null })
           .eq("user_id", userId)
           .eq("platform", "calendly");
-      } catch (err) {
-        if (err instanceof CalendlyReauthRequiredError) {
-          await supabaseAdmin
-            .from("platform_connections")
-            .update({ access_token: null, refresh_token: null, token_expires_at: null })
-            .eq("user_id", userId)
-            .eq("platform", "calendly");
-          return { synced: 0, skipped: 0, connected: false, needsReconnect: true };
-        }
-        throw err;
+        return { synced: 0, skipped: 0, connected: false, needsReconnect: true };
       }
+      throw err;
     }
+  }
 
+  // Get user URI from stored metadata (needed to query events)
+  const metadata = conn.metadata as { user_uri?: string; organization_uri?: string } | null;
+  let userUri = metadata?.user_uri ?? null;
 
-    // Get user URI from stored metadata (needed to query events)
-    const metadata = conn.metadata as { user_uri?: string; organization_uri?: string } | null;
-    let userUri = metadata?.user_uri ?? null;
-
-    // If we don't have the user URI, fetch it
-    if (!userUri) {
-      const meRes = await fetch(`${CALENDLY_API_BASE}/users/me`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      const meText = await meRes.text();
-      console.log(`[calendly-sync] /users/me status=${meRes.status} body=${meText.slice(0, 500)}`);
-
-      if (!meRes.ok) {
-        if (meRes.status === 401) {
-          await supabaseAdmin
-            .from("platform_connections")
-            .update({ access_token: null, refresh_token: null, token_expires_at: null })
-            .eq("user_id", userId)
-            .eq("platform", "calendly");
-          return { synced: 0, skipped: 0, connected: false, needsReconnect: true };
-        }
-        throw new Error(`Calendly /users/me failed: ${meRes.status} ${meText.slice(0, 200)}`);
-      }
-
-      try {
-        const meData = JSON.parse(meText) as { resource?: { uri?: string; current_organization?: string } };
-        userUri = meData.resource?.uri ?? null;
-        const orgUri = meData.resource?.current_organization ?? null;
-        if (userUri) {
-          await supabaseAdmin
-            .from("platform_connections")
-            .update({ metadata: { ...metadata, user_uri: userUri, organization_uri: orgUri } })
-            .eq("user_id", userId)
-            .eq("platform", "calendly");
-        }
-      } catch (e) {
-        throw new Error(`Calendly /users/me returned non-JSON: ${meText.slice(0, 200)}`);
-      }
-    }
-
-    if (!userUri) throw new Error("Calendly /users/me succeeded but returned no resource.uri — token may be missing the 'default' scope. Try disconnecting and reconnecting Calendly.");
-
-    // Fetch scheduled events: 30 days back → 180 days forward
-    const minStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    const maxStart = new Date(
-      Date.now() + 180 * 24 * 60 * 60 * 1000,
-    ).toISOString();
-
-    // Fetch ALL pages of scheduled events. Calendly returns at most 100 per
-    // page; without following next_page_token, busy accounts silently lose
-    // their later events (including today's, since sort=start_time:asc starts
-    // from min_start_time 30 days ago).
-    const baseParams = new URLSearchParams({
-      user: userUri,
-      status: "active",
-      min_start_time: minStart,
-      max_start_time: maxStart,
-      count: "100",
-      sort: "start_time:asc",
+  // If we don't have the user URI, fetch it
+  if (!userUri) {
+    const meRes = await fetch(`${CALENDLY_API_BASE}/users/me`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
     });
+    const meText = await meRes.text();
+    console.log(`[calendly-sync] /users/me status=${meRes.status} body=${meText.slice(0, 500)}`);
 
-    console.log(
-      `[calendly-sync] user=${userId} userUri=${userUri} window=${minStart}..${maxStart}`,
+    if (!meRes.ok) {
+      if (meRes.status === 401) {
+        await supabaseAdmin
+          .from("platform_connections")
+          .update({ access_token: null, refresh_token: null, token_expires_at: null })
+          .eq("user_id", userId)
+          .eq("platform", "calendly");
+        return { synced: 0, skipped: 0, connected: false, needsReconnect: true };
+      }
+      throw new Error(`Calendly /users/me failed: ${meRes.status} ${meText.slice(0, 200)}`);
+    }
+
+    try {
+      const meData = JSON.parse(meText) as {
+        resource?: { uri?: string; current_organization?: string };
+      };
+      userUri = meData.resource?.uri ?? null;
+      const orgUri = meData.resource?.current_organization ?? null;
+      if (userUri) {
+        await supabaseAdmin
+          .from("platform_connections")
+          .update({ metadata: { ...metadata, user_uri: userUri, organization_uri: orgUri } })
+          .eq("user_id", userId)
+          .eq("platform", "calendly");
+      }
+    } catch (e) {
+      throw new Error(`Calendly /users/me returned non-JSON: ${meText.slice(0, 200)}`);
+    }
+  }
+
+  if (!userUri)
+    throw new Error(
+      "Calendly /users/me succeeded but returned no resource.uri — token may be missing the 'default' scope. Try disconnecting and reconnecting Calendly.",
     );
 
-    const events: CalendlyEvent[] = [];
-    let nextUrl: string | null = `${CALENDLY_API_BASE}/scheduled_events?${baseParams}`;
-    let pageGuard = 0;
-    while (nextUrl && pageGuard < 50) {
-      pageGuard++;
-      const eventsRes: Response = await fetch(nextUrl, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (!eventsRes.ok) {
-        const text = await eventsRes.text();
-        throw new Error(
-          `Calendly events fetch failed: ${eventsRes.status} ${text}`,
-        );
-      }
-      const pageData = (await eventsRes.json()) as {
-        collection?: CalendlyEvent[];
-        pagination?: { next_page?: string | null };
-      };
-      events.push(...(pageData.collection ?? []));
-      nextUrl = pageData.pagination?.next_page ?? null;
+  // Fetch scheduled events: 30 days back → 180 days forward
+  const minStart = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const maxStart = new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString();
+
+  // Fetch ALL pages of scheduled events. Calendly returns at most 100 per
+  // page; without following next_page_token, busy accounts silently lose
+  // their later events (including today's, since sort=start_time:asc starts
+  // from min_start_time 30 days ago).
+  const baseParams = new URLSearchParams({
+    user: userUri,
+    status: "active",
+    min_start_time: minStart,
+    max_start_time: maxStart,
+    count: "100",
+    sort: "start_time:asc",
+  });
+
+  console.log(`[calendly-sync] user=${userId} userUri=${userUri} window=${minStart}..${maxStart}`);
+
+  const events: CalendlyEvent[] = [];
+  let nextUrl: string | null = `${CALENDLY_API_BASE}/scheduled_events?${baseParams}`;
+  let pageGuard = 0;
+  while (nextUrl && pageGuard < 50) {
+    pageGuard++;
+    const eventsRes: Response = await fetch(nextUrl, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!eventsRes.ok) {
+      const text = await eventsRes.text();
+      throw new Error(`Calendly events fetch failed: ${eventsRes.status} ${text}`);
     }
-    console.log(`[calendly-sync] fetched ${events.length} events across ${pageGuard} page(s)`);
+    const pageData = (await eventsRes.json()) as {
+      collection?: CalendlyEvent[];
+      pagination?: { next_page?: string | null };
+    };
+    events.push(...(pageData.collection ?? []));
+    nextUrl = pageData.pagination?.next_page ?? null;
+  }
+  console.log(`[calendly-sync] fetched ${events.length} events across ${pageGuard} page(s)`);
 
+  let synced = 0;
+  let skipped = 0;
 
-    let synced = 0;
-    let skipped = 0;
+  for (const ev of events) {
+    if (ev.status === "canceled") {
+      skipped++;
+      continue;
+    }
 
-    for (const ev of events) {
-      if (ev.status === "canceled") {
-        skipped++;
+    // Extract event UUID from URI for use as external_id
+    const externalId = ev.uri.split("/").pop() ?? ev.uri;
+
+    // Fetch first invitee to get client name
+    let clientName = "Unknown Client";
+    try {
+      const invRes = await fetch(
+        `${CALENDLY_API_BASE}/scheduled_events/${externalId}/invitees?count=1`,
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+      if (invRes.ok) {
+        const invData = (await invRes.json()) as {
+          collection?: CalendlyInvitee[];
+        };
+        const invitee = invData.collection?.[0];
+        if (invitee) {
+          clientName = invitee.name || invitee.email || "Unknown Client";
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fetch Calendly invitee:", e);
+    }
+
+    const service = ev.name ?? null;
+
+    // Check if already exists
+    const { data: existing } = await supabaseAdmin
+      .from("appointments")
+      .select("id, local_override")
+      .eq("user_id", userId)
+      .eq("source_platform", "calendly")
+      .eq("external_id", externalId)
+      .maybeSingle();
+
+    const row = {
+      user_id: userId,
+      source_platform: "calendly",
+      external_id: externalId,
+      external_url: `https://calendly.com/app/scheduled_events/user/me`,
+      client_name: clientName,
+      service,
+      starts_at: ev.start_time,
+      ends_at: ev.end_time,
+      is_block: false,
+      note: ev.meeting_notes_plain ?? null,
+    };
+
+    if (existing) {
+      const payload = stripTimesIfOverridden(row, existing);
+      const { error } = await supabaseAdmin
+        .from("appointments")
+        .update(payload)
+        .eq("id", existing.id);
+      if (error) {
+        console.error("update calendly appointment failed", error);
         continue;
       }
-
-      // Extract event UUID from URI for use as external_id
-      const externalId = ev.uri.split("/").pop() ?? ev.uri;
-
-      // Fetch first invitee to get client name
-      let clientName = "Unknown Client";
-      try {
-        const invRes = await fetch(
-          `${CALENDLY_API_BASE}/scheduled_events/${externalId}/invitees?count=1`,
-          { headers: { Authorization: `Bearer ${accessToken}` } },
-        );
-        if (invRes.ok) {
-          const invData = (await invRes.json()) as {
-            collection?: CalendlyInvitee[];
-          };
-          const invitee = invData.collection?.[0];
-          if (invitee) {
-            clientName = invitee.name || invitee.email || "Unknown Client";
-          }
-        }
-      } catch (e) {
-        console.error("Failed to fetch Calendly invitee:", e);
+    } else {
+      const { error } = await supabaseAdmin.from("appointments").insert(row);
+      if (error) {
+        console.error("insert calendly appointment failed", error);
+        continue;
       }
-
-      const service = ev.name ?? null;
-
-      // Check if already exists
-      const { data: existing } = await supabaseAdmin
-        .from("appointments")
-        .select("id, local_override")
-        .eq("user_id", userId)
-        .eq("source_platform", "calendly")
-        .eq("external_id", externalId)
-        .maybeSingle();
-
-      const row = {
-        user_id: userId,
-        source_platform: "calendly",
-        external_id: externalId,
-        external_url: `https://calendly.com/app/scheduled_events/user/me`,
-        client_name: clientName,
-        service,
-        starts_at: ev.start_time,
-        ends_at: ev.end_time,
-        is_block: false,
-        note: ev.meeting_notes_plain ?? null,
-      };
-
-
-      if (existing) {
-        const payload = stripTimesIfOverridden(row, existing);
-        const { error } = await supabaseAdmin
-          .from("appointments")
-          .update(payload)
-          .eq("id", existing.id);
-        if (error) {
-          console.error("update calendly appointment failed", error);
-          continue;
-        }
-      } else {
-        const { error } = await supabaseAdmin
-          .from("appointments")
-          .insert(row);
-        if (error) {
-          console.error("insert calendly appointment failed", error);
-          continue;
-        }
-      }
-      synced++;
     }
+    synced++;
+  }
 
-    // Update last synced timestamp
-    await supabaseAdmin
-      .from("platform_connections")
-      .update({ last_synced_at: new Date().toISOString() })
-      .eq("user_id", userId)
-      .eq("platform", "calendly");
+  // Update last synced timestamp
+  await supabaseAdmin
+    .from("platform_connections")
+    .update({ last_synced_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .eq("platform", "calendly");
 
-    try { await syncGoogleBlocksForUser(userId, "calendly"); } catch (e) { console.error("calendly: syncGoogleBlocksForUser failed", e); }
-    try { await syncOutlookBlocksForUser(userId, "calendly"); } catch (e) { console.error("calendly: syncOutlookBlocksForUser failed", e); }
+  try {
+    await syncGoogleBlocksForUser(userId, "calendly");
+  } catch (e) {
+    console.error("calendly: syncGoogleBlocksForUser failed", e);
+  }
+  try {
+    await syncOutlookBlocksForUser(userId, "calendly");
+  } catch (e) {
+    console.error("calendly: syncOutlookBlocksForUser failed", e);
+  }
 
-
-    return { synced, skipped, connected: true };
-  },
-);
+  return { synced, skipped, connected: true };
+});

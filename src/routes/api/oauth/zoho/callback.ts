@@ -6,8 +6,7 @@ const ZOHO_ACCOUNTS_URL = "https://accounts.zoho.com";
 
 function getZohoRedirectUri(url: URL) {
   const configuredOrigin = process.env.ZOHO_OAUTH_REDIRECT_ORIGIN;
-  if (configuredOrigin)
-    return `${configuredOrigin.replace(/\/$/, "")}/api/oauth/zoho/callback`;
+  if (configuredOrigin) return `${configuredOrigin.replace(/\/$/, "")}/api/oauth/zoho/callback`;
   const isLocal = url.hostname.includes("localhost");
   const origin = isLocal ? `http://${url.host}` : "https://jeylink.vektiss.com";
   return `${origin}/api/oauth/zoho/callback`;
@@ -23,9 +22,7 @@ export const Route = createFileRoute("/api/oauth/zoho/callback")({
         const error = url.searchParams.get("error");
 
         if (error) {
-          return redirectTo(
-            `/platforms?zoho=error&reason=${encodeURIComponent(error)}`,
-          );
+          return redirectTo(`/platforms?zoho=error&reason=${encodeURIComponent(error)}`);
         }
 
         if (!code || !state) {
@@ -67,9 +64,10 @@ export const Route = createFileRoute("/api/oauth/zoho/callback")({
           token_type: string;
           scope?: string;
           api_domain?: string;
+          error?: string;
         };
 
-        if ((tokens as any).error) {
+        if (tokens.error) {
           console.error("Zoho token error:", tokens);
           return redirectTo("/platforms?zoho=error&reason=token_error");
         }
@@ -79,50 +77,42 @@ export const Route = createFileRoute("/api/oauth/zoho/callback")({
         const apiDomain = tokens.api_domain ?? "https://www.zohoapis.com";
 
         try {
-          const userRes = await fetch(
-            `${ZOHO_ACCOUNTS_URL}/oauth/user/info`,
-            {
-              headers: {
-                Authorization: `Zoho-oauthtoken ${tokens.access_token}`,
-              },
+          const userRes = await fetch(`${ZOHO_ACCOUNTS_URL}/oauth/user/info`, {
+            headers: {
+              Authorization: `Zoho-oauthtoken ${tokens.access_token}`,
             },
-          );
+          });
           if (userRes.ok) {
             const userData = (await userRes.json()) as {
               Display_Name?: string;
               Email?: string;
             };
-            accountLabel =
-              userData.Display_Name ?? userData.Email ?? null;
+            accountLabel = userData.Display_Name ?? userData.Email ?? null;
           }
         } catch (e) {
           console.error("Failed to fetch Zoho user info:", e);
         }
 
         // Zoho access tokens expire in 1 hour
-        const expiresAt = new Date(
-          Date.now() + (tokens.expires_in ?? 3600) * 1000,
-        ).toISOString();
+        const expiresAt = new Date(Date.now() + (tokens.expires_in ?? 3600) * 1000).toISOString();
 
-        const { error: upsertErr } = await supabaseAdmin
-          .from("platform_connections")
-          .upsert(
-            {
-              user_id: payload.userId,
-              platform: "zoho",
-              status: "connected",
-              access_token: tokens.access_token,
-              refresh_token: tokens.refresh_token ?? null,
-              token_expires_at: expiresAt,
-              account_label: accountLabel,
-              metadata: {
-                api_domain: apiDomain,
-                scope: tokens.scope ?? null,
-              },
-              updated_at: new Date().toISOString(),
+        const { error: upsertErr } = await supabaseAdmin.from("platform_connections").upsert(
+          {
+            user_id: payload.userId,
+            platform: "zoho",
+            status: "connected",
+            access_token: tokens.access_token,
+            refresh_token: tokens.refresh_token ?? null,
+            token_expires_at: expiresAt,
+            account_label: accountLabel,
+            metadata: {
+              api_domain: apiDomain,
+              scope: tokens.scope ?? null,
             },
-            { onConflict: "user_id,platform" },
-          );
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id,platform" },
+        );
 
         if (upsertErr) {
           console.error("Failed to save Zoho connection:", upsertErr);

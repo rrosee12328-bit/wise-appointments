@@ -3,7 +3,16 @@
  * status, last synced time, sync errors, manual Sync Now, Disconnect, and Reconnect buttons.
  */
 import { useState } from "react";
-import { RefreshCw, CheckCircle2, XCircle, AlertCircle, Clock, Wifi, WifiOff, LogOut } from "lucide-react";
+import {
+  RefreshCw,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Clock,
+  Wifi,
+  WifiOff,
+  LogOut,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -59,8 +68,13 @@ function shortenSyncError(err: string | null): string {
   return "Sync failed";
 }
 
-
-export function SyncStatusPanel({ connections, onSyncNow, onReconnect, onDisconnect, isSyncing }: Props) {
+export function SyncStatusPanel({
+  connections,
+  onSyncNow,
+  onReconnect,
+  onDisconnect,
+  isSyncing,
+}: Props) {
   const [syncingPlatform, setSyncingPlatform] = useState<string | null>(null);
 
   const connMap = new Map(connections.map((c) => [c.platform, c]));
@@ -91,7 +105,9 @@ export function SyncStatusPanel({ connections, onSyncNow, onReconnect, onDisconn
             }
           }}
         >
-          <RefreshCw className={cn("h-3.5 w-3.5", (isSyncing || syncingPlatform) && "animate-spin")} />
+          <RefreshCw
+            className={cn("h-3.5 w-3.5", (isSyncing || syncingPlatform) && "animate-spin")}
+          />
           Sync All
         </Button>
       </div>
@@ -168,7 +184,9 @@ export function SyncStatusPanel({ connections, onSyncNow, onReconnect, onDisconn
                   {isConnected && (
                     <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                       <Clock className="h-3 w-3 shrink-0" />
-                      <span className="truncate">Last synced: {formatRelativeTime(conn?.last_synced_at ?? null)}</span>
+                      <span className="truncate">
+                        Last synced: {formatRelativeTime(conn?.last_synced_at ?? null)}
+                      </span>
                     </div>
                   )}
 
@@ -246,8 +264,8 @@ export function SyncStatusPanel({ connections, onSyncNow, onReconnect, onDisconn
 
       {/* Legend */}
       <p className="mt-3 text-[10px] text-muted-foreground">
-        Events from all connected calendars sync automatically every 5 minutes.
-        Any event on Google or Outlook will appear here and block that time across all calendars.
+        Events from all connected calendars sync automatically every 5 minutes. Any event on Google
+        or Outlook will appear here and block that time across all calendars.
       </p>
     </div>
   );

@@ -11,12 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import {
-  PLATFORMS,
-  ICAL_INSTRUCTIONS,
-  supportsIcal,
-  type PlatformId,
-} from "@/lib/platforms";
+import { PLATFORMS, ICAL_INSTRUCTIONS, supportsIcal, type PlatformId } from "@/lib/platforms";
 
 const PLACEHOLDER: Partial<Record<PlatformId, string>> = {
   booksy: "booksy.com/en-us/your-shop",
@@ -95,11 +90,7 @@ export function LinkPlatformDialog({
         </DialogHeader>
 
         {showIcalTab ? (
-          <Tabs
-            value={tab}
-            onValueChange={(v) => setTab(v as "ical" | "relay")}
-            className="w-full"
-          >
+          <Tabs value={tab} onValueChange={(v) => setTab(v as "ical" | "relay")} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="ical">iCal link (recommended)</TabsTrigger>
               <TabsTrigger value="relay">Google / Outlook</TabsTrigger>
@@ -212,17 +203,12 @@ function RelayForm({
           autoComplete="off"
         />
         <p className="text-xs text-muted-foreground">
-          Events whose title, notes, or location mention this will appear under{" "}
-          {label} in your appointments.
+          Events whose title, notes, or location mention this will appear under {label} in your
+          appointments.
         </p>
       </div>
       <DialogFooter className="pt-2">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          disabled={isLoading}
-        >
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
           Cancel
         </Button>
         <Button type="submit" disabled={!handle.trim() || isLoading || !hasRelayCalendar}>

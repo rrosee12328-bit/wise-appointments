@@ -26,20 +26,17 @@ export const Route = createFileRoute("/api/oauth/outlook/callback")({
 
         const redirectUri = getOutlookRedirectUri(url.host);
 
-        const tokenRes = await fetch(
-          "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({
-              code,
-              client_id: process.env.OUTLOOK_OAUTH_CLIENT_ID!,
-              client_secret: process.env.OUTLOOK_OAUTH_CLIENT_SECRET!,
-              redirect_uri: redirectUri,
-              grant_type: "authorization_code",
-            }),
-          },
-        );
+        const tokenRes = await fetch("https://login.microsoftonline.com/common/oauth2/v2.0/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            code,
+            client_id: process.env.OUTLOOK_OAUTH_CLIENT_ID!,
+            client_secret: process.env.OUTLOOK_OAUTH_CLIENT_SECRET!,
+            redirect_uri: redirectUri,
+            grant_type: "authorization_code",
+          }),
+        });
 
         if (!tokenRes.ok) {
           const text = await tokenRes.text();
@@ -83,26 +80,24 @@ export const Route = createFileRoute("/api/oauth/outlook/callback")({
           refreshTokenToStore = (existing?.refresh_token as string | null) ?? null;
         }
 
-        const { error: upsertErr } = await supabaseAdmin
-          .from("platform_connections")
-          .upsert(
-            {
-              user_id: payload.userId,
-              platform: "outlook_calendar",
-              status: "connected",
-              access_token: tokens.access_token,
-              refresh_token: refreshTokenToStore,
-              token_expires_at: expiresAt,
-              account_label: accountEmail,
-              metadata: {
-                scope: tokens.scope,
-                sync_error: null,
-                sync_error_at: null,
-              },
-              updated_at: new Date().toISOString(),
+        const { error: upsertErr } = await supabaseAdmin.from("platform_connections").upsert(
+          {
+            user_id: payload.userId,
+            platform: "outlook_calendar",
+            status: "connected",
+            access_token: tokens.access_token,
+            refresh_token: refreshTokenToStore,
+            token_expires_at: expiresAt,
+            account_label: accountEmail,
+            metadata: {
+              scope: tokens.scope,
+              sync_error: null,
+              sync_error_at: null,
             },
-            { onConflict: "user_id,platform" },
-          );
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id,platform" },
+        );
 
         if (upsertErr) {
           console.error("Failed to save Outlook connection:", upsertErr);

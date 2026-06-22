@@ -7,6 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
 
+function errorMessage(err: unknown, fallback: string) {
+  return err instanceof Error ? err.message : fallback;
+}
+
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
     meta: [
@@ -26,7 +30,9 @@ function ResetPasswordPage() {
 
   useEffect(() => {
     // Supabase fires PASSWORD_RECOVERY once it parses the recovery token from the URL hash.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
         setReady(true);
       }
@@ -54,8 +60,8 @@ function ResetPasswordPage() {
       if (error) throw error;
       toast.success("Password updated. You're signed in.");
       navigate({ to: "/", search: { verify: undefined } });
-    } catch (err: any) {
-      toast.error(err.message ?? "Could not update password");
+    } catch (err: unknown) {
+      toast.error(errorMessage(err, "Could not update password"));
     } finally {
       setSubmitting(false);
     }
@@ -105,7 +111,10 @@ function ResetPasswordPage() {
             </Button>
           </form>
           <p className="text-center text-sm text-muted-foreground">
-            <Link to="/signin" className="font-medium text-foreground underline-offset-4 hover:underline">
+            <Link
+              to="/signin"
+              className="font-medium text-foreground underline-offset-4 hover:underline"
+            >
               Back to sign in
             </Link>
           </p>

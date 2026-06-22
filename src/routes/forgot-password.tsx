@@ -7,6 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
 
+function errorMessage(err: unknown, fallback: string) {
+  return err instanceof Error ? err.message : fallback;
+}
+
 export const Route = createFileRoute("/forgot-password")({
   head: () => ({
     meta: [
@@ -32,8 +36,8 @@ function ForgotPasswordPage() {
       if (error) throw error;
       setSent(true);
       toast.success("Check your email for the reset link.");
-    } catch (err: any) {
-      toast.error(err.message ?? "Could not send reset email");
+    } catch (err: unknown) {
+      toast.error(errorMessage(err, "Could not send reset email"));
     } finally {
       setSubmitting(false);
     }
@@ -72,7 +76,10 @@ function ForgotPasswordPage() {
             </form>
           )}
           <p className="text-center text-sm text-muted-foreground">
-            <Link to="/signin" className="font-medium text-foreground underline-offset-4 hover:underline">
+            <Link
+              to="/signin"
+              className="font-medium text-foreground underline-offset-4 hover:underline"
+            >
               Back to sign in
             </Link>
           </p>

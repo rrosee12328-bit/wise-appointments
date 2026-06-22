@@ -57,34 +57,28 @@ export const linkPlatform = createServerFn({ method: "POST" })
     const hasGoogle = relays?.some((r) => r.platform === "google_calendar");
     const hasOutlook = relays?.some((r) => r.platform === "outlook_calendar");
     if (!hasGoogle && !hasOutlook) {
-      throw new Error(
-        "Connect Google or Outlook Calendar first so bookings can flow through.",
-      );
+      throw new Error("Connect Google or Outlook Calendar first so bookings can flow through.");
     }
     const relay = hasGoogle ? "google" : "outlook";
     const url = normalizeUrl(data.handle);
 
-    const { error } = await supabaseAdmin
-      .from("platform_links")
-      .upsert(
-        {
-          user_id: userId,
-          platform: data.platform,
-          handle: data.handle.trim(),
-          url,
-          relay,
-        },
-        { onConflict: "user_id,platform" },
-      );
+    const { error } = await supabaseAdmin.from("platform_links").upsert(
+      {
+        user_id: userId,
+        platform: data.platform,
+        handle: data.handle.trim(),
+        url,
+        relay,
+      },
+      { onConflict: "user_id,platform" },
+    );
     if (error) throw new Error(error.message);
 
     return { ok: true, handle: data.handle.trim(), relay };
   });
 
 export const unlinkPlatform = createServerFn({ method: "POST" })
-  .inputValidator((input) =>
-    z.object({ platform: z.enum(RELAY_PLATFORM_IDS) }).parse(input),
-  )
+  .inputValidator((input) => z.object({ platform: z.enum(RELAY_PLATFORM_IDS) }).parse(input))
   .handler(async ({ data }) => {
     const userId = await getUserId();
     const { error } = await supabaseAdmin

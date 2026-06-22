@@ -52,16 +52,14 @@ export function AppointmentDetailDialog({
               <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Notes
               </div>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">
-                {appt.notes}
-              </p>
+              <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">{appt.notes}</p>
             </div>
           )}
 
           {!appt.externalUrl && (
             <p className="text-xs text-muted-foreground">
-              No deep link available for this booking. Open {platformLabel} directly
-              to see full details.
+              No deep link available for this booking. Open {platformLabel} directly to see full
+              details.
             </p>
           )}
         </div>

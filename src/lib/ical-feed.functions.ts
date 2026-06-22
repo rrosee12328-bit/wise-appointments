@@ -80,9 +80,7 @@ export const connectIcalFeed = createServerFn({ method: "POST" })
   });
 
 export const disconnectIcalFeed = createServerFn({ method: "POST" })
-  .inputValidator((input) =>
-    z.object({ platform: z.enum(ICAL_PLATFORMS) }).parse(input),
-  )
+  .inputValidator((input) => z.object({ platform: z.enum(ICAL_PLATFORMS) }).parse(input))
   .handler(async ({ data }) => {
     const userId = await getUserId();
     // Delete the feed.
@@ -103,30 +101,26 @@ export const disconnectIcalFeed = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-export const listIcalFeeds = createServerFn({ method: "GET" }).handler(
-  async () => {
-    const userId = await getUserIdOrNull();
-    if (!userId) return { feeds: [] };
-    const { data, error } = await supabaseAdmin
-      .from("ical_feeds")
-      .select("platform, feed_url, last_synced_at, last_error, consecutive_failures")
-      .eq("user_id", userId);
-    if (error) throw new Error(error.message);
-    const feeds = (data ?? []).map((r) => ({
-      platform: r.platform as IcalPlatform,
-      feedUrl: r.feed_url as string,
-      lastSyncedAt: (r.last_synced_at as string | null) ?? null,
-      lastError: (r.last_error as string | null) ?? null,
-      consecutiveFailures: (r.consecutive_failures as number | null) ?? 0,
-    }));
-    return { feeds };
-  },
-);
+export const listIcalFeeds = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await getUserIdOrNull();
+  if (!userId) return { feeds: [] };
+  const { data, error } = await supabaseAdmin
+    .from("ical_feeds")
+    .select("platform, feed_url, last_synced_at, last_error, consecutive_failures")
+    .eq("user_id", userId);
+  if (error) throw new Error(error.message);
+  const feeds = (data ?? []).map((r) => ({
+    platform: r.platform as IcalPlatform,
+    feedUrl: r.feed_url as string,
+    lastSyncedAt: (r.last_synced_at as string | null) ?? null,
+    lastError: (r.last_error as string | null) ?? null,
+    consecutiveFailures: (r.consecutive_failures as number | null) ?? 0,
+  }));
+  return { feeds };
+});
 
 export const refreshIcalFeed = createServerFn({ method: "POST" })
-  .inputValidator((input) =>
-    z.object({ platform: z.enum(ICAL_PLATFORMS) }).parse(input),
-  )
+  .inputValidator((input) => z.object({ platform: z.enum(ICAL_PLATFORMS) }).parse(input))
   .handler(async ({ data }) => {
     const userId = await getUserId();
     const { data: row, error } = await supabaseAdmin

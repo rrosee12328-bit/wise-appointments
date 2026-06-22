@@ -20,20 +20,17 @@ export class OutlookNotConnectedError extends Error {
 }
 
 async function refreshAccessToken(refreshToken: string) {
-  const res = await fetch(
-    "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        client_id: process.env.OUTLOOK_OAUTH_CLIENT_ID!,
-        client_secret: process.env.OUTLOOK_OAUTH_CLIENT_SECRET!,
-        refresh_token: refreshToken,
-        grant_type: "refresh_token",
-        scope: "offline_access Calendars.ReadWrite User.Read",
-      }),
-    },
-  );
+  const res = await fetch("https://login.microsoftonline.com/common/oauth2/v2.0/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: process.env.OUTLOOK_OAUTH_CLIENT_ID!,
+      client_secret: process.env.OUTLOOK_OAUTH_CLIENT_SECRET!,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
+      scope: "offline_access Calendars.ReadWrite User.Read",
+    }),
+  });
   if (!res.ok) {
     const text = await res.text();
     if (res.status === 400 && (text.includes("invalid_grant") || text.includes("AADSTS"))) {
@@ -60,9 +57,7 @@ export async function getValidOutlookAccessToken(userId: string): Promise<string
 
   let accessToken = conn.access_token as string | null;
   const refreshToken = conn.refresh_token as string | null;
-  const expiresAt = conn.token_expires_at
-    ? new Date(conn.token_expires_at as string).getTime()
-    : 0;
+  const expiresAt = conn.token_expires_at ? new Date(conn.token_expires_at as string).getTime() : 0;
 
   if (!accessToken || expiresAt - Date.now() < 60_000) {
     if (!refreshToken) throw new OutlookReauthRequiredError();
@@ -123,7 +118,13 @@ function toOutlookDateTime(iso: string): { dateTime: string; timeZone: string } 
 export async function patchOutlookEvent(
   accessToken: string,
   eventId: string,
-  patch: { start?: ReschedulePatch["start"]; end?: ReschedulePatch["end"]; subject?: string; body?: EventBody["body"]; showAs?: EventBody["showAs"] },
+  patch: {
+    start?: ReschedulePatch["start"];
+    end?: ReschedulePatch["end"];
+    subject?: string;
+    body?: EventBody["body"];
+    showAs?: EventBody["showAs"];
+  },
 ): Promise<void> {
   const body: Record<string, unknown> = {};
   if (patch.start) body.start = toOutlookDateTime(patch.start.dateTime);
@@ -148,13 +149,18 @@ export async function patchOutlookEvent(
 
 export async function insertOutlookEvent(
   accessToken: string,
-  body: { summary: string; description?: string; start: { dateTime: string }; end: { dateTime: string }; showAs?: EventBody["showAs"]; transactionId?: string },
+  body: {
+    summary: string;
+    description?: string;
+    start: { dateTime: string };
+    end: { dateTime: string };
+    showAs?: EventBody["showAs"];
+    transactionId?: string;
+  },
 ): Promise<string> {
   const payload: EventBody & { transactionId?: string } = {
     subject: body.summary,
-    body: body.description
-      ? { contentType: "Text", content: body.description }
-      : undefined,
+    body: body.description ? { contentType: "Text", content: body.description } : undefined,
     start: toOutlookDateTime(body.start.dateTime),
     end: toOutlookDateTime(body.end.dateTime),
     showAs: body.showAs ?? "busy",
@@ -176,11 +182,7 @@ export async function insertOutlookEvent(
   return json.id;
 }
 
-
-export async function deleteOutlookEvent(
-  accessToken: string,
-  eventId: string,
-): Promise<void> {
+export async function deleteOutlookEvent(accessToken: string, eventId: string): Promise<void> {
   const res = await fetch(`${GRAPH_BASE}/me/events/${encodeURIComponent(eventId)}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -193,9 +195,7 @@ export async function deleteOutlookEvent(
 
 const BLOCK_PREFIX = "outlook_block:";
 
-export function getOutlookBlockEventId(
-  syncedTo: string[] | null | undefined,
-): string | null {
+export function getOutlookBlockEventId(syncedTo: string[] | null | undefined): string | null {
   if (!syncedTo) return null;
   const entry = syncedTo.find((s) => s.startsWith(BLOCK_PREFIX));
   return entry ? entry.slice(BLOCK_PREFIX.length) : null;
@@ -266,4 +266,3 @@ export async function syncOutlookBlocksForUser(
   }
   return { created, skipped };
 }
-

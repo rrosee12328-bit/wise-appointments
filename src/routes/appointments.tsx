@@ -63,10 +63,7 @@ function Appointments() {
     refetchIntervalInBackground: false,
   });
 
-  const all: Appointment[] = useMemo(
-    () => (data?.items ?? []).map(toUiAppointment),
-    [data],
-  );
+  const all: Appointment[] = useMemo(() => (data?.items ?? []).map(toUiAppointment), [data]);
 
   const filter = useCallback(
     (list: Appointment[]) =>
@@ -222,27 +219,15 @@ function Appointments() {
         </TabsContent>
 
         <TabsContent value="day" className="mt-4">
-          <DayTimelineView
-            appointments={all}
-            onSelect={setDetailAppt}
-            onAddNew={handleAddNew}
-          />
+          <DayTimelineView appointments={all} onSelect={setDetailAppt} onAddNew={handleAddNew} />
         </TabsContent>
 
         <TabsContent value="week" className="mt-4">
-          <WeekView
-            appointments={all}
-            onSelect={setDetailAppt}
-            onAddNew={handleAddNew}
-          />
+          <WeekView appointments={all} onSelect={setDetailAppt} onAddNew={handleAddNew} />
         </TabsContent>
 
         <TabsContent value="month" className="mt-4">
-          <MonthGridView
-            appointments={all}
-            onSelectDay={handleAddNew}
-            onAddNew={handleAddNew}
-          />
+          <MonthGridView appointments={all} onSelectDay={handleAddNew} onAddNew={handleAddNew} />
         </TabsContent>
       </Tabs>
 

@@ -3,7 +3,16 @@ import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { RefreshCw, AlertTriangle, CheckCircle2, Plus, Mail, Calendar, Eye, EyeOff } from "lucide-react";
+import {
+  RefreshCw,
+  AlertTriangle,
+  CheckCircle2,
+  Plus,
+  Mail,
+  Calendar,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppointmentRow } from "@/components/AppointmentCard";
 import { PlatformBadge } from "@/components/PlatformBadge";
@@ -19,10 +28,12 @@ import { getAppointments, upsertAppointment } from "@/lib/appointments.functions
 import { rescheduleAppointment, pushAppointmentBlock } from "@/lib/appointment-writeback.functions";
 import { getProfile } from "@/lib/profile.functions";
 import { syncGoogleCalendar } from "@/lib/google-sync.functions";
+import { syncOutlookCalendar } from "@/lib/outlook-sync.functions";
 import { syncSquareBookings } from "@/lib/square-sync.functions";
 import { syncCalendlyEvents } from "@/lib/calendly-sync.functions";
 import { syncAcuityAppointments } from "@/lib/acuity-sync.functions";
 import { syncZohoBookings } from "@/lib/zoho-sync.functions";
+import { listIcalFeeds, refreshIcalFeed } from "@/lib/ical-feed.functions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
@@ -65,7 +76,6 @@ function overlapsToday(start: Date, durationMin: number) {
   return end > startOfToday() && start <= endOfToday();
 }
 
-
 function Schedule() {
   const search = useSearch({ from: "/" });
   const { session } = useAuth();
@@ -76,10 +86,13 @@ function Schedule() {
   const pushBlockFn = useServerFn(pushAppointmentBlock);
   const fetchProfile = useServerFn(getProfile);
   const syncGoogle = useServerFn(syncGoogleCalendar);
+  const syncOutlook = useServerFn(syncOutlookCalendar);
   const syncSquare = useServerFn(syncSquareBookings);
   const syncCalendly = useServerFn(syncCalendlyEvents);
   const syncAcuity = useServerFn(syncAcuityAppointments);
   const syncZoho = useServerFn(syncZohoBookings);
+  const listFeeds = useServerFn(listIcalFeeds);
+  const refreshFeed = useServerFn(refreshIcalFeed);
 
   useAutoSyncPlatforms(!!session);
 
@@ -136,7 +149,6 @@ function Schedule() {
   const [walkInOpen, setWalkInOpen] = useState(false);
   const [detailAppt, setDetailAppt] = useState<Appointment | null>(null);
 
-
   useEffect(() => {
     if (conflicts.length > 0) setResolverOpen(true);
   }, [conflicts.length]);
@@ -157,14 +169,34 @@ function Schedule() {
   const sync = async () => {
     setSyncing(true);
     try {
+      const icalPromise = listFeeds()
+        .then(({ feeds }) =>
+          Promise.allSettled(
+            feeds.map((f) => refreshFeed({ data: { platform: f.platform } }).then(() => true)),
+          ),
+        )
+        .catch((err) => {
+          console.error("Manual iCal sync failed", err);
+          return [] as PromiseSettledResult<boolean>[];
+        });
+
       const results = await Promise.allSettled([
         syncGoogle(),
+        syncOutlook(),
         syncSquare(),
         syncCalendly(),
         syncAcuity(),
         syncZoho(),
       ]);
-      const labels = ["Google Calendar", "Square", "Calendly", "Acuity", "Zoho Bookings"];
+      const icalResults = await icalPromise;
+      const labels = [
+        "Google Calendar",
+        "Outlook Calendar",
+        "Square",
+        "Calendly",
+        "Acuity",
+        "Zoho Bookings",
+      ];
       let totalSynced = 0;
       let totalSkipped = 0;
       let anyConnected = false;
@@ -186,8 +218,27 @@ function Schedule() {
         }
       });
 
+      const syncedAnyIcal = Array.isArray(icalResults)
+        ? icalResults.some((r) => r.status === "fulfilled" && r.value)
+        : false;
+      if (syncedAnyIcal) {
+        anyConnected = true;
+        perPlatform.push("iCal feeds refreshed");
+      }
+      if (Array.isArray(icalResults)) {
+        icalResults.forEach((r) => {
+          if (r.status === "rejected") {
+            errors.push(`iCal: ${(r.reason as Error).message}`);
+          }
+        });
+      }
+
       if (anyConnected || totalSynced > 0) {
-        await qc.invalidateQueries({ queryKey: ["appointments"] });
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: ["appointments"] }),
+          qc.invalidateQueries({ queryKey: ["ical-feeds"] }),
+          qc.invalidateQueries({ queryKey: ["platform-connections"] }),
+        ]);
         toast.success(
           `Synced ${totalSynced} appointment${totalSynced === 1 ? "" : "s"}` +
             (totalSkipped ? ` · skipped ${totalSkipped}` : ""),
@@ -265,10 +316,7 @@ function Schedule() {
   });
 
   const firstName =
-    profile?.first_name?.trim() ||
-    profile?.display_name?.trim().split(/\s+/)[0] ||
-    "";
-
+    profile?.first_name?.trim() || profile?.display_name?.trim().split(/\s+/)[0] || "";
 
   return (
     <main className="mx-auto max-w-md px-5 pb-10 pt-8">
@@ -284,7 +332,12 @@ function Schedule() {
           className="mt-2 text-3xl font-extrabold tracking-tight text-foreground"
           suppressHydrationWarning
         >
-          {greeting}{firstName ? <>, <span className="text-accent">{firstName}</span></> : null}
+          {greeting}
+          {firstName ? (
+            <>
+              , <span className="text-accent">{firstName}</span>
+            </>
+          ) : null}
         </h1>
       </header>
 
@@ -426,7 +479,6 @@ function Schedule() {
                 onClick={() => setDetailAppt(a)}
               />
             ))}
-
           </div>
         )}
       </section>
@@ -455,4 +507,3 @@ function Schedule() {
     </main>
   );
 }
-

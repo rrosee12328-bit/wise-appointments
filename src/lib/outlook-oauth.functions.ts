@@ -5,16 +5,11 @@ import { supabaseAdmin } from "@/integrations/supabase/admin.server";
 import { signState } from "@/lib/oauth-state.server";
 import { randomBytes } from "crypto";
 
-const OUTLOOK_SCOPES = [
-  "offline_access",
-  "Calendars.ReadWrite",
-  "User.Read",
-].join(" ");
+const OUTLOOK_SCOPES = ["offline_access", "Calendars.ReadWrite", "User.Read"].join(" ");
 
 export function getOutlookRedirectUri(host: string) {
   const configuredOrigin = process.env.OUTLOOK_OAUTH_REDIRECT_ORIGIN;
-  if (configuredOrigin)
-    return `${configuredOrigin.replace(/\/$/, "")}/api/oauth/outlook/callback`;
+  if (configuredOrigin) return `${configuredOrigin.replace(/\/$/, "")}/api/oauth/outlook/callback`;
   const isLocal = host.includes("localhost");
   const origin = isLocal ? `http://${host}` : "https://jeylink.vektiss.com";
   return `${origin}/api/oauth/outlook/callback`;

@@ -289,10 +289,7 @@ export function supportsIcal(id: PlatformId): boolean {
 }
 
 /** Per-platform copy for finding the iCal export URL. */
-export const ICAL_INSTRUCTIONS: Record<
-  string,
-  { steps: string[]; helpUrl?: string }
-> = {
+export const ICAL_INSTRUCTIONS: Record<string, { steps: string[]; helpUrl?: string }> = {
   booksy: {
     steps: [
       "Open Booksy Biz on web → Settings → Calendar",
@@ -318,5 +315,3 @@ export const ICAL_INSTRUCTIONS: Record<
     helpUrl: "https://sup.vagaro.com",
   },
 };
-
-

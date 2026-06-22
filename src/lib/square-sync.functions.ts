@@ -5,7 +5,6 @@ import { syncGoogleBlocksForUser } from "@/lib/google-writeback.server";
 import { syncOutlookBlocksForUser } from "@/lib/outlook-writeback.server";
 import { stripTimesIfOverridden } from "@/lib/sync-helpers.server";
 
-
 const SQUARE_API_BASE =
   process.env.SQUARE_ENVIRONMENT === "sandbox"
     ? "https://connect.squareupsandbox.com"
@@ -265,10 +264,12 @@ export const syncSquareBookings = createServerFn({ method: "POST" }).handler(asy
       note: booking.customer_note ?? null,
     };
 
-
     if (existing) {
       const payload = stripTimesIfOverridden(row, existing);
-      const { error } = await supabaseAdmin.from("appointments").update(payload).eq("id", existing.id);
+      const { error } = await supabaseAdmin
+        .from("appointments")
+        .update(payload)
+        .eq("id", existing.id);
       if (error) {
         console.error("update square appointment failed", error);
         continue;
@@ -290,9 +291,16 @@ export const syncSquareBookings = createServerFn({ method: "POST" }).handler(asy
     .eq("user_id", userId)
     .eq("platform", "square");
 
-  try { await syncGoogleBlocksForUser(userId, "square"); } catch (e) { console.error("square: syncGoogleBlocksForUser failed", e); }
-  try { await syncOutlookBlocksForUser(userId, "square"); } catch (e) { console.error("square: syncOutlookBlocksForUser failed", e); }
-
+  try {
+    await syncGoogleBlocksForUser(userId, "square");
+  } catch (e) {
+    console.error("square: syncGoogleBlocksForUser failed", e);
+  }
+  try {
+    await syncOutlookBlocksForUser(userId, "square");
+  } catch (e) {
+    console.error("square: syncOutlookBlocksForUser failed", e);
+  }
 
   return { synced, skipped, connected: true };
 });

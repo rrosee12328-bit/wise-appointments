@@ -45,11 +45,7 @@ function unfoldLines(raw: string): string[] {
 }
 
 function unescapeText(s: string): string {
-  return s
-    .replace(/\\n/gi, "\n")
-    .replace(/\\,/g, ",")
-    .replace(/\\;/g, ";")
-    .replace(/\\\\/g, "\\");
+  return s.replace(/\\n/gi, "\n").replace(/\\,/g, ",").replace(/\\;/g, ";").replace(/\\\\/g, "\\");
 }
 
 /** Parse an ICS DATE-TIME value into an ISO string in UTC.
@@ -108,13 +104,7 @@ export function parseIcs(raw: string): ParsedEvent[] {
       continue;
     }
     if (line === "END:VEVENT") {
-      if (
-        cur &&
-        cur.uid &&
-        cur.startsAtIso &&
-        cur.endsAtIso &&
-        cur.status !== "CANCELLED"
-      ) {
+      if (cur && cur.uid && cur.startsAtIso && cur.endsAtIso && cur.status !== "CANCELLED") {
         events.push({
           uid: cur.uid,
           summary: cur.summary ?? "Untitled",

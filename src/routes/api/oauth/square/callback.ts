@@ -4,8 +4,7 @@ import { verifyState } from "@/lib/oauth-state.server";
 
 function getSquareRedirectUri(url: URL) {
   const configuredOrigin = process.env.SQUARE_OAUTH_REDIRECT_ORIGIN;
-  if (configuredOrigin)
-    return `${configuredOrigin.replace(/\/$/, "")}/api/oauth/square/callback`;
+  if (configuredOrigin) return `${configuredOrigin.replace(/\/$/, "")}/api/oauth/square/callback`;
   const isLocal = url.hostname.includes("localhost");
   const origin = isLocal ? `http://${url.host}` : "https://jeylink.vektiss.com";
   return `${origin}/api/oauth/square/callback`;
@@ -21,9 +20,7 @@ export const Route = createFileRoute("/api/oauth/square/callback")({
         const error = url.searchParams.get("error");
 
         if (error) {
-          return redirectTo(
-            `/platforms?square=error&reason=${encodeURIComponent(error)}`,
-          );
+          return redirectTo(`/platforms?square=error&reason=${encodeURIComponent(error)}`);
         }
 
         if (!code || !state) {
@@ -90,10 +87,7 @@ export const Route = createFileRoute("/api/oauth/square/callback")({
               merchant?: { business_name?: string; email?: string };
             };
             accountLabel =
-              mData.merchant?.business_name ??
-              mData.merchant?.email ??
-              tokens.merchant_id ??
-              null;
+              mData.merchant?.business_name ?? mData.merchant?.email ?? tokens.merchant_id ?? null;
           }
         } catch (e) {
           console.error("Failed to fetch Square merchant info:", e);
@@ -101,25 +95,22 @@ export const Route = createFileRoute("/api/oauth/square/callback")({
 
         // Square tokens expire_at is an ISO string; fall back to 30 days
         const expiresAt =
-          tokens.expires_at ??
-          new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+          tokens.expires_at ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-        const { error: upsertErr } = await supabaseAdmin
-          .from("platform_connections")
-          .upsert(
-            {
-              user_id: payload.userId,
-              platform: "square",
-              status: "connected",
-              access_token: tokens.access_token,
-              refresh_token: tokens.refresh_token ?? null,
-              token_expires_at: expiresAt,
-              account_label: accountLabel,
-              metadata: { merchant_id: tokens.merchant_id ?? null },
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "user_id,platform" },
-          );
+        const { error: upsertErr } = await supabaseAdmin.from("platform_connections").upsert(
+          {
+            user_id: payload.userId,
+            platform: "square",
+            status: "connected",
+            access_token: tokens.access_token,
+            refresh_token: tokens.refresh_token ?? null,
+            token_expires_at: expiresAt,
+            account_label: accountLabel,
+            metadata: { merchant_id: tokens.merchant_id ?? null },
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id,platform" },
+        );
 
         if (upsertErr) {
           console.error("Failed to save Square connection:", upsertErr);

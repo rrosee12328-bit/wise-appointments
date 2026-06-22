@@ -53,7 +53,7 @@ export const Route = createFileRoute("/api/oauth/google/callback")({
           return redirectTo("/platforms?google=error&reason=token_exchange");
         }
 
-        const tokens = await tokenRes.json() as {
+        const tokens = (await tokenRes.json()) as {
           access_token: string;
           refresh_token?: string;
           expires_in: number;
@@ -91,26 +91,24 @@ export const Route = createFileRoute("/api/oauth/google/callback")({
           refreshTokenToStore = (existing?.refresh_token as string | null) ?? null;
         }
 
-        const { error: upsertErr } = await supabaseAdmin
-          .from("platform_connections")
-          .upsert(
-            {
-              user_id: payload.userId,
-              platform: "google_calendar",
-              status: "connected",
-              access_token: tokens.access_token,
-              refresh_token: refreshTokenToStore,
-              token_expires_at: expiresAt,
-              account_label: accountEmail,
-              metadata: {
-                scope: tokens.scope,
-                sync_error: null,
-                sync_error_at: null,
-              },
-              updated_at: new Date().toISOString(),
+        const { error: upsertErr } = await supabaseAdmin.from("platform_connections").upsert(
+          {
+            user_id: payload.userId,
+            platform: "google_calendar",
+            status: "connected",
+            access_token: tokens.access_token,
+            refresh_token: refreshTokenToStore,
+            token_expires_at: expiresAt,
+            account_label: accountEmail,
+            metadata: {
+              scope: tokens.scope,
+              sync_error: null,
+              sync_error_at: null,
             },
-            { onConflict: "user_id,platform" },
-          );
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id,platform" },
+        );
 
         if (upsertErr) {
           console.error("Failed to save connection:", upsertErr);

@@ -5,7 +5,6 @@ import { syncGoogleBlocksForUser } from "@/lib/google-writeback.server";
 import { syncOutlookBlocksForUser } from "@/lib/outlook-writeback.server";
 import { stripTimesIfOverridden } from "@/lib/sync-helpers.server";
 
-
 const ZOHO_ACCOUNTS_URL = "https://accounts.zoho.com";
 
 interface ZohoAppointment {
@@ -226,10 +225,12 @@ export const syncZohoBookings = createServerFn({ method: "POST" }).handler(async
       note: appt.notes ?? null,
     };
 
-
     if (existing) {
       const payload = stripTimesIfOverridden(row, existing);
-      const { error } = await supabaseAdmin.from("appointments").update(payload).eq("id", existing.id);
+      const { error } = await supabaseAdmin
+        .from("appointments")
+        .update(payload)
+        .eq("id", existing.id);
       if (error) {
         console.error("update zoho appointment failed", error);
         continue;
@@ -250,9 +251,16 @@ export const syncZohoBookings = createServerFn({ method: "POST" }).handler(async
     .eq("user_id", userId)
     .eq("platform", "zoho");
 
-  try { await syncGoogleBlocksForUser(userId, "zoho"); } catch (e) { console.error("zoho: syncGoogleBlocksForUser failed", e); }
-  try { await syncOutlookBlocksForUser(userId, "zoho"); } catch (e) { console.error("zoho: syncOutlookBlocksForUser failed", e); }
-
+  try {
+    await syncGoogleBlocksForUser(userId, "zoho");
+  } catch (e) {
+    console.error("zoho: syncGoogleBlocksForUser failed", e);
+  }
+  try {
+    await syncOutlookBlocksForUser(userId, "zoho");
+  } catch (e) {
+    console.error("zoho: syncOutlookBlocksForUser failed", e);
+  }
 
   return { synced, skipped, connected: true };
 });

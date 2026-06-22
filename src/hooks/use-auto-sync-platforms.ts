@@ -31,9 +31,7 @@ export function useAutoSyncPlatforms(enabled: boolean) {
       const icalPromise = listFeeds()
         .then(({ feeds }) =>
           Promise.allSettled(
-            feeds.map((f) =>
-              refreshFeed({ data: { platform: f.platform } }).then(() => true),
-            ),
+            feeds.map((f) => refreshFeed({ data: { platform: f.platform } }).then(() => true)),
           ),
         )
         .catch((err) => {
@@ -60,8 +58,7 @@ export function useAutoSyncPlatforms(enabled: boolean) {
       const syncedAnyConnectedPlatform =
         results.some(
           (result) =>
-            result.status === "fulfilled" &&
-            (result.value as { connected?: boolean }).connected,
+            result.status === "fulfilled" && (result.value as { connected?: boolean }).connected,
         ) || syncedAnyIcal;
 
       if (syncedAnyConnectedPlatform) {
@@ -104,5 +101,16 @@ export function useAutoSyncPlatforms(enabled: boolean) {
       cancelled.value = true;
       clearInterval(intervalId);
     };
-  }, [enabled, queryClient, syncGoogle, syncOutlook, syncSquare, syncCalendly, syncAcuity, syncZoho, listFeeds, refreshFeed]);
+  }, [
+    enabled,
+    queryClient,
+    syncGoogle,
+    syncOutlook,
+    syncSquare,
+    syncCalendly,
+    syncAcuity,
+    syncZoho,
+    listFeeds,
+    refreshFeed,
+  ]);
 }

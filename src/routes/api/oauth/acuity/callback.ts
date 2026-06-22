@@ -3,8 +3,7 @@ import { supabaseAdmin } from "@/integrations/supabase/admin.server";
 
 function getAcuityRedirectUri(url: URL) {
   const configuredOrigin = process.env.ACUITY_OAUTH_REDIRECT_ORIGIN;
-  if (configuredOrigin)
-    return `${configuredOrigin.replace(/\/$/, "")}/api/oauth/acuity/callback`;
+  if (configuredOrigin) return `${configuredOrigin.replace(/\/$/, "")}/api/oauth/acuity/callback`;
   const isLocal = url.hostname.includes("localhost");
   const origin = isLocal ? `http://${url.host}` : "https://jeylink.vektiss.com";
   return `${origin}/api/oauth/acuity/callback`;
@@ -19,9 +18,7 @@ export const Route = createFileRoute("/api/oauth/acuity/callback")({
         const error = url.searchParams.get("error");
 
         if (error) {
-          return redirectTo(
-            `/platforms?acuity=error&reason=${encodeURIComponent(error)}`,
-          );
+          return redirectTo(`/platforms?acuity=error&reason=${encodeURIComponent(error)}`);
         }
 
         if (!code) {
@@ -104,26 +101,22 @@ export const Route = createFileRoute("/api/oauth/acuity/callback")({
 
         // Acuity access tokens don't expire (they're long-lived)
         // Set a far-future expiry as a placeholder
-        const expiresAt = new Date(
-          Date.now() + 365 * 24 * 60 * 60 * 1000,
-        ).toISOString();
+        const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
 
-        const { error: upsertErr } = await supabaseAdmin
-          .from("platform_connections")
-          .upsert(
-            {
-              user_id: userId,
-              platform: "acuity",
-              status: "connected",
-              access_token: tokens.access_token,
-              refresh_token: null,
-              token_expires_at: expiresAt,
-              account_label: accountLabel,
-              metadata: { acuity_user_id: userId_acuity },
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "user_id,platform" },
-          );
+        const { error: upsertErr } = await supabaseAdmin.from("platform_connections").upsert(
+          {
+            user_id: userId,
+            platform: "acuity",
+            status: "connected",
+            access_token: tokens.access_token,
+            refresh_token: null,
+            token_expires_at: expiresAt,
+            account_label: accountLabel,
+            metadata: { acuity_user_id: userId_acuity },
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id,platform" },
+        );
 
         if (upsertErr) {
           console.error("Failed to save Acuity connection:", upsertErr);

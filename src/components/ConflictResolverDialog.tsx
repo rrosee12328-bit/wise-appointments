@@ -52,9 +52,7 @@ export function ConflictResolverDialog({ open, onOpenChange, conflicts, onResche
   const newStart =
     shift === "custom" && customWhen
       ? new Date(customWhen)
-      : new Date(
-          target.start.getTime() + (typeof shift === "number" ? shift : 30) * 60_000,
-        );
+      : new Date(target.start.getTime() + (typeof shift === "number" ? shift : 30) * 60_000);
   const other = pair.find((a) => a.id !== target.id) ?? pair[0];
   const canMoveSource = RESCHEDULABLE_SOURCES.has(target.platform);
   const invalidCustom = shift === "custom" && (!customWhen || isNaN(newStart.getTime()));
@@ -76,100 +74,101 @@ export function ConflictResolverDialog({ open, onOpenChange, conflicts, onResche
 
         {step === "pick" && (
           <>
-        <div className="flex flex-col gap-2">
-          {pair.map((a) => (
-            <button
-              key={a.id}
-              type="button"
-              onClick={() => setSelectedId(a.id)}
-              className={`flex items-center gap-3 rounded-md border p-3 text-left transition-colors ${
-                selectedId === a.id ? "border-accent bg-accent/5" : "border-border hover:bg-secondary"
-              }`}
-            >
-              <div className="w-16 shrink-0">
-                <div className="text-sm font-semibold">{formatTime(a.start)}</div>
-                <div className="text-xs text-muted-foreground">{a.durationMin}m</div>
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium">{a.client}</div>
-                <div className="truncate text-xs text-muted-foreground">{a.service}</div>
-              </div>
-              <PlatformBadge platform={a.platform} />
-            </button>
-          ))}
-        </div>
-
-        <div>
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Shift by
-          </div>
-          <div className="grid grid-cols-5 gap-2">
-            {SHIFT_OPTIONS.map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setShift(m)}
-                className={`rounded-md border px-2 py-2 text-sm font-medium transition-colors ${
-                  shift === m
-                    ? "border-accent bg-accent text-accent-foreground"
-                    : "border-border hover:bg-secondary"
-                }`}
-              >
-                +{m}m
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => {
-                setShift("custom");
-                if (!customWhen) {
-                  setCustomWhen(
-                    toLocalInputValue(new Date(target.start.getTime() + 30 * 60_000)),
-                  );
-                }
-              }}
-              className={`rounded-md border px-2 py-2 text-sm font-medium transition-colors ${
-                shift === "custom"
-                  ? "border-accent bg-accent text-accent-foreground"
-                  : "border-border hover:bg-secondary"
-              }`}
-            >
-              Custom
-            </button>
-          </div>
-          {shift === "custom" && (
-            <div className="mt-3">
-              <input
-                type="datetime-local"
-                value={customWhen}
-                onChange={(e) => setCustomWhen(e.target.value)}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-              />
-              {!canMoveSource && (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {target.platform} doesn't support remote rescheduling — the new
-                  time will be blocked on your Google/Outlook calendar, but the
-                  original booking in {target.platform} won't move. Update it
-                  there too if needed.
-                </p>
-              )}
+            <div className="flex flex-col gap-2">
+              {pair.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => setSelectedId(a.id)}
+                  className={`flex items-center gap-3 rounded-md border p-3 text-left transition-colors ${
+                    selectedId === a.id
+                      ? "border-accent bg-accent/5"
+                      : "border-border hover:bg-secondary"
+                  }`}
+                >
+                  <div className="w-16 shrink-0">
+                    <div className="text-sm font-semibold">{formatTime(a.start)}</div>
+                    <div className="text-xs text-muted-foreground">{a.durationMin}m</div>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium">{a.client}</div>
+                    <div className="truncate text-xs text-muted-foreground">{a.service}</div>
+                  </div>
+                  <PlatformBadge platform={a.platform} />
+                </button>
+              ))}
             </div>
-          )}
-          <div className="mt-3 flex items-center justify-center gap-2 rounded-md bg-secondary p-2 text-sm">
-            <span className="font-medium">{formatTime(target.start)}</span>
-            <ArrowRight className="h-4 w-4 text-muted-foreground" />
-            <span className="font-semibold text-foreground">{formatTime(newStart)}</span>
-          </div>
-        </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button onClick={() => setStep("confirm")} disabled={invalidCustom}>
-            Review change
-          </Button>
-        </DialogFooter>
+            <div>
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Shift by
+              </div>
+              <div className="grid grid-cols-5 gap-2">
+                {SHIFT_OPTIONS.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setShift(m)}
+                    className={`rounded-md border px-2 py-2 text-sm font-medium transition-colors ${
+                      shift === m
+                        ? "border-accent bg-accent text-accent-foreground"
+                        : "border-border hover:bg-secondary"
+                    }`}
+                  >
+                    +{m}m
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShift("custom");
+                    if (!customWhen) {
+                      setCustomWhen(
+                        toLocalInputValue(new Date(target.start.getTime() + 30 * 60_000)),
+                      );
+                    }
+                  }}
+                  className={`rounded-md border px-2 py-2 text-sm font-medium transition-colors ${
+                    shift === "custom"
+                      ? "border-accent bg-accent text-accent-foreground"
+                      : "border-border hover:bg-secondary"
+                  }`}
+                >
+                  Custom
+                </button>
+              </div>
+              {shift === "custom" && (
+                <div className="mt-3">
+                  <input
+                    type="datetime-local"
+                    value={customWhen}
+                    onChange={(e) => setCustomWhen(e.target.value)}
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  />
+                  {!canMoveSource && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {target.platform} doesn't support remote rescheduling — the new time will be
+                      blocked on your Google/Outlook calendar, but the original booking in{" "}
+                      {target.platform} won't move. Update it there too if needed.
+                    </p>
+                  )}
+                </div>
+              )}
+              <div className="mt-3 flex items-center justify-center gap-2 rounded-md bg-secondary p-2 text-sm">
+                <span className="font-medium">{formatTime(target.start)}</span>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                <span className="font-semibold text-foreground">{formatTime(newStart)}</span>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button onClick={() => setStep("confirm")} disabled={invalidCustom}>
+                Review change
+              </Button>
+            </DialogFooter>
           </>
         )}
 
@@ -207,9 +206,9 @@ export function ConflictResolverDialog({ open, onOpenChange, conflicts, onResche
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Resolves overlap with {other.client} ({formatTime(other.start)}). Change will sync to{" "}
-                {target.platform === "google" ? "Google Calendar" : target.platform} and block the
-                new slot across all connected platforms.
+                Resolves overlap with {other.client} ({formatTime(other.start)}). Change will sync
+                to {target.platform === "google" ? "Google Calendar" : target.platform} and block
+                the new slot across all connected platforms.
               </p>
             </div>
 

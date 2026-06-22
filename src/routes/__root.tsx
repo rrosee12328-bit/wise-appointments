@@ -59,8 +59,16 @@ export const Route = createRootRoute({
       { name: "description", content: "Unified Scheduler" },
       { property: "og:description", content: "Unified Scheduler" },
       { name: "twitter:description", content: "Unified Scheduler" },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/VWdRVt7OnwO6YnrGjI9n4QlxJFl1/social-images/social-1779485015899-28B21D7E-23A0-481B-96A9-69488D1840E9.webp" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/VWdRVt7OnwO6YnrGjI9n4QlxJFl1/social-images/social-1779485015899-28B21D7E-23A0-481B-96A9-69488D1840E9.webp" },
+      {
+        property: "og:image",
+        content:
+          "https://storage.googleapis.com/gpt-engineer-file-uploads/VWdRVt7OnwO6YnrGjI9n4QlxJFl1/social-images/social-1779485015899-28B21D7E-23A0-481B-96A9-69488D1840E9.webp",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://storage.googleapis.com/gpt-engineer-file-uploads/VWdRVt7OnwO6YnrGjI9n4QlxJFl1/social-images/social-1779485015899-28B21D7E-23A0-481B-96A9-69488D1840E9.webp",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

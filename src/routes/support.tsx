@@ -47,10 +47,7 @@ function Support() {
         </h2>
         <ul className="overflow-hidden rounded-md border bg-card">
           {TOPICS.map((t, i) => (
-            <li
-              key={t}
-              className={i > 0 ? "border-t border-border" : ""}
-            >
+            <li key={t} className={i > 0 ? "border-t border-border" : ""}>
               <button
                 type="button"
                 className="flex w-full items-center justify-between p-4 text-left text-sm text-foreground hover:bg-secondary"

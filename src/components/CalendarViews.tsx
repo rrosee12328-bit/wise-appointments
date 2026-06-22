@@ -71,10 +71,7 @@ export function DayTimelineView({
   const nowLineRef = useRef<HTMLDivElement>(null);
 
   const dayAppts = useMemo(
-    () =>
-      appointments
-        .filter((a) => sameDay(a.start, day))
-        .sort((a, b) => +a.start - +b.start),
+    () => appointments.filter((a) => sameDay(a.start, day)).sort((a, b) => +a.start - +b.start),
     [appointments, day],
   );
 
@@ -120,14 +117,10 @@ export function DayTimelineView({
               t.setHours(0, 0, 0, 0);
               setDay(t);
             }}
-            className={cn(
-              "text-sm font-semibold",
-              isToday ? "text-accent" : "text-foreground",
-            )}
+            className={cn("text-sm font-semibold", isToday ? "text-accent" : "text-foreground")}
           >
             {isToday
-              ? "Today · " +
-                day.toLocaleDateString([], { month: "short", day: "numeric" })
+              ? "Today · " + day.toLocaleDateString([], { month: "short", day: "numeric" })
               : day.toLocaleDateString([], {
                   weekday: "long",
                   month: "short",
@@ -157,7 +150,10 @@ export function DayTimelineView({
         </Button>
       </div>
 
-      <div className="overflow-y-auto rounded-lg border border-border" style={{ maxHeight: "520px" }}>
+      <div
+        className="overflow-y-auto rounded-lg border border-border"
+        style={{ maxHeight: "520px" }}
+      >
         <div className="relative flex">
           {/* Hour labels */}
           <div className="w-12 shrink-0 select-none">
@@ -218,9 +214,7 @@ export function DayTimelineView({
                     background: `${p.colorVar}18`,
                   }}
                 >
-                  <div className="truncate font-semibold text-foreground">
-                    {a.client}
-                  </div>
+                  <div className="truncate font-semibold text-foreground">{a.client}</div>
                   <div className="truncate text-[10px] text-muted-foreground">
                     {formatTime(a.start)} · {a.service}
                   </div>
@@ -317,7 +311,10 @@ export function WeekView({
         </Button>
       </div>
 
-      <div className="overflow-x-auto overflow-y-auto rounded-lg border border-border" style={{ maxHeight: "520px" }}>
+      <div
+        className="overflow-x-auto overflow-y-auto rounded-lg border border-border"
+        style={{ maxHeight: "520px" }}
+      >
         <div className="flex" style={{ minWidth: "560px" }}>
           {/* Hour labels column */}
           <div className="w-10 shrink-0 select-none border-r border-border">
@@ -452,11 +449,7 @@ export function MonthGridView({
   const cells = useMemo(() => {
     const first = startOfMonth(cursor);
     const startWeekday = first.getDay();
-    const daysInMonth = new Date(
-      cursor.getFullYear(),
-      cursor.getMonth() + 1,
-      0,
-    ).getDate();
+    const daysInMonth = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate();
     const arr: { date: Date | null }[] = [];
     for (let i = 0; i < startWeekday; i++) arr.push({ date: null });
     for (let d = 1; d <= daysInMonth; d++) {
@@ -484,11 +477,7 @@ export function MonthGridView({
         <Button
           size="icon"
           variant="ghost"
-          onClick={() =>
-            setCursor(
-              (c) => new Date(c.getFullYear(), c.getMonth() - 1, 1),
-            )
-          }
+          onClick={() => setCursor((c) => new Date(c.getFullYear(), c.getMonth() - 1, 1))}
           aria-label="Previous month"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -503,11 +492,7 @@ export function MonthGridView({
         <Button
           size="icon"
           variant="ghost"
-          onClick={() =>
-            setCursor(
-              (c) => new Date(c.getFullYear(), c.getMonth() + 1, 1),
-            )
-          }
+          onClick={() => setCursor((c) => new Date(c.getFullYear(), c.getMonth() + 1, 1))}
           aria-label="Next month"
         >
           <ChevronRight className="h-4 w-4" />
@@ -540,9 +525,7 @@ export function MonthGridView({
                 <span
                   className={cn(
                     "flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold",
-                    isToday
-                      ? "bg-accent text-accent-foreground"
-                      : "text-foreground",
+                    isToday ? "bg-accent text-accent-foreground" : "text-foreground",
                   )}
                 >
                   {c.date.getDate()}
@@ -580,9 +563,7 @@ export function MonthGridView({
                   );
                 })}
                 {list.length > 2 && (
-                  <span className="text-[9px] text-muted-foreground">
-                    +{list.length - 2} more
-                  </span>
+                  <span className="text-[9px] text-muted-foreground">+{list.length - 2} more</span>
                 )}
               </div>
             </button>

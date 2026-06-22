@@ -11,7 +11,6 @@ export type Appointment = {
   externalUrl?: string;
 };
 
-
 export function findConflicts(appts: Appointment[]): Appointment[] {
   const sorted = [...appts].sort((a, b) => a.start.getTime() - b.start.getTime());
   const conflicts: Appointment[] = [];
@@ -44,9 +43,27 @@ export function formatRelativeDay(d: Date): string {
 }
 
 const KNOWN_PLATFORMS: ReadonlySet<string> = new Set([
-  "square","booksy","thecut","setmore","google","outlook","squire","vagaro","barberly",
-  "ringmybarber","goldie","glossgenius","styleseat","fresha","mangomint",
-  "boulevard","zenoti","acuity","calendly","simplybook","zoho",
+  "square",
+  "booksy",
+  "thecut",
+  "setmore",
+  "google",
+  "outlook",
+  "squire",
+  "vagaro",
+  "barberly",
+  "ringmybarber",
+  "goldie",
+  "glossgenius",
+  "styleseat",
+  "fresha",
+  "mangomint",
+  "boulevard",
+  "zenoti",
+  "acuity",
+  "calendly",
+  "simplybook",
+  "zoho",
 ]);
 
 export function toUiAppointment(row: {
@@ -62,11 +79,12 @@ export function toUiAppointment(row: {
   const start = new Date(row.starts_at);
   const end = new Date(row.ends_at);
   const durationMin = Math.max(15, Math.round((end.getTime() - start.getTime()) / 60_000));
-  const sp = row.source_platform === "google_calendar"
-    ? "google"
-    : row.source_platform === "outlook_calendar"
-      ? "outlook"
-      : row.source_platform;
+  const sp =
+    row.source_platform === "google_calendar"
+      ? "google"
+      : row.source_platform === "outlook_calendar"
+        ? "outlook"
+        : row.source_platform;
   const platform = (KNOWN_PLATFORMS.has(sp) ? sp : "google") as PlatformId;
   return {
     id: row.id,
@@ -79,4 +97,3 @@ export function toUiAppointment(row: {
     externalUrl: row.external_url ?? undefined,
   };
 }
-

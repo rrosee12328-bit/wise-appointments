@@ -5,11 +5,7 @@ import { supabaseAdmin } from "@/integrations/supabase/admin.server";
 import { signState } from "@/lib/oauth-state.server";
 import { randomBytes } from "crypto";
 
-const GOOGLE_SCOPES = [
-  "https://www.googleapis.com/auth/calendar",
-  "openid",
-  "email",
-].join(" ");
+const GOOGLE_SCOPES = ["https://www.googleapis.com/auth/calendar", "openid", "email"].join(" ");
 
 function getGoogleRedirectUri(host: string) {
   const configuredOrigin = process.env.GOOGLE_OAUTH_REDIRECT_ORIGIN;
@@ -53,48 +49,50 @@ export const createGoogleAuthUrl = createServerFn({ method: "POST" })
     return { url: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}` };
   });
 
-export const listConnections = createServerFn({ method: "GET" })
-  .handler(async () => {
-    const authHeader = getRequestHeader("authorization");
-    const token = authHeader?.replace(/^Bearer\s+/i, "");
-    if (!token) return { connections: [] };
-    const { data: userData } = await supabaseAdmin.auth.getUser(token);
-    if (!userData.user) return { connections: [] };
+export const listConnections = createServerFn({ method: "GET" }).handler(async () => {
+  const authHeader = getRequestHeader("authorization");
+  const token = authHeader?.replace(/^Bearer\s+/i, "");
+  if (!token) return { connections: [] };
+  const { data: userData } = await supabaseAdmin.auth.getUser(token);
+  if (!userData.user) return { connections: [] };
 
-    const [oauthRes, linkRes] = await Promise.all([
-      supabaseAdmin
-        .from("platform_connections")
-        .select("platform, account_label, token_expires_at, last_synced_at, status, metadata, updated_at")
-        .eq("user_id", userData.user.id),
-      supabaseAdmin
-        .from("platform_links")
-        .select("platform, handle, updated_at")
-        .eq("user_id", userData.user.id),
-    ]);
+  const [oauthRes, linkRes] = await Promise.all([
+    supabaseAdmin
+      .from("platform_connections")
+      .select(
+        "platform, account_label, token_expires_at, last_synced_at, status, metadata, updated_at",
+      )
+      .eq("user_id", userData.user.id),
+    supabaseAdmin
+      .from("platform_links")
+      .select("platform, handle, updated_at")
+      .eq("user_id", userData.user.id),
+  ]);
 
-    return {
-      connections: [
-        ...((oauthRes.data ?? []).map((row) => ({
-          platform: row.platform as string,
-          account_email: row.account_label as string | null,
-          expires_at: row.token_expires_at as string | null,
-          last_synced_at: row.last_synced_at as string | null,
-          status: row.status as string | null,
-          sync_error: (row.metadata as Record<string, unknown> | null)?.sync_error as string | null ?? null,
-          updated_at: row.updated_at as string,
-        }))),
-        ...((linkRes.data ?? []).map((row) => ({
-          platform: row.platform as string,
-          account_email: row.handle as string | null,
-          expires_at: null as string | null,
-          last_synced_at: null as string | null,
-          status: "connected" as string | null,
-          sync_error: null as string | null,
-          updated_at: row.updated_at as string,
-        }))),
-      ],
-    };
-  });
+  return {
+    connections: [
+      ...(oauthRes.data ?? []).map((row) => ({
+        platform: row.platform as string,
+        account_email: row.account_label as string | null,
+        expires_at: row.token_expires_at as string | null,
+        last_synced_at: row.last_synced_at as string | null,
+        status: row.status as string | null,
+        sync_error:
+          ((row.metadata as Record<string, unknown> | null)?.sync_error as string | null) ?? null,
+        updated_at: row.updated_at as string,
+      })),
+      ...(linkRes.data ?? []).map((row) => ({
+        platform: row.platform as string,
+        account_email: row.handle as string | null,
+        expires_at: null as string | null,
+        last_synced_at: null as string | null,
+        status: "connected" as string | null,
+        sync_error: null as string | null,
+        updated_at: row.updated_at as string,
+      })),
+    ],
+  };
+});
 
 export const disconnectPlatform = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ platform: z.string() }).parse(input))
