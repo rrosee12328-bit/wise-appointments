@@ -1,4 +1,11 @@
-import { Outlet, Link, createRootRoute, HeadContent, Scripts, useRouter } from "@tanstack/react-router";
+import {
+  Outlet,
+  Link,
+  createRootRoute,
+  HeadContent,
+  Scripts,
+  useRouter,
+} from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Component, useState, type ReactNode } from "react";
 
@@ -93,7 +100,10 @@ class ClientErrorBoundary extends Component<{ children: ReactNode }, { hasError:
             >
               Refresh
             </button>
-            <a href="/signin" className="rounded-md border border-border px-4 py-2 text-sm font-medium">
+            <a
+              href="/signin"
+              className="rounded-md border border-border px-4 py-2 text-sm font-medium"
+            >
               Sign in
             </a>
           </div>

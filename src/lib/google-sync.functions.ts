@@ -37,6 +37,9 @@ type GoogleCalendarListEntry = {
   primary?: boolean;
 };
 
+const GOOGLE_SYNC_LOOKBACK_DAYS = 7;
+const GOOGLE_SYNC_LOOKAHEAD_DAYS = 365;
+
 // ── Refresh token ─────────────────────────────────────────────────────────────
 
 export class GoogleReauthRequiredError extends Error {
@@ -223,35 +226,37 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(asy
     }
   }
 
-  // Pull events from now - 1 day → now + 60 days across ALL user calendars.
-  const timeMin = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const timeMax = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString();
+  // Pull events across a broad window so Google feels like the source of truth
+  // instead of only syncing the next couple of months.
+  const timeMin = new Date(
+    Date.now() - GOOGLE_SYNC_LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
+  const timeMax = new Date(
+    Date.now() + GOOGLE_SYNC_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
 
-  // Fetch all calendars the user has access to (not just primary)
+  // Fetch every calendar the user has access to, not just selected/writable calendars.
+  // Hidden or read-only shared calendars can still contain appointments users expect
+  // to see in a unified schedule. Inaccessible calendars are skipped per-calendar below.
   const calendarList = await fetchCalendarList(accessToken!);
-  // Include primary + any calendar the user has selected / has write access to
-  const calendarsToSync = calendarList.filter(
-    (cal) =>
-      cal.primary ||
-      cal.selected !== false ||
-      cal.accessRole === "owner" ||
-      cal.accessRole === "writer",
-  );
-  // Always ensure primary is included
   const calendarIds = Array.from(
-    new Set(["primary", ...calendarsToSync.map((c) => c.id).filter(Boolean)]),
+    new Set(["primary", ...calendarList.map((c) => c.id).filter(Boolean)]),
   );
 
   // Fetch events from all calendars, de-duplicate by event id
   const eventMap = new Map<string, GoogleEvent>();
+  let calendarsFetched = 0;
+  let calendarsSkipped = 0;
   for (const calId of calendarIds) {
     try {
       const events = await fetchAllEventsFromCalendar(accessToken!, calId, timeMin, timeMax);
+      calendarsFetched++;
       for (const ev of events) {
         if (!eventMap.has(ev.id)) eventMap.set(ev.id, ev);
       }
     } catch (e) {
       // Non-fatal: log and continue with other calendars
+      calendarsSkipped++;
       console.error(`google: failed to fetch calendar ${calId}`, e);
     }
   }
@@ -396,7 +401,11 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(asy
         ...((conn.metadata as Record<string, unknown>) ?? {}),
         sync_error: null,
         sync_error_at: null,
-        calendars_synced: calendarIds.length,
+        calendars_seen: calendarIds.length,
+        calendars_synced: calendarsFetched,
+        calendars_skipped: calendarsSkipped,
+        sync_lookback_days: GOOGLE_SYNC_LOOKBACK_DAYS,
+        sync_lookahead_days: GOOGLE_SYNC_LOOKAHEAD_DAYS,
       },
     })
     .eq("user_id", userId)
@@ -427,5 +436,11 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(asy
     console.error("google: retagRelayEvents failed", e);
   }
 
-  return { synced, skipped, connected: true, calendarsScanned: calendarIds.length };
+  return {
+    synced,
+    skipped,
+    connected: true,
+    calendarsScanned: calendarIds.length,
+    calendarsFetched,
+  };
 });

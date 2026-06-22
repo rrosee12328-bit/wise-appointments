@@ -22,7 +22,10 @@ function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => vo
           >
             Try again
           </button>
-          <Link to="/signin" className="rounded-md border border-border px-4 py-2 text-sm font-medium">
+          <Link
+            to="/signin"
+            className="rounded-md border border-border px-4 py-2 text-sm font-medium"
+          >
             Sign in
           </Link>
         </div>
@@ -37,7 +40,10 @@ function DefaultNotFoundComponent() {
       <div className="max-w-md text-center">
         <h1 className="text-2xl font-bold">Page not found</h1>
         <p className="mt-2 text-sm text-muted-foreground">This page is unavailable.</p>
-        <Link to="/signin" className="mt-6 inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+        <Link
+          to="/signin"
+          className="mt-6 inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+        >
           Sign in
         </Link>
       </div>
