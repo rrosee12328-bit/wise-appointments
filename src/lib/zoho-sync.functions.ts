@@ -106,7 +106,7 @@ function extractZohoAppointments(data: ZohoFetchAppointmentResponse) {
 export const syncZohoBookings = createServerFn({ method: "POST" }).handler(async () => {
   const authHeader = getRequestHeader("authorization");
   const token = authHeader?.replace(/^Bearer\s+/i, "");
-  if (!token) throw new Error("Not authenticated");
+  if (!token) return { synced: 0, skipped: 0, connected: false };
 
   const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
   if (userErr || !userData.user) throw new Error("Invalid session");
