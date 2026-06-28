@@ -58,8 +58,9 @@ function Appointments() {
     queryKey: ["appointments"],
     queryFn: () => fetchAppts(),
     enabled: !!session,
-    // Refresh every 5 minutes so new calendar events appear without manual reload
-    refetchInterval: 5 * 60 * 1000,
+    // The auto-sync hook imports external calendars every 15 seconds while active;
+    // this keeps the list fresh even if a realtime event is missed.
+    refetchInterval: 15 * 1000,
     refetchIntervalInBackground: false,
   });
 

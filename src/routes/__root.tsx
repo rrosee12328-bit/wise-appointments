@@ -12,6 +12,7 @@ import { Component, useState, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
+import { useAppointmentsRealtime } from "@/hooks/use-appointments-realtime";
 import { BottomNav } from "@/components/BottomNav";
 import { AppHeader } from "@/components/AppHeader";
 import { AuthGate } from "@/components/AuthGate";
@@ -197,7 +198,10 @@ function RootComponent() {
 }
 
 function AppShell() {
-  const { session } = useAuth();
+  const { user, session } = useAuth();
+
+  useAppointmentsRealtime(user?.id);
+
   return (
     <>
       <div className="min-h-screen bg-background pb-20">
