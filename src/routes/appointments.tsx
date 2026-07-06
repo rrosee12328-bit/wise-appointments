@@ -242,6 +242,7 @@ function Appointments() {
         open={!!walkInDate}
         onOpenChange={(o) => !o && setWalkInDate(null)}
         onAdd={(appt) => addWalkIn.mutate(appt)}
+        initialDate={walkInDate}
       />
     </main>
   );

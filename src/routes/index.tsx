@@ -299,9 +299,11 @@ function Schedule() {
     onSuccess: ({ blockReason }) => {
       qc.invalidateQueries({ queryKey: ["appointments"] });
       if (blockReason) {
-        toast.success("Walk-in added", { description: `Google block skipped: ${blockReason}` });
+        toast.success("Appointment added", {
+          description: `Calendar block skipped: ${blockReason}`,
+        });
       } else {
-        toast.success("Walk-in added · time blocked on Google");
+        toast.success("Appointment added · time blocked on Google & Outlook");
       }
     },
     onError: (e: Error) => toast.error(e.message),
@@ -401,7 +403,7 @@ function Schedule() {
             {isLoading ? "Loading…" : "No upcoming appointments today"}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Connect a platform or add a walk-in to get started.
+            Connect a platform or add an appointment to get started.
           </p>
         </section>
       )}
@@ -413,7 +415,7 @@ function Schedule() {
         </Button>
         <Button onClick={() => setWalkInOpen(true)} variant="outline" className="flex-1">
           <Plus className="h-4 w-4" />
-          Add walk-in
+          Add appointment
         </Button>
       </div>
       <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">

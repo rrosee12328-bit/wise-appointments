@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,7 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAdd: (appt: Appointment) => void;
+  initialDate?: Date | null;
 };
 
 function roundedNow(): Date {
@@ -30,30 +31,52 @@ function toTimeInput(d: Date): string {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-export function WalkInDialog({ open, onOpenChange, onAdd }: Props) {
+function toDateInput(d: Date): string {
+  return [
+    d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, "0"),
+    String(d.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function fromDateAndTime(date: string, time: string): Date {
+  const [year, month, day] = date.split("-").map(Number);
+  const [hours, minutes] = time.split(":").map(Number);
+  return new Date(year, month - 1, day, hours, minutes, 0, 0);
+}
+
+export function WalkInDialog({ open, onOpenChange, onAdd, initialDate }: Props) {
   const [client, setClient] = useState("");
   const [service, setService] = useState("Haircut");
   const [duration, setDuration] = useState(30);
+  const [date, setDate] = useState(() => toDateInput(new Date()));
   const [time, setTime] = useState(() => toTimeInput(roundedNow()));
+
+  useEffect(() => {
+    if (!open) return;
+
+    const base = initialDate ?? new Date();
+    setDate(toDateInput(base));
+    setTime(toTimeInput(roundedNow()));
+  }, [initialDate, open]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!client.trim()) return;
-    const [h, m] = time.split(":").map(Number);
-    const start = new Date();
-    start.setHours(h, m, 0, 0);
+    const start = fromDateAndTime(date, time);
     onAdd({
       id: `walkin-${Date.now()}`,
       start,
       durationMin: duration,
       client: client.trim(),
-      service: service.trim() || "Walk-in",
+      service: service.trim() || "Appointment",
       platform: "google",
-      notes: "Walk-in · blocked across all platforms",
+      notes: "Appointment · blocked across all platforms",
     });
     setClient("");
     setService("Haircut");
     setDuration(30);
+    setDate(toDateInput(new Date()));
     setTime(toTimeInput(roundedNow()));
     onOpenChange(false);
   };
@@ -62,7 +85,7 @@ export function WalkInDialog({ open, onOpenChange, onAdd }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Add walk-in</DialogTitle>
+          <DialogTitle>Add appointment</DialogTitle>
           <DialogDescription>
             Blocks this time across every connected platform immediately.
           </DialogDescription>
@@ -75,7 +98,7 @@ export function WalkInDialog({ open, onOpenChange, onAdd }: Props) {
               autoFocus
               value={client}
               onChange={(e) => setClient(e.target.value)}
-              placeholder="Walk-in client name"
+              placeholder="Client name"
               required
             />
           </div>
@@ -90,6 +113,16 @@ export function WalkInDialog({ open, onOpenChange, onAdd }: Props) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
+              <Label htmlFor="walkin-date">Date</Label>
+              <Input
+                id="walkin-date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
               <Label htmlFor="walkin-time">Start</Label>
               <Input
                 id="walkin-time"
@@ -99,6 +132,8 @@ export function WalkInDialog({ open, onOpenChange, onAdd }: Props) {
                 required
               />
             </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="walkin-duration">Duration</Label>
               <select
@@ -119,7 +154,7 @@ export function WalkInDialog({ open, onOpenChange, onAdd }: Props) {
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit">Block time slot</Button>
+            <Button type="submit">Book appointment</Button>
           </DialogFooter>
         </form>
       </DialogContent>
