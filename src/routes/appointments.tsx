@@ -3,7 +3,8 @@ import { useCallback, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Search, List, CalendarDays, CalendarRange, CalendarCheck2 } from "lucide-react";
+import { Search, List, CalendarDays, CalendarRange, CalendarCheck2, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AppointmentRow } from "@/components/AppointmentCard";
@@ -141,8 +142,12 @@ function Appointments() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 pt-8">
-      <header className="mb-4">
+      <header className="mb-4 flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold text-foreground">Appointments</h1>
+        <Button size="sm" onClick={() => handleAddNew(new Date())} className="shrink-0">
+          <Plus className="h-4 w-4" />
+          Add appointment
+        </Button>
       </header>
 
       <div className="relative mb-4">
