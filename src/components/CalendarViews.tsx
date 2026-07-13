@@ -343,8 +343,30 @@ export function WeekView({
               <div key={k} className="group relative flex-1 border-r border-border last:border-r-0">
                 {/* Day header */}
                 <div
+                  role={onAddNew ? "button" : undefined}
+                  tabIndex={onAddNew ? 0 : undefined}
+                  onClick={() => onAddNew?.(day)}
+                  onKeyDown={(e) => {
+                    if (!onAddNew) return;
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onAddNew(day);
+                    }
+                  }}
+                  aria-label={
+                    onAddNew
+                      ? `Add appointment on ${day.toLocaleDateString([], {
+                          weekday: "long",
+                          month: "long",
+                          day: "numeric",
+                        })}`
+                      : undefined
+                  }
+                  title={onAddNew ? "Add appointment" : undefined}
                   className={cn(
-                    "sticky top-0 z-10 flex h-10 flex-col items-center justify-center border-b border-border text-xs",
+                    "sticky top-0 z-10 flex h-10 flex-col items-center justify-center border-b border-border text-xs transition-colors",
+                    onAddNew &&
+                      "cursor-pointer hover:bg-accent/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     isTodayCol ? "bg-accent/10" : "bg-card",
                   )}
                 >
@@ -527,7 +549,13 @@ export function MonthGridView({
                   onSelectDay?.(cellDate);
                 }
               }}
-              className="group relative flex min-h-16 flex-col items-start gap-1 bg-card p-1.5 text-left transition-colors hover:bg-accent/5"
+              aria-label={`Add appointment on ${cellDate.toLocaleDateString([], {
+                weekday: "long",
+                month: "long",
+                day: "numeric",
+              })}`}
+              title="Add appointment"
+              className="group relative flex min-h-16 cursor-pointer flex-col items-start gap-1 bg-card p-1.5 text-left transition-colors hover:bg-accent/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <div className="flex w-full items-center justify-between">
                 <span
