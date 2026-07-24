@@ -22,8 +22,8 @@ function getSquareRedirectUri(host: string) {
 }
 
 export const createSquareAuthUrl = createServerFn({ method: "POST" })
-  .inputValidator((input) => z.object({}).parse(input ?? {}))
-  .handler(async () => {
+  .inputValidator((input) => z.object({ returnTo: z.string().optional() }).parse(input ?? {}))
+  .handler(async ({ data: input }) => {
     const authHeader = getRequestHeader("authorization");
     const token = authHeader?.replace(/^Bearer\s+/i, "");
     if (!token) throw new Error("Not authenticated");
@@ -38,6 +38,7 @@ export const createSquareAuthUrl = createServerFn({ method: "POST" })
       userId: data.user.id,
       nonce: randomBytes(12).toString("hex"),
       ts: Date.now(),
+      returnTo: input.returnTo,
     });
 
     const params = new URLSearchParams({

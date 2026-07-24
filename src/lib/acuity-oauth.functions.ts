@@ -12,8 +12,8 @@ function getAcuityRedirectUri(host: string) {
 }
 
 export const createAcuityAuthUrl = createServerFn({ method: "POST" })
-  .inputValidator((input) => z.object({}).parse(input ?? {}))
-  .handler(async () => {
+  .inputValidator((input) => z.object({ returnTo: z.string().optional() }).parse(input ?? {}))
+  .handler(async ({ data: input }) => {
     const authHeader = getRequestHeader("authorization");
     const token = authHeader?.replace(/^Bearer\s+/i, "");
     if (!token) throw new Error("Not authenticated");
@@ -32,6 +32,7 @@ export const createAcuityAuthUrl = createServerFn({ method: "POST" })
         platform: "acuity_pending",
         status: "pending",
         access_token: null,
+        metadata: { return_to: input.returnTo ?? null },
         updated_at: new Date().toISOString(),
       },
       { onConflict: "user_id,platform" },

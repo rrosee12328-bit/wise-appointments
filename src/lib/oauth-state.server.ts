@@ -11,13 +11,20 @@ function b64urlDecode(s: string) {
   return Buffer.from(s, "base64");
 }
 
-export function signState(payload: { userId: string; nonce: string; ts: number }): string {
+export type OAuthStatePayload = {
+  userId: string;
+  nonce: string;
+  ts: number;
+  returnTo?: string;
+};
+
+export function signState(payload: OAuthStatePayload): string {
   const body = b64url(Buffer.from(JSON.stringify(payload)));
   const sig = b64url(createHmac("sha256", secret).update(body).digest());
   return `${body}.${sig}`;
 }
 
-export function verifyState(state: string): { userId: string; nonce: string; ts: number } | null {
+export function verifyState(state: string): OAuthStatePayload | null {
   const [body, sig] = state.split(".");
   if (!body || !sig) return null;
   const expected = b64url(createHmac("sha256", secret).update(body).digest());

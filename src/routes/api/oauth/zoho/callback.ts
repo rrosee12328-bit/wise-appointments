@@ -54,7 +54,7 @@ export const Route = createFileRoute("/api/oauth/zoho/callback")({
         if (!tokenRes.ok) {
           const text = await tokenRes.text();
           console.error("Zoho token exchange failed:", text);
-          return redirectTo("/platforms?zoho=error&reason=token_exchange");
+          return redirectTo(redirectWithStatus(payload, "zoho=error&reason=token_exchange"));
         }
 
         const tokens = (await tokenRes.json()) as {
@@ -69,7 +69,7 @@ export const Route = createFileRoute("/api/oauth/zoho/callback")({
 
         if (tokens.error) {
           console.error("Zoho token error:", tokens);
-          return redirectTo("/platforms?zoho=error&reason=token_error");
+          return redirectTo(redirectWithStatus(payload, "zoho=error&reason=token_error"));
         }
 
         // Fetch user info to get account label
@@ -116,14 +116,22 @@ export const Route = createFileRoute("/api/oauth/zoho/callback")({
 
         if (upsertErr) {
           console.error("Failed to save Zoho connection:", upsertErr);
-          return redirectTo("/platforms?zoho=error&reason=save_failed");
+          return redirectTo(redirectWithStatus(payload, "zoho=error&reason=save_failed"));
         }
 
-        return redirectTo("/platforms?zoho=connected");
+        return redirectTo(redirectWithStatus(payload, "zoho=connected"));
       },
     },
   },
 });
+
+function redirectWithStatus(payload: { returnTo?: string }, status: string) {
+  const returnTo =
+    payload.returnTo?.startsWith("/") && !payload.returnTo.startsWith("//")
+      ? payload.returnTo
+      : "/platforms";
+  return `${returnTo}${returnTo.includes("?") ? "&" : "?"}${status}`;
+}
 
 function redirectTo(path: string) {
   return new Response(null, { status: 302, headers: { Location: path } });

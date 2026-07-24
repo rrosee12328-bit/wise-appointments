@@ -41,7 +41,7 @@ export const Route = createFileRoute("/api/oauth/outlook/callback")({
         if (!tokenRes.ok) {
           const text = await tokenRes.text();
           console.error("Outlook token exchange failed:", text);
-          return redirectTo("/platforms?outlook=error&reason=token_exchange");
+          return redirectTo(redirectWithStatus(payload, "outlook=error&reason=token_exchange"));
         }
 
         const tokens = (await tokenRes.json()) as {
@@ -101,14 +101,22 @@ export const Route = createFileRoute("/api/oauth/outlook/callback")({
 
         if (upsertErr) {
           console.error("Failed to save Outlook connection:", upsertErr);
-          return redirectTo("/platforms?outlook=error&reason=save_failed");
+          return redirectTo(redirectWithStatus(payload, "outlook=error&reason=save_failed"));
         }
 
-        return redirectTo("/platforms?outlook=connected");
+        return redirectTo(redirectWithStatus(payload, "outlook=connected"));
       },
     },
   },
 });
+
+function redirectWithStatus(payload: { returnTo?: string }, status: string) {
+  const returnTo =
+    payload.returnTo?.startsWith("/") && !payload.returnTo.startsWith("//")
+      ? payload.returnTo
+      : "/platforms";
+  return `${returnTo}${returnTo.includes("?") ? "&" : "?"}${status}`;
+}
 
 function redirectTo(path: string) {
   return new Response(null, { status: 302, headers: { Location: path } });

@@ -28,7 +28,7 @@ export const Route = createFileRoute("/api/oauth/acuity/callback")({
         // Acuity doesn't support state param — find the most recent pending connection
         const { data: pending, error: pendingErr } = await supabaseAdmin
           .from("platform_connections")
-          .select("user_id")
+          .select("user_id, metadata")
           .eq("platform", "acuity_pending")
           .eq("status", "pending")
           .order("updated_at", { ascending: false })
@@ -40,6 +40,7 @@ export const Route = createFileRoute("/api/oauth/acuity/callback")({
         }
 
         const userId = pending.user_id;
+        const returnTo = textFrom((pending.metadata as Record<string, unknown> | null)?.return_to);
 
         const redirectUri = getAcuityRedirectUri(url);
 
@@ -68,7 +69,7 @@ export const Route = createFileRoute("/api/oauth/acuity/callback")({
         if (!tokenRes.ok) {
           const text = await tokenRes.text();
           console.error("Acuity token exchange failed:", text);
-          return redirectTo("/platforms?acuity=error&reason=token_exchange");
+          return redirectTo(redirectWithStatus(returnTo, "acuity=error&reason=token_exchange"));
         }
 
         const tokens = (await tokenRes.json()) as {
@@ -120,14 +121,23 @@ export const Route = createFileRoute("/api/oauth/acuity/callback")({
 
         if (upsertErr) {
           console.error("Failed to save Acuity connection:", upsertErr);
-          return redirectTo("/platforms?acuity=error&reason=save_failed");
+          return redirectTo(redirectWithStatus(returnTo, "acuity=error&reason=save_failed"));
         }
 
-        return redirectTo("/platforms?acuity=connected");
+        return redirectTo(redirectWithStatus(returnTo, "acuity=connected"));
       },
     },
   },
 });
+
+function textFrom(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function redirectWithStatus(returnTo: string | undefined, status: string) {
+  const path = returnTo?.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/platforms";
+  return `${path}${path.includes("?") ? "&" : "?"}${status}`;
+}
 
 function redirectTo(path: string) {
   return new Response(null, { status: 302, headers: { Location: path } });
