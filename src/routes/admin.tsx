@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import type { ComponentType } from "react";
+import type { ComponentType, FormEvent } from "react";
 import { useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -10,6 +10,7 @@ import {
   Ban,
   CalendarDays,
   CreditCard,
+  MailPlus,
   Plug,
   RefreshCw,
   Search,
@@ -34,6 +35,7 @@ import {
   adminClearSyncState,
   adminDeactivateUser,
   adminDeleteUser,
+  adminInviteUser,
   adminSetUserPlan,
   adminSyncUser,
   getAdminDashboard,
@@ -104,9 +106,11 @@ function AdminPage() {
   const clearSyncFn = useServerFn(adminClearSyncState);
   const deactivateUserFn = useServerFn(adminDeactivateUser);
   const deleteUserFn = useServerFn(adminDeleteUser);
+  const inviteUserFn = useServerFn(adminInviteUser);
   const setPlanFn = useServerFn(adminSetUserPlan);
 
   const [q, setQ] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   const { data, isLoading, error } = useQuery({
@@ -128,6 +132,23 @@ function AdminPage() {
   }, [q, users]);
 
   const refreshAdmin = () => qc.invalidateQueries({ queryKey: ["admin-dashboard"] });
+
+  const inviteUser = useMutation({
+    mutationFn: (email: string) => inviteUserFn({ data: { email } }),
+    onSuccess: (result) => {
+      setInviteEmail("");
+      refreshAdmin();
+      toast.success("Invite sent", { description: result.email });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const submitInvite = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const email = inviteEmail.trim();
+    if (!email) return;
+    inviteUser.mutate(email);
+  };
 
   const syncUser = useMutation({
     mutationFn: (userId: string) => syncUserFn({ data: { userId } }),
@@ -204,10 +225,26 @@ function AdminPage() {
           </div>
           <h1 className="mt-1 text-2xl font-semibold text-foreground">Jey Link Operations</h1>
         </div>
-        <Button onClick={() => refreshAdmin()} disabled={isLoading} variant="outline">
-          <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
-          Refresh
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <form onSubmit={submitInvite} className="flex gap-2">
+            <Input
+              type="email"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              placeholder="Invite by email"
+              className="w-full sm:w-64"
+              disabled={inviteUser.isPending}
+            />
+            <Button type="submit" disabled={inviteUser.isPending || !inviteEmail.trim()}>
+              <MailPlus className="h-4 w-4" />
+              {inviteUser.isPending ? "Sending..." : "Invite"}
+            </Button>
+          </form>
+          <Button onClick={() => refreshAdmin()} disabled={isLoading} variant="outline">
+            <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+            Refresh
+          </Button>
+        </div>
       </header>
 
       <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">

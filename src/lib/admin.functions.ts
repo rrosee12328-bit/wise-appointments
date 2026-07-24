@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequestHost } from "@tanstack/react-start/server";
 import type { User } from "@supabase/supabase-js";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/admin.server";
@@ -61,6 +62,15 @@ type AppointmentRow = {
 
 function textFrom(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value : null;
+}
+
+function inviteRedirectUrl(host: string) {
+  const configuredOrigin = process.env.INVITE_REDIRECT_ORIGIN;
+  if (configuredOrigin) return `${configuredOrigin.replace(/\/$/, "")}/reset-password`;
+
+  const isLocal = host.includes("localhost");
+  const origin = isLocal ? `http://${host}` : "https://jeylink.vektiss.com";
+  return `${origin}/reset-password`;
 }
 
 function daysSince(iso: string | null): number | null {
@@ -343,6 +353,22 @@ export const getAdminDashboard = createServerFn({ method: "GET" }).handler(async
 });
 
 const userIdSchema = z.object({ userId: z.string().uuid() });
+
+export const adminInviteUser = createServerFn({ method: "POST" })
+  .inputValidator((input) => z.object({ email: z.string().email() }).parse(input))
+  .handler(async ({ data }) => {
+    const admin = await requireAdminUser();
+    const email = data.email.trim().toLowerCase();
+    const { data: invited, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+      redirectTo: inviteRedirectUrl(getRequestHost()),
+      data: {
+        invited_by: admin.email ?? admin.id,
+        invited_at: new Date().toISOString(),
+      },
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true, email, userId: invited.user?.id ?? null };
+  });
 
 export const adminSyncUser = createServerFn({ method: "POST" })
   .inputValidator((input) => userIdSchema.parse(input))
