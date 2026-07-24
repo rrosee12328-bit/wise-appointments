@@ -45,10 +45,20 @@ export function AppHeader() {
           <img src={logo} alt="Jey Link" className="h-20 w-auto" />
         </Link>
         {loading ? null : session ? (
-          <Button size="sm" variant="ghost" onClick={handleSignOut}>
-            <LogOut className="h-3.5 w-3.5" />
-            Sign out
-          </Button>
+          <div className="flex items-center gap-1">
+            {isAdmin && (
+              <Button size="sm" variant="ghost" asChild>
+                <Link to="/admin">
+                  <Shield className="h-3.5 w-3.5" />
+                  Admin
+                </Link>
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" onClick={handleSignOut}>
+              <LogOut className="h-3.5 w-3.5" />
+              Sign out
+            </Button>
+          </div>
         ) : (
           <div className="flex items-center gap-2">
             <Button size="sm" variant="ghost" asChild>
