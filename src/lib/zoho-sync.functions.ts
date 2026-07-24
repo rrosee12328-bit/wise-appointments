@@ -112,7 +112,10 @@ export const syncZohoBookings = createServerFn({ method: "POST" }).handler(async
   if (userErr || !userData.user) throw new Error("Invalid session");
 
   const userId = userData.user.id;
+  return syncZohoBookingsForUser(userId);
+});
 
+export async function syncZohoBookingsForUser(userId: string) {
   const { data: conn, error: connErr } = await supabaseAdmin
     .from("platform_connections")
     .select("access_token, refresh_token, token_expires_at, metadata")
@@ -263,4 +266,4 @@ export const syncZohoBookings = createServerFn({ method: "POST" }).handler(async
   }
 
   return { synced, skipped, connected: true };
-});
+}

@@ -77,7 +77,10 @@ export const syncCalendlyEvents = createServerFn({ method: "POST" }).handler(asy
   if (userErr || !userData.user) throw new Error("Invalid session");
 
   const userId = userData.user.id;
+  return syncCalendlyEventsForUser(userId);
+});
 
+export async function syncCalendlyEventsForUser(userId: string) {
   // Load the Calendly connection for this user
   const { data: conn, error: connErr } = await supabaseAdmin
     .from("platform_connections")
@@ -304,4 +307,4 @@ export const syncCalendlyEvents = createServerFn({ method: "POST" }).handler(asy
   }
 
   return { synced, skipped, connected: true };
-});
+}

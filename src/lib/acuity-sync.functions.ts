@@ -36,7 +36,10 @@ export const syncAcuityAppointments = createServerFn({ method: "POST" }).handler
   if (userErr || !userData.user) throw new Error("Invalid session");
 
   const userId = userData.user.id;
+  return syncAcuityAppointmentsForUser(userId);
+});
 
+export async function syncAcuityAppointmentsForUser(userId: string) {
   // Load the Acuity connection for this user
   const { data: conn, error: connErr } = await supabaseAdmin
     .from("platform_connections")
@@ -162,4 +165,4 @@ export const syncAcuityAppointments = createServerFn({ method: "POST" }).handler
   }
 
   return { synced, skipped, connected: true };
-});
+}

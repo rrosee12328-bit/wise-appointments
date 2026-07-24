@@ -320,12 +320,16 @@ export const pushAppointmentBlock = createServerFn({ method: "POST" })
 
 export const syncAppointmentBlocks = createServerFn({ method: "POST" }).handler(async () => {
   const user = await requireUser();
+  return syncAppointmentBlocksForUser(user.id);
+});
+
+export async function syncAppointmentBlocksForUser(userId: string) {
   const nowIso = new Date().toISOString();
 
   const { data: appts, error } = await supabaseAdmin
     .from("appointments")
     .select("id, source_platform, external_id, client_name, service, starts_at, ends_at, synced_to")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .gte("ends_at", nowIso)
     .order("starts_at", { ascending: true });
   if (error) throw new Error(error.message);
@@ -340,7 +344,7 @@ export const syncAppointmentBlocks = createServerFn({ method: "POST" }).handler(
 
     if (appt.source_platform !== "google_calendar") {
       try {
-        const out = await pushToGoogleForAppointment(user.id, { ...appt, synced_to: syncedTo });
+        const out = await pushToGoogleForAppointment(userId, { ...appt, synced_to: syncedTo });
         syncedTo = withBlockEventId(syncedTo, out.blockEventId);
         if (out.googleUpdated) googleUpdated++;
       } catch (err) {
@@ -358,7 +362,7 @@ export const syncAppointmentBlocks = createServerFn({ method: "POST" }).handler(
 
     if (appt.source_platform !== "outlook_calendar") {
       try {
-        const out = await pushToOutlookForAppointment(user.id, { ...appt, synced_to: syncedTo });
+        const out = await pushToOutlookForAppointment(userId, { ...appt, synced_to: syncedTo });
         syncedTo = withOutlookBlockEventId(syncedTo, out.outlookBlockEventId);
         if (out.outlookUpdated) outlookUpdated++;
       } catch (err) {
@@ -379,7 +383,7 @@ export const syncAppointmentBlocks = createServerFn({ method: "POST" }).handler(
         .from("appointments")
         .update({ synced_to: syncedTo })
         .eq("id", appt.id)
-        .eq("user_id", user.id);
+        .eq("user_id", userId);
     }
   }
 
@@ -390,4 +394,4 @@ export const syncAppointmentBlocks = createServerFn({ method: "POST" }).handler(
     skipped,
     reasons: Array.from(reasons),
   };
-});
+}

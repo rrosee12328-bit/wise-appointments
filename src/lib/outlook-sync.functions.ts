@@ -120,7 +120,10 @@ export const syncOutlookCalendar = createServerFn({ method: "POST" }).handler(as
   const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
   if (userErr || !userData.user) throw new Error("Invalid session");
   const userId = userData.user.id;
+  return syncOutlookCalendarForUser(userId);
+});
 
+export async function syncOutlookCalendarForUser(userId: string) {
   // Fetch current connection metadata for error tracking
   const { data: connMeta } = await supabaseAdmin
     .from("platform_connections")
@@ -354,4 +357,4 @@ export const syncOutlookCalendar = createServerFn({ method: "POST" }).handler(as
   }
 
   return { synced, skipped, connected: true, calendarsScanned: calendarIds.length };
-});
+}

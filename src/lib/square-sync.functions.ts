@@ -118,7 +118,10 @@ export const syncSquareBookings = createServerFn({ method: "POST" }).handler(asy
   if (userErr || !userData.user) throw new Error("Invalid session");
 
   const userId = userData.user.id;
+  return syncSquareBookingsForUser(userId);
+});
 
+export async function syncSquareBookingsForUser(userId: string) {
   // Load the Square connection for this user
   const { data: conn, error: connErr } = await supabaseAdmin
     .from("platform_connections")
@@ -303,4 +306,4 @@ export const syncSquareBookings = createServerFn({ method: "POST" }).handler(asy
   }
 
   return { synced, skipped, connected: true };
-});
+}

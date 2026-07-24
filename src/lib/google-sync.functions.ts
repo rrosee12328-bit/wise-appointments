@@ -146,7 +146,10 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(asy
   const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
   if (userErr || !userData.user) throw new Error("Invalid session");
   const userId = userData.user.id;
+  return syncGoogleCalendarForUser(userId);
+});
 
+export async function syncGoogleCalendarForUser(userId: string) {
   const { data: conn, error: connErr } = await supabaseAdmin
     .from("platform_connections")
     .select("access_token, refresh_token, token_expires_at, metadata")
@@ -465,4 +468,4 @@ export const syncGoogleCalendar = createServerFn({ method: "POST" }).handler(asy
     calendarsScanned: calendarIds.length,
     calendarsFetched,
   };
-});
+}
