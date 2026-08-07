@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { JeyLinkLogo } from "@/components/JeyLinkLogo";
 import { toast } from "sonner";
 
 type Mode = "signin" | "signup";
@@ -81,7 +82,8 @@ export function AuthForm({ mode }: { mode: Mode }) {
   return (
     <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-12">
       <Card className="w-full max-w-md">
-        <CardHeader>
+        <CardHeader className="items-center text-center">
+          <JeyLinkLogo imageClassName="h-14" />
           <CardTitle>{isSignup ? "Create your account" : "Welcome back"}</CardTitle>
           <CardDescription>
             {isSignup

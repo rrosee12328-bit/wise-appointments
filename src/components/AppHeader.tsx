@@ -2,30 +2,30 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
+import { JeyLinkLogo } from "@/components/JeyLinkLogo";
 import { LogOut, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-
-const logo = "/jey-link-logo.png";
 
 export function AppHeader() {
   const { session, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
+  const userId = session?.user?.id;
 
   useEffect(() => {
-    if (!session?.user) {
+    if (!userId) {
       setIsAdmin(false);
       return;
     }
     supabase
       .from("user_roles")
       .select("role")
-      .eq("user_id", session.user.id)
+      .eq("user_id", userId)
       .eq("role", "admin")
       .maybeSingle()
       .then(({ data }) => setIsAdmin(!!data));
-  }, [session?.user?.id]);
+  }, [userId]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -42,7 +42,7 @@ export function AppHeader() {
           aria-label="Jey Link home"
           className="flex items-center gap-2"
         >
-          <img src={logo} alt="Jey Link" className="h-20 w-auto" />
+          <JeyLinkLogo imageClassName="h-12" />
         </Link>
         {loading ? null : session ? (
           <div className="flex items-center gap-1">
