@@ -22,6 +22,7 @@ import { AppointmentDetailDialog } from "@/components/AppointmentDetailDialog";
 
 import { useAuth } from "@/hooks/use-auth";
 import { useAutoSyncPlatforms } from "@/hooks/use-auto-sync-platforms";
+import { useBillingStatus } from "@/hooks/use-billing-status";
 import { type Appointment, findConflicts, formatTime, toUiAppointment } from "@/lib/mock-data";
 import { PLATFORMS, type PlatformId } from "@/lib/platforms";
 import { getAppointments, upsertAppointment } from "@/lib/appointments.functions";
@@ -98,8 +99,9 @@ function Schedule() {
   const syncZoho = useServerFn(syncZohoBookings);
   const listFeeds = useServerFn(listIcalFeeds);
   const refreshFeed = useServerFn(refreshIcalFeed);
+  const { data: billing } = useBillingStatus(!!session);
 
-  useAutoSyncPlatforms(!!session);
+  useAutoSyncPlatforms(!!session && Boolean(billing?.hasPaidAccess));
 
   const { data, isLoading } = useQuery({
     queryKey: ["appointments"],
@@ -172,6 +174,12 @@ function Schedule() {
   }, []);
 
   const sync = async () => {
+    if (!billing?.hasPaidAccess) {
+      toast.error("Upgrade to sync platforms.", {
+        description: "Free users can view and add appointments, but live calendar sync is limited.",
+      });
+      return;
+    }
     setSyncing(true);
     try {
       const icalPromise = listFeeds()
@@ -288,11 +296,15 @@ function Schedule() {
       });
       // Best-effort push to Google so the slot is also blocked there.
       let blockReason: string | undefined;
-      try {
-        const res = await pushBlockFn({ data: { id: (created as { id: string }).id } });
-        blockReason = res.reason;
-      } catch (e) {
-        blockReason = (e as Error).message;
+      if (billing?.hasPaidAccess) {
+        try {
+          const res = await pushBlockFn({ data: { id: (created as { id: string }).id } });
+          blockReason = res.reason;
+        } catch (e) {
+          blockReason = (e as Error).message;
+        }
+      } else {
+        blockReason = "upgrade required";
       }
       return { blockReason };
     },

@@ -247,8 +247,9 @@ function AdminPage() {
         </div>
       </header>
 
-      <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <StatCard label="Users" value={data?.stats.totalUsers ?? 0} icon={Users} />
+        <StatCard label="Paid access" value={data?.stats.paidUsers ?? 0} icon={CreditCard} />
         <StatCard
           label="Appointments"
           value={data?.stats.totalAppointments ?? 0}
@@ -323,21 +324,27 @@ function AdminPage() {
                     </TableCell>
                     <TableCell>{formatDateOnly(user.createdAt)}</TableCell>
                     <TableCell>
-                      <select
-                        value={user.plan}
-                        onChange={(e) =>
-                          setPlan.mutate({
-                            userId: user.id,
-                            plan: e.target.value as "free" | "paid" | "trial" | "internal",
-                          })
-                        }
-                        className="h-8 rounded-md border bg-background px-2 text-xs"
-                      >
-                        <option value="free">Free</option>
-                        <option value="trial">Trial</option>
-                        <option value="paid">Paid</option>
-                        <option value="internal">Internal</option>
-                      </select>
+                      <div className="flex flex-col gap-1">
+                        <select
+                          value={user.plan}
+                          onChange={(e) =>
+                            setPlan.mutate({
+                              userId: user.id,
+                              plan: e.target.value as "free" | "paid" | "trial" | "internal",
+                            })
+                          }
+                          className="h-8 rounded-md border bg-background px-2 text-xs"
+                        >
+                          <option value="free">Free</option>
+                          <option value="trial">Trial</option>
+                          <option value="paid">Paid</option>
+                          <option value="internal">Internal</option>
+                        </select>
+                        <Badge variant={user.hasPaidAccess ? "secondary" : "outline"}>
+                          {user.stripeSubscriptionStatus ??
+                            (user.hasPaidAccess ? "active" : "limited")}
+                        </Badge>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex max-w-56 flex-wrap gap-1">
@@ -540,6 +547,15 @@ function AdminPage() {
                         {selectedUser.appointmentCount} appointments · {selectedUser.platformCount}{" "}
                         platforms
                       </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Billing: {selectedUser.plan}
+                        {selectedUser.stripeSubscriptionStatus
+                          ? ` · ${selectedUser.stripeSubscriptionStatus}`
+                          : ""}
+                        {selectedUser.stripeCurrentPeriodEnd
+                          ? ` · renews ${formatDateOnly(selectedUser.stripeCurrentPeriodEnd)}`
+                          : ""}
+                      </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Button
@@ -577,6 +593,48 @@ function AdminPage() {
                   </div>
 
                   <div className="mt-3 grid gap-3 xl:grid-cols-2">
+                    <div className="xl:col-span-2 rounded-md border p-3 text-xs">
+                      <h3 className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
+                        <CreditCard className="h-4 w-4" />
+                        Billing
+                      </h3>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <div className="text-muted-foreground">
+                          Plan: <span className="text-foreground">{selectedUser.plan}</span>
+                        </div>
+                        <div className="text-muted-foreground">
+                          Access:{" "}
+                          <span className="text-foreground">
+                            {selectedUser.hasPaidAccess ? "paid" : "limited"}
+                          </span>
+                        </div>
+                        <div className="text-muted-foreground">
+                          Stripe status:{" "}
+                          <span className="text-foreground">
+                            {selectedUser.stripeSubscriptionStatus ?? "None"}
+                          </span>
+                        </div>
+                        <div className="text-muted-foreground">
+                          Period end:{" "}
+                          <span className="text-foreground">
+                            {formatDate(selectedUser.stripeCurrentPeriodEnd)}
+                          </span>
+                        </div>
+                        <div className="text-muted-foreground">
+                          Customer:{" "}
+                          <span className="text-foreground">
+                            {selectedUser.stripeCustomerId ?? "None"}
+                          </span>
+                        </div>
+                        <div className="text-muted-foreground">
+                          Price:{" "}
+                          <span className="text-foreground">
+                            {selectedUser.stripePriceId ?? "None"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
                     <div>
                       <h3 className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
                         <Plug className="h-4 w-4" />

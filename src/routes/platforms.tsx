@@ -12,11 +12,13 @@ import {
   supportsIcal,
   type PlatformId,
 } from "@/lib/platforms";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PlatformLogo } from "@/components/PlatformLogo";
 import { ApiKeyConnectDialog } from "@/components/ApiKeyConnectDialog";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
+import { useBillingStatus } from "@/hooks/use-billing-status";
 import {
   createGoogleAuthUrl,
   listConnections,
@@ -40,6 +42,7 @@ import {
   refreshIcalFeed,
 } from "@/lib/ical-feed.functions";
 import { LinkPlatformDialog } from "@/components/LinkPlatformDialog";
+import { createStripeCheckoutSession } from "@/lib/stripe.functions";
 
 export const Route = createFileRoute("/platforms")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -124,9 +127,14 @@ function platformToDbKey(id: PlatformId): string {
   return id;
 }
 
+function isMainCalendar(id: PlatformId) {
+  return id === "google" || id === "outlook";
+}
+
 function Platforms() {
   const search = useSearch({ from: "/platforms" });
   const qc = useQueryClient();
+  const { session } = useAuth();
   const getGoogleAuthUrl = useServerFn(createGoogleAuthUrl);
   const getSquareAuthUrl = useServerFn(createSquareAuthUrl);
   const getCalendlyAuthUrl = useServerFn(createCalendlyAuthUrl);
@@ -144,6 +152,9 @@ function Platforms() {
   const refreshIcal = useServerFn(refreshIcalFeed);
   const syncGoogle = useServerFn(syncGoogleCalendar);
   const syncOutlook = useServerFn(syncOutlookCalendar);
+  const startCheckout = useServerFn(createStripeCheckoutSession);
+  const { data: billing } = useBillingStatus(!!session);
+  const hasPaidAccess = Boolean(billing?.hasPaidAccess);
 
   // Which API key dialog is open
   const [apiKeyDialog, setApiKeyDialog] = useState<"cliniko" | "zenoti" | null>(null);
@@ -227,6 +238,10 @@ function Platforms() {
   // Manual sync handler for SyncStatusPanel
   const [isSyncing, setIsSyncing] = useState(false);
   const handleSyncNow = async (platform: string) => {
+    if (!hasPaidAccess) {
+      toast.error("Upgrade to sync calendars.");
+      return;
+    }
     setIsSyncing(true);
     try {
       if (platform === "google_calendar") {
@@ -258,6 +273,10 @@ function Platforms() {
   };
 
   const handleReconnect = (platform: string) => {
+    if (!hasPaidAccess) {
+      toast.error("Upgrade to reconnect calendar sync.");
+      return;
+    }
     if (platform === "google_calendar") connectGoogle.mutate();
     else if (platform === "outlook_calendar") connectOutlook.mutate();
   };
@@ -344,6 +363,14 @@ function Platforms() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const checkout = useMutation({
+    mutationFn: async () => {
+      const { url } = await startCheckout();
+      window.location.href = url;
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   // Generic disconnect
   const disconnectPlatformMut = useMutation({
     mutationFn: async (dbKey: string) => {
@@ -381,6 +408,12 @@ function Platforms() {
 
   const action = (id: PlatformId) => {
     const dbKey = platformToDbKey(id);
+    const isConnected = connectedSet.has(dbKey) || icalByPlatform.has(id);
+
+    if (!hasPaidAccess && !isMainCalendar(id) && !isConnected) {
+      toast.error("Upgrade to connect booking apps.");
+      return;
+    }
 
     if (id === "google") {
       if (connectedSet.has(dbKey)) {
@@ -551,6 +584,24 @@ function Platforms() {
         </div>
       )}
 
+      {!hasPaidAccess && (
+        <div className="mb-6 rounded-md border border-accent/30 bg-accent/10 p-4 text-sm">
+          <div className="flex items-start gap-3">
+            <CreditCard className="mt-0.5 h-4 w-4 text-accent" />
+            <div className="min-w-0 flex-1">
+              <div className="font-medium text-foreground">Limited access</div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                You can connect a main calendar, but syncing and booking-app connections require an
+                active subscription.
+              </p>
+            </div>
+            <Button size="sm" onClick={() => checkout.mutate()} disabled={checkout.isPending}>
+              {checkout.isPending ? "Opening..." : "Upgrade"}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Calendar Sync Status Panel — always visible when Google or Outlook is connected */}
       {hasGoogleOrOutlookConnected && (
         <div className="mb-6">
@@ -656,7 +707,11 @@ function Platforms() {
                         size="sm"
                         variant={isConnected ? "outline" : isLive ? "default" : "ghost"}
                         onClick={() => action(id)}
-                        disabled={!isLive || isActionPending(id)}
+                        disabled={
+                          !isLive ||
+                          isActionPending(id) ||
+                          (!hasPaidAccess && !isMainCalendar(id) && !isConnected)
+                        }
                         className={cn(!isLive && "cursor-not-allowed opacity-50")}
                       >
                         {isConnected ? "Disconnect" : isLive ? "Connect" : "Soon"}

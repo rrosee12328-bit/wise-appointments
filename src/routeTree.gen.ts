@@ -22,6 +22,7 @@ import { Route as AppointmentsRouteImport } from './routes/appointments'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthVerifyRouteImport } from './routes/auth.verify'
+import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe/webhook'
 import { Route as ApiPublicCronIcalSyncRouteImport } from './routes/api/public/cron/ical-sync'
 import { Route as ApiOauthZohoCallbackRouteImport } from './routes/api/oauth/zoho/callback'
 import { Route as ApiOauthSquareCallbackRouteImport } from './routes/api/oauth/square/callback'
@@ -95,6 +96,11 @@ const AuthVerifyRoute = AuthVerifyRouteImport.update({
   path: '/auth/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
+  id: '/api/stripe/webhook',
+  path: '/api/stripe/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCronIcalSyncRoute = ApiPublicCronIcalSyncRouteImport.update({
   id: '/api/public/cron/ical-sync',
   path: '/api/public/cron/ical-sync',
@@ -146,6 +152,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/support': typeof SupportRoute
   '/auth/verify': typeof AuthVerifyRoute
+  '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/api/oauth/acuity/callback': typeof ApiOauthAcuityCallbackRoute
   '/api/oauth/calendly/callback': typeof ApiOauthCalendlyCallbackRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
@@ -168,6 +175,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/support': typeof SupportRoute
   '/auth/verify': typeof AuthVerifyRoute
+  '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/api/oauth/acuity/callback': typeof ApiOauthAcuityCallbackRoute
   '/api/oauth/calendly/callback': typeof ApiOauthCalendlyCallbackRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
@@ -191,6 +199,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/support': typeof SupportRoute
   '/auth/verify': typeof AuthVerifyRoute
+  '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/api/oauth/acuity/callback': typeof ApiOauthAcuityCallbackRoute
   '/api/oauth/calendly/callback': typeof ApiOauthCalendlyCallbackRoute
   '/api/oauth/google/callback': typeof ApiOauthGoogleCallbackRoute
@@ -215,6 +224,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/support'
     | '/auth/verify'
+    | '/api/stripe/webhook'
     | '/api/oauth/acuity/callback'
     | '/api/oauth/calendly/callback'
     | '/api/oauth/google/callback'
@@ -237,6 +247,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/support'
     | '/auth/verify'
+    | '/api/stripe/webhook'
     | '/api/oauth/acuity/callback'
     | '/api/oauth/calendly/callback'
     | '/api/oauth/google/callback'
@@ -259,6 +270,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/support'
     | '/auth/verify'
+    | '/api/stripe/webhook'
     | '/api/oauth/acuity/callback'
     | '/api/oauth/calendly/callback'
     | '/api/oauth/google/callback'
@@ -282,6 +294,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   SupportRoute: typeof SupportRoute
   AuthVerifyRoute: typeof AuthVerifyRoute
+  ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ApiOauthAcuityCallbackRoute: typeof ApiOauthAcuityCallbackRoute
   ApiOauthCalendlyCallbackRoute: typeof ApiOauthCalendlyCallbackRoute
   ApiOauthGoogleCallbackRoute: typeof ApiOauthGoogleCallbackRoute
@@ -384,6 +397,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/stripe/webhook': {
+      id: '/api/stripe/webhook'
+      path: '/api/stripe/webhook'
+      fullPath: '/api/stripe/webhook'
+      preLoaderRoute: typeof ApiStripeWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/ical-sync': {
       id: '/api/public/cron/ical-sync'
       path: '/api/public/cron/ical-sync'
@@ -450,6 +470,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   SupportRoute: SupportRoute,
   AuthVerifyRoute: AuthVerifyRoute,
+  ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ApiOauthAcuityCallbackRoute: ApiOauthAcuityCallbackRoute,
   ApiOauthCalendlyCallbackRoute: ApiOauthCalendlyCallbackRoute,
   ApiOauthGoogleCallbackRoute: ApiOauthGoogleCallbackRoute,

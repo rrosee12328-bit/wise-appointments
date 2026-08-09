@@ -3,17 +3,22 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Sun, Moon, Monitor, LogOut } from "lucide-react";
+import { CreditCard, LogOut, Monitor, Moon, Sun } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useTheme } from "@/components/ThemeProvider";
 import { useAuth } from "@/hooks/use-auth";
+import { useBillingStatus } from "@/hooks/use-billing-status";
 import { cn } from "@/lib/utils";
 import { getProfile, updateProfile } from "@/lib/profile.functions";
+import { createStripeCheckoutSession, createStripePortalSession } from "@/lib/stripe.functions";
 
 export const Route = createFileRoute("/settings")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    billing: typeof s.billing === "string" ? (s.billing as string) : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Settings — Jey Link" },
@@ -26,11 +31,14 @@ export const Route = createFileRoute("/settings")({
 });
 
 function SettingsPage() {
+  const search = Route.useSearch();
   const { mode, setMode } = useTheme();
   const { session, signOut } = useAuth();
   const qc = useQueryClient();
   const fetchProfile = useServerFn(getProfile);
   const saveProfile = useServerFn(updateProfile);
+  const startCheckout = useServerFn(createStripeCheckoutSession);
+  const startPortal = useServerFn(createStripePortalSession);
 
   const [notifyNew, setNotifyNew] = useState(true);
   const [notifyConflicts, setNotifyConflicts] = useState(true);
@@ -41,6 +49,18 @@ function SettingsPage() {
     queryFn: () => fetchProfile(),
     enabled: !!session,
   });
+  const { data: billing, isLoading: billingLoading } = useBillingStatus(!!session);
+
+  useEffect(() => {
+    if (search.billing === "success") {
+      toast.success("Payment received", {
+        description: "Stripe is confirming your subscription now.",
+      });
+      void qc.invalidateQueries({ queryKey: ["billing-status"] });
+    } else if (search.billing === "canceled") {
+      toast.info("Checkout canceled");
+    }
+  }, [search.billing, qc]);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -73,6 +93,22 @@ function SettingsPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["profile"] });
       toast.success("Profile saved");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const checkout = useMutation({
+    mutationFn: async () => {
+      const { url } = await startCheckout();
+      window.location.href = url;
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const portal = useMutation({
+    mutationFn: async () => {
+      const { url } = await startPortal();
+      window.location.href = url;
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -195,6 +231,51 @@ function SettingsPage() {
               {label}
             </button>
           ))}
+        </div>
+      </Section>
+
+      <Section title="Billing">
+        <div className="rounded-md border bg-card p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <CreditCard className="h-4 w-4 text-accent" />
+                {billing?.hasPaidAccess ? "Active access" : "Limited access"}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Plan: {billingLoading ? "Loading..." : (billing?.plan ?? "free")}
+                {billing?.stripeSubscriptionStatus
+                  ? ` · Stripe: ${billing.stripeSubscriptionStatus}`
+                  : ""}
+              </p>
+              {billing?.stripeCurrentPeriodEnd ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Current period ends{" "}
+                  {new Date(billing.stripeCurrentPeriodEnd).toLocaleDateString()}
+                </p>
+              ) : null}
+            </div>
+            {billing?.hasPaidAccess ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => portal.mutate()}
+                disabled={portal.isPending}
+              >
+                {portal.isPending ? "Opening..." : "Manage"}
+              </Button>
+            ) : (
+              <Button size="sm" onClick={() => checkout.mutate()} disabled={checkout.isPending}>
+                {checkout.isPending ? "Opening..." : "Upgrade"}
+              </Button>
+            )}
+          </div>
+          {!billing?.hasPaidAccess ? (
+            <p className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+              Free users can view Jey Link, but calendar syncing and extra platform connections are
+              limited until billing is active.
+            </p>
+          ) : null}
         </div>
       </Section>
 

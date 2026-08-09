@@ -12,6 +12,7 @@ import { syncAcuityAppointmentsForUser } from "@/lib/acuity-sync.functions";
 import { syncZohoBookingsForUser } from "@/lib/zoho-sync.functions";
 import { syncIcalFeed } from "@/lib/ical-sync.server";
 import { syncAppointmentBlocksForUser } from "@/lib/appointment-writeback.functions";
+import { hasPaidAccess } from "@/lib/billing";
 
 type Metadata = Record<string, unknown>;
 
@@ -290,6 +291,16 @@ export const getAdminDashboard = createServerFn({ method: "GET" }).handler(async
       bannedUntil: authUser.banned_until ?? null,
       isAdmin: adminIds.has(authUser.id),
       plan: textFrom(authUser.app_metadata?.plan) ?? "free",
+      hasPaidAccess: hasPaidAccess(
+        textFrom(authUser.app_metadata?.plan) ?? "free",
+        textFrom(authUser.app_metadata?.stripe_subscription_status),
+      ),
+      stripeCustomerId: textFrom(authUser.app_metadata?.stripe_customer_id),
+      stripeSubscriptionId: textFrom(authUser.app_metadata?.stripe_subscription_id),
+      stripeSubscriptionStatus: textFrom(authUser.app_metadata?.stripe_subscription_status),
+      stripeCurrentPeriodEnd: textFrom(authUser.app_metadata?.stripe_current_period_end),
+      stripePriceId: textFrom(authUser.app_metadata?.stripe_price_id),
+      planUpdatedAt: textFrom(authUser.app_metadata?.plan_updated_at),
       platforms: platformRows,
       platformCount: platformRows.length,
       lastSyncedAt,
@@ -332,6 +343,7 @@ export const getAdminDashboard = createServerFn({ method: "GET" }).handler(async
       totalUsers: users.length,
       activeUsers: users.filter((user) => !user.bannedUntil).length,
       totalAppointments: appointments.length,
+      paidUsers: users.filter((user) => user.hasPaidAccess).length,
       upcomingAppointments: appointments.filter((appt) => appt.ends_at >= nowIso).length,
       conflictCount: conflictIds.size,
       platformCounts: Array.from(platformCounts.entries()).map(([platform, count]) => ({

@@ -14,6 +14,7 @@ import { WalkInDialog } from "@/components/WalkInDialog";
 
 import { useAuth } from "@/hooks/use-auth";
 import { useAutoSyncPlatforms } from "@/hooks/use-auto-sync-platforms";
+import { useBillingStatus } from "@/hooks/use-billing-status";
 import { formatRelativeDay, toUiAppointment, type Appointment } from "@/lib/mock-data";
 import { getAppointments, upsertAppointment } from "@/lib/appointments.functions";
 import { pushAppointmentBlock } from "@/lib/appointment-writeback.functions";
@@ -52,8 +53,9 @@ function Appointments() {
   const upsertFn = useServerFn(upsertAppointment);
   const pushBlockFn = useServerFn(pushAppointmentBlock);
   const qc = useQueryClient();
+  const { data: billing } = useBillingStatus(!!session);
 
-  useAutoSyncPlatforms(!!session);
+  useAutoSyncPlatforms(!!session && Boolean(billing?.hasPaidAccess));
 
   const { data, isLoading } = useQuery({
     queryKey: ["appointments"],
@@ -115,11 +117,15 @@ function Appointments() {
       });
       // 2. Push block to Google Calendar + Outlook Calendar
       let blockReason: string | undefined;
-      try {
-        const res = await pushBlockFn({ data: { id: (created as { id: string }).id } });
-        blockReason = res.reason;
-      } catch (e) {
-        blockReason = (e as Error).message;
+      if (billing?.hasPaidAccess) {
+        try {
+          const res = await pushBlockFn({ data: { id: (created as { id: string }).id } });
+          blockReason = res.reason;
+        } catch (e) {
+          blockReason = (e as Error).message;
+        }
+      } else {
+        blockReason = "upgrade required";
       }
       return { blockReason };
     },
