@@ -59,7 +59,7 @@ export function ConflictResolverDialog({ open, onOpenChange, conflicts, onResche
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-md overflow-hidden p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-destructive" />
@@ -74,13 +74,13 @@ export function ConflictResolverDialog({ open, onOpenChange, conflicts, onResche
 
         {step === "pick" && (
           <>
-            <div className="flex flex-col gap-2">
+            <div className="flex min-w-0 flex-col gap-2">
               {pair.map((a) => (
                 <button
                   key={a.id}
                   type="button"
                   onClick={() => setSelectedId(a.id)}
-                  className={`flex items-center gap-3 rounded-md border p-3 text-left transition-colors ${
+                  className={`flex w-full min-w-0 items-start gap-3 rounded-md border p-3 text-left transition-colors sm:items-center ${
                     selectedId === a.id
                       ? "border-accent bg-accent/5"
                       : "border-border hover:bg-secondary"
@@ -94,7 +94,10 @@ export function ConflictResolverDialog({ open, onOpenChange, conflicts, onResche
                     <div className="truncate text-sm font-medium">{a.client}</div>
                     <div className="truncate text-xs text-muted-foreground">{a.service}</div>
                   </div>
-                  <PlatformBadge platform={a.platform} />
+                  <PlatformBadge
+                    platform={a.platform}
+                    className="max-w-[8.5rem] shrink-0 truncate whitespace-nowrap text-[11px]"
+                  />
                 </button>
               ))}
             </div>
@@ -103,7 +106,7 @@ export function ConflictResolverDialog({ open, onOpenChange, conflicts, onResche
               <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Shift by
               </div>
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
                 {SHIFT_OPTIONS.map((m) => (
                   <button
                     key={m}
@@ -161,11 +164,19 @@ export function ConflictResolverDialog({ open, onOpenChange, conflicts, onResche
               </div>
             </div>
 
-            <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                className="w-full sm:w-auto"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
                 Cancel
               </Button>
-              <Button onClick={() => setStep("confirm")} disabled={invalidCustom}>
+              <Button
+                className="w-full sm:w-auto"
+                onClick={() => setStep("confirm")}
+                disabled={invalidCustom}
+              >
                 Review change
               </Button>
             </DialogFooter>
@@ -175,7 +186,7 @@ export function ConflictResolverDialog({ open, onOpenChange, conflicts, onResche
         {step === "confirm" && (
           <>
             <div className="flex flex-col gap-3">
-              <div className="rounded-md border border-border p-3">
+              <div className="min-w-0 rounded-md border border-border p-3">
                 <div className="mb-2 flex items-center justify-between">
                   <div className="min-w-0">
                     <div className="truncate text-sm font-semibold">{target.client}</div>
@@ -183,7 +194,10 @@ export function ConflictResolverDialog({ open, onOpenChange, conflicts, onResche
                       {target.service} · {target.durationMin} min
                     </div>
                   </div>
-                  <PlatformBadge platform={target.platform} />
+                  <PlatformBadge
+                    platform={target.platform}
+                    className="max-w-[8.5rem] shrink-0 truncate whitespace-nowrap text-[11px]"
+                  />
                 </div>
                 <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                   <div className="rounded-md bg-secondary p-2 text-center">
@@ -212,12 +226,17 @@ export function ConflictResolverDialog({ open, onOpenChange, conflicts, onResche
               </p>
             </div>
 
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setStep("pick")}>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                className="w-full sm:w-auto"
+                variant="outline"
+                onClick={() => setStep("pick")}
+              >
                 <ChevronLeft className="h-4 w-4" />
                 Back
               </Button>
               <Button
+                className="w-full min-w-0 sm:w-auto"
                 onClick={() => {
                   onReschedule(target.id, newStart);
                   onOpenChange(false);
