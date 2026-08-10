@@ -30,6 +30,12 @@ function startOfWeek(d: Date) {
   return x;
 }
 
+function startOfDay(d: Date) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
 function startOfMonth(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), 1);
 }
@@ -75,9 +81,7 @@ export function DayTimelineView({
   onAddNew?: (date: Date) => void;
 }) {
   const [day, setDay] = useState<Date>(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
+    return startOfDay(new Date());
   });
   const nowLineRef = useRef<HTMLDivElement>(null);
 
@@ -91,6 +95,11 @@ export function DayTimelineView({
     for (let h = DAY_START_HOUR; h <= DAY_END_HOUR; h++) arr.push(h);
     return arr;
   }, []);
+
+  const weekDays = useMemo(() => {
+    const start = startOfWeek(day);
+    return Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  }, [day]);
 
   const nowOffset = useMemo(() => {
     if (!sameDay(day, new Date())) return null;
@@ -161,9 +170,47 @@ export function DayTimelineView({
         </Button>
       </div>
 
+      <div className="mb-3 grid grid-cols-7 gap-1">
+        {weekDays.map((d) => {
+          const selected = sameDay(d, day);
+          const current = sameDay(d, new Date());
+          return (
+            <button
+              key={d.toISOString()}
+              type="button"
+              onClick={() => setDay(startOfDay(d))}
+              className={cn(
+                "flex min-w-0 flex-col items-center rounded-md border px-1 py-2 text-xs transition-colors",
+                selected
+                  ? "border-accent bg-accent text-accent-foreground"
+                  : "border-border bg-card hover:bg-secondary",
+              )}
+              aria-label={`Show ${d.toLocaleDateString([], {
+                weekday: "long",
+                month: "long",
+                day: "numeric",
+              })}`}
+            >
+              <span
+                className={cn(
+                  "text-[10px] font-semibold uppercase tracking-wide",
+                  selected ? "text-accent-foreground/80" : "text-muted-foreground",
+                )}
+              >
+                {d.toLocaleDateString([], { weekday: "short" })}
+              </span>
+              <span className="mt-1 text-sm font-bold">{d.getDate()}</span>
+              {current && !selected ? (
+                <span className="mt-1 h-1 w-1 rounded-full bg-accent" />
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+
       <div
         className="overflow-y-auto rounded-lg border border-border"
-        style={{ maxHeight: "520px" }}
+        style={{ maxHeight: "min(680px, calc(100vh - 220px))" }}
       >
         <div className="relative flex">
           {/* Hour labels */}

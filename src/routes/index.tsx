@@ -129,8 +129,8 @@ const SCHEDULE_VIEWS: {
   description: string;
   icon: typeof List;
 }[] = [
+  { id: "day", label: "Day", description: "Full-day timeline", icon: CalendarDays },
   { id: "list", label: "Agenda", description: "Today, upcoming, and past", icon: List },
-  { id: "day", label: "Day", description: "Single-day timeline", icon: CalendarDays },
   { id: "week", label: "Week", description: "Seven-day calendar", icon: CalendarCheck2 },
   { id: "month", label: "Month", description: "Monthly overview", icon: CalendarRange },
 ];
@@ -184,7 +184,7 @@ function Schedule() {
   const [appointmentFormDate, setAppointmentFormDate] = useState<Date | null>(null);
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null);
   const [detailAppt, setDetailAppt] = useState<Appointment | null>(null);
-  const [scheduleView, setScheduleView] = useState<ScheduleView>("list");
+  const [scheduleView, setScheduleView] = useState<ScheduleView>("day");
 
   const filterAppointments = useCallback(
     (list: Appointment[]) =>
@@ -500,7 +500,7 @@ function Schedule() {
       {next ? (
         <section
           aria-label="Next appointment"
-          className="relative overflow-hidden rounded-xl bg-primary p-7 text-primary-foreground"
+          className="relative overflow-hidden rounded-xl bg-primary p-4 text-primary-foreground"
           style={{
             backgroundImage:
               "radial-gradient(120% 80% at 100% 0%, oklch(0.58 0.09 262 / 0.18), transparent 55%)",
@@ -508,26 +508,31 @@ function Schedule() {
           }}
         >
           <div className="absolute left-0 top-0 h-full w-1 bg-accent" aria-hidden />
-          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-accent">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-            Next appointment
-          </div>
-          <div className="mt-5 text-6xl font-black leading-none tracking-tight">
-            {formatTime(next.start)}
-          </div>
-          <div className="mt-5 h-px w-10 bg-accent" aria-hidden />
-          <div className="mt-5 text-base font-semibold">{next.client}</div>
-          <div className="text-sm opacity-70">
-            {next.service} · {next.durationMin} min
-          </div>
-          <div className="mt-4">
-            <PlatformBadge platform={next.platform} />
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">
+                <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+                Next
+              </div>
+              <div className="mt-2 truncate text-sm font-semibold">{next.client}</div>
+              <div className="truncate text-xs opacity-70">
+                {next.service} · {next.durationMin} min
+              </div>
+            </div>
+            <div className="shrink-0 text-right">
+              <div className="text-3xl font-black leading-none tracking-tight">
+                {formatTime(next.start)}
+              </div>
+              <div className="mt-2 flex justify-end">
+                <PlatformBadge platform={next.platform} />
+              </div>
+            </div>
           </div>
         </section>
       ) : (
-        <section className="rounded-xl border border-dashed border-border bg-card p-8 text-center">
-          <Calendar className="mx-auto h-8 w-8 text-muted-foreground" />
-          <div className="mt-3 text-sm font-medium text-foreground">
+        <section className="rounded-xl border border-dashed border-border bg-card p-4 text-center">
+          <Calendar className="mx-auto h-6 w-6 text-muted-foreground" />
+          <div className="mt-2 text-sm font-medium text-foreground">
             {isLoading ? "Loading…" : "No upcoming appointments"}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
