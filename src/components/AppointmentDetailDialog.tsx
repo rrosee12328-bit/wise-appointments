@@ -1,4 +1,4 @@
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Pencil } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -16,10 +16,12 @@ export function AppointmentDetailDialog({
   appt,
   open,
   onOpenChange,
+  onEdit,
 }: {
   appt: Appointment | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onEdit?: (appt: Appointment) => void;
 }) {
   if (!appt) return null;
   const platformLabel = PLATFORMS[appt.platform].label;
@@ -65,6 +67,18 @@ export function AppointmentDetailDialog({
         </div>
 
         <DialogFooter>
+          {onEdit && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                onOpenChange(false);
+                onEdit(appt);
+              }}
+            >
+              <Pencil className="h-4 w-4" />
+              Edit
+            </Button>
+          )}
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import type { Appointment } from "@/lib/mock-data";
 
 type Props = {
@@ -17,6 +18,7 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   onAdd: (appt: Appointment) => void;
   initialDate?: Date | null;
+  editingAppointment?: Appointment | null;
 };
 
 function roundedNow(): Date {
@@ -45,39 +47,72 @@ function fromDateAndTime(date: string, time: string): Date {
   return new Date(year, month - 1, day, hours, minutes, 0, 0);
 }
 
-export function WalkInDialog({ open, onOpenChange, onAdd, initialDate }: Props) {
+function defaultStart(initialDate?: Date | null): Date {
+  if (!initialDate) return roundedNow();
+  const d = new Date(initialDate);
+  if (
+    d.getHours() === 0 &&
+    d.getMinutes() === 0 &&
+    d.getSeconds() === 0 &&
+    d.getMilliseconds() === 0
+  ) {
+    d.setHours(9, 0, 0, 0);
+  }
+  return d;
+}
+
+export function WalkInDialog({
+  open,
+  onOpenChange,
+  onAdd,
+  initialDate,
+  editingAppointment,
+}: Props) {
   const [client, setClient] = useState("");
   const [service, setService] = useState("Haircut");
   const [duration, setDuration] = useState(30);
   const [date, setDate] = useState(() => toDateInput(new Date()));
   const [time, setTime] = useState(() => toTimeInput(roundedNow()));
+  const [notes, setNotes] = useState("Appointment · blocked across all platforms");
+  const isEditing = Boolean(editingAppointment);
 
   useEffect(() => {
     if (!open) return;
 
-    const base = initialDate ?? new Date();
-    setDate(toDateInput(base));
-    setTime(toTimeInput(roundedNow()));
-  }, [initialDate, open]);
+    if (editingAppointment) {
+      setClient(editingAppointment.client);
+      setService(editingAppointment.service || "Appointment");
+      setDuration(editingAppointment.durationMin);
+      setDate(toDateInput(editingAppointment.start));
+      setTime(toTimeInput(editingAppointment.start));
+      setNotes(editingAppointment.notes ?? "");
+      return;
+    }
 
-  const submit = (e: React.FormEvent) => {
+    const base = defaultStart(initialDate);
+    setDate(toDateInput(base));
+    setTime(toTimeInput(base));
+    setClient("");
+    setService("Haircut");
+    setDuration(30);
+    setNotes("Appointment · blocked across all platforms");
+  }, [editingAppointment, initialDate, open]);
+
+  const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!client.trim()) return;
     const start = fromDateAndTime(date, time);
     onAdd({
-      id: `walkin-${Date.now()}`,
+      id: editingAppointment?.id ?? `walkin-${Date.now()}`,
       start,
       durationMin: duration,
       client: client.trim(),
       service: service.trim() || "Appointment",
-      platform: "google",
-      notes: "Appointment · blocked across all platforms",
+      platform: editingAppointment?.platform ?? "google",
+      sourcePlatform: editingAppointment?.sourcePlatform,
+      notes: notes.trim() || undefined,
+      externalUrl: editingAppointment?.externalUrl,
     });
-    setClient("");
-    setService("Haircut");
-    setDuration(30);
-    setDate(toDateInput(new Date()));
-    setTime(toTimeInput(roundedNow()));
     onOpenChange(false);
   };
 
@@ -85,9 +120,11 @@ export function WalkInDialog({ open, onOpenChange, onAdd, initialDate }: Props) 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Add appointment</DialogTitle>
+          <DialogTitle>{isEditing ? "Edit appointment" : "Add appointment"}</DialogTitle>
           <DialogDescription>
-            Blocks this time across every connected platform immediately.
+            {isEditing
+              ? "Update this appointment and refresh its calendar blocks."
+              : "Blocks this time across every connected platform immediately."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="flex flex-col gap-3">
@@ -150,11 +187,21 @@ export function WalkInDialog({ open, onOpenChange, onAdd, initialDate }: Props) 
               </select>
             </div>
           </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="walkin-notes">Notes</Label>
+            <Textarea
+              id="walkin-notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Optional notes"
+              rows={3}
+            />
+          </div>
           <DialogFooter className="mt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit">Book appointment</Button>
+            <Button type="submit">{isEditing ? "Save appointment" : "Book appointment"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

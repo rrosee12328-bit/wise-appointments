@@ -1,12 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { Calendar, Plug, ListChecks, Settings, LifeBuoy, ClipboardCheck } from "lucide-react";
+import { Calendar, Plug, Settings, LifeBuoy, ClipboardCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
   { to: "/", label: "Schedule", icon: Calendar, exact: true },
   { to: "/onboarding", label: "Setup", icon: ClipboardCheck, exact: false },
   { to: "/platforms", label: "Platforms", icon: Plug, exact: false },
-  { to: "/appointments", label: "Appointments", icon: ListChecks, exact: false },
   { to: "/settings", label: "Settings", icon: Settings, exact: false },
   { to: "/support", label: "Support", icon: LifeBuoy, exact: false },
 ] as const;

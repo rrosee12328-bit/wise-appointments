@@ -30,6 +30,11 @@ export const Route = createFileRoute("/settings")({
   component: SettingsPage,
 });
 
+function detectBrowserTimezone() {
+  if (typeof window === "undefined" || typeof Intl === "undefined") return "UTC";
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+}
+
 function SettingsPage() {
   const search = Route.useSearch();
   const { mode, setMode } = useTheme();
@@ -57,6 +62,14 @@ function SettingsPage() {
         description: "Stripe is confirming your subscription now.",
       });
       void qc.invalidateQueries({ queryKey: ["billing-status"] });
+      const interval = window.setInterval(() => {
+        void qc.invalidateQueries({ queryKey: ["billing-status"] });
+      }, 3000);
+      const timeout = window.setTimeout(() => window.clearInterval(interval), 18000);
+      return () => {
+        window.clearInterval(interval);
+        window.clearTimeout(timeout);
+      };
     } else if (search.billing === "canceled") {
       toast.info("Checkout canceled");
     }
@@ -66,7 +79,17 @@ function SettingsPage() {
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [businessName, setBusinessName] = useState("");
-  const [timezone, setTimezone] = useState("America/New_York");
+  const [detectedTimezone, setDetectedTimezone] = useState("UTC");
+  const [timezoneMode, setTimezoneMode] = useState<"auto" | "manual">("auto");
+  const [timezone, setTimezone] = useState(detectedTimezone);
+
+  useEffect(() => {
+    setDetectedTimezone(detectBrowserTimezone());
+  }, []);
+
+  useEffect(() => {
+    if (timezoneMode === "auto") setTimezone(detectedTimezone);
+  }, [detectedTimezone, timezoneMode]);
 
   useEffect(() => {
     if (profile) {
@@ -74,9 +97,10 @@ function SettingsPage() {
       setLastName(profile.last_name ?? "");
       setPhone(profile.phone ?? "");
       setBusinessName(profile.business_name ?? "");
-      setTimezone(profile.timezone ?? "America/New_York");
+      setTimezoneMode(profile.timezone ? "manual" : "auto");
+      setTimezone(profile.timezone ?? detectedTimezone);
     }
-  }, [profile]);
+  }, [detectedTimezone, profile]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -86,7 +110,7 @@ function SettingsPage() {
           last_name: lastName.trim() || null,
           phone: phone.trim() || null,
           business_name: businessName.trim() || null,
-          timezone: timezone.trim() || null,
+          timezone: timezoneMode === "auto" ? null : timezone.trim() || detectedTimezone,
         },
       });
     },
@@ -195,13 +219,45 @@ function SettingsPage() {
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="timezone">Timezone</Label>
+            <div className="grid grid-cols-2 gap-2 rounded-md border bg-muted/30 p-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setTimezoneMode("auto");
+                  setTimezone(detectedTimezone);
+                }}
+                className={cn(
+                  "rounded px-3 py-2 text-xs font-medium transition-colors",
+                  timezoneMode === "auto"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Auto
+              </button>
+              <button
+                type="button"
+                onClick={() => setTimezoneMode("manual")}
+                className={cn(
+                  "rounded px-3 py-2 text-xs font-medium transition-colors",
+                  timezoneMode === "manual"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Manual
+              </button>
+            </div>
             <Input
               id="timezone"
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
-              placeholder="America/New_York"
-              disabled={isLoading}
+              placeholder={detectedTimezone}
+              disabled={isLoading || timezoneMode === "auto"}
             />
+            <p className="text-xs text-muted-foreground">
+              Auto uses this device's timezone: {detectedTimezone}.
+            </p>
           </div>
           <Button
             onClick={() => save.mutate()}
@@ -236,11 +292,11 @@ function SettingsPage() {
 
       <Section title="Billing">
         <div className="rounded-md border bg-card p-4">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-4">
             <div>
               <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <CreditCard className="h-4 w-4 text-accent" />
-                {billing?.hasPaidAccess ? "Active access" : "Limited access"}
+                {billing?.hasPaidAccess ? "Paid access active" : "Free plan"}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 Plan: {billingLoading ? "Loading..." : (billing?.plan ?? "free")}
@@ -257,15 +313,17 @@ function SettingsPage() {
             </div>
             {billing?.hasPaidAccess ? (
               <Button
-                size="sm"
                 variant="outline"
                 onClick={() => portal.mutate()}
-                disabled={portal.isPending}
+                disabled={portal.isPending || billingLoading}
               >
                 {portal.isPending ? "Opening..." : "Manage"}
               </Button>
             ) : (
-              <Button size="sm" onClick={() => checkout.mutate()} disabled={checkout.isPending}>
+              <Button
+                onClick={() => checkout.mutate()}
+                disabled={checkout.isPending || billingLoading}
+              >
                 {checkout.isPending ? "Opening..." : "Upgrade"}
               </Button>
             )}
@@ -273,7 +331,8 @@ function SettingsPage() {
           {!billing?.hasPaidAccess ? (
             <p className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
               Free users can view Jey Link, but calendar syncing and extra platform connections are
-              limited until billing is active.
+              limited until billing is active. After checkout, this card updates as soon as Stripe
+              confirms the subscription.
             </p>
           ) : null}
         </div>

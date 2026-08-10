@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useEffect } from "react";
+import { useMemo, useState, useRef, useEffect, type MouseEvent } from "react";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { PLATFORMS } from "@/lib/platforms";
 import { type Appointment, formatTime } from "@/lib/mock-data";
@@ -50,6 +50,17 @@ function apptTopPx(start: Date): number {
 
 function apptHeightPx(durationMin: number): number {
   return Math.max(20, (durationMin / 60) * HOUR_PX);
+}
+
+function dateFromGridClick(day: Date, element: HTMLElement, clientY: number): Date {
+  const rect = element.getBoundingClientRect();
+  const y = Math.max(0, Math.min(clientY - rect.top, rect.height));
+  const quarterHours = Math.round((y / HOUR_PX) * 4);
+  const minutes = Math.min(quarterHours * 15, (DAY_END_HOUR - DAY_START_HOUR) * 60);
+  const slot = new Date(day);
+  slot.setHours(DAY_START_HOUR, 0, 0, 0);
+  slot.setMinutes(slot.getMinutes() + minutes);
+  return slot;
 }
 
 // ── Today / Day Timeline View ─────────────────────────────────────────────────
@@ -172,7 +183,11 @@ export function DayTimelineView({
 
           {/* Grid + events */}
           <div
-            className="relative flex-1 border-l border-border"
+            className={cn("relative flex-1 border-l border-border", onAddNew && "cursor-copy")}
+            onClick={(e: MouseEvent<HTMLDivElement>) => {
+              if (!onAddNew) return;
+              onAddNew(dateFromGridClick(day, e.currentTarget, e.clientY));
+            }}
             style={{ height: (DAY_END_HOUR - DAY_START_HOUR + 1) * HOUR_PX }}
           >
             {/* Hour lines */}
@@ -205,7 +220,10 @@ export function DayTimelineView({
                 <button
                   key={a.id}
                   type="button"
-                  onClick={() => onSelect?.(a)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelect?.(a);
+                  }}
                   className="absolute inset-x-1 overflow-hidden rounded-md px-2 py-1 text-left text-xs transition-colors hover:brightness-95"
                   style={{
                     top,
@@ -385,7 +403,11 @@ export function WeekView({
 
                 {/* Time grid */}
                 <div
-                  className="relative"
+                  className={cn("relative", onAddNew && "cursor-copy")}
+                  onClick={(e: MouseEvent<HTMLDivElement>) => {
+                    if (!onAddNew) return;
+                    onAddNew(dateFromGridClick(day, e.currentTarget, e.clientY));
+                  }}
                   style={{ height: (DAY_END_HOUR - DAY_START_HOUR + 1) * HOUR_PX }}
                 >
                   {hours.map((h) => (
@@ -409,7 +431,10 @@ export function WeekView({
                     <button
                       type="button"
                       className="absolute right-0.5 top-0.5 z-20 rounded p-0.5 opacity-0 transition-opacity group-hover:opacity-60 hover:!opacity-100"
-                      onClick={() => onAddNew(day)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAddNew(day);
+                      }}
                       aria-label="Add appointment"
                       title="Pencil in appointment"
                     >
@@ -426,7 +451,10 @@ export function WeekView({
                       <button
                         key={a.id}
                         type="button"
-                        onClick={() => onSelect?.(a)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelect?.(a);
+                        }}
                         className="absolute inset-x-0.5 overflow-hidden rounded px-1 py-0.5 text-left text-[10px] transition-colors hover:brightness-95"
                         style={{
                           top,
@@ -460,10 +488,12 @@ export function WeekView({
 
 export function MonthGridView({
   appointments,
+  onSelect,
   onSelectDay,
   onAddNew,
 }: {
   appointments: Appointment[];
+  onSelect?: (a: Appointment) => void;
   onSelectDay?: (d: Date) => void;
   onAddNew?: (date: Date) => void;
 }) {
@@ -585,9 +615,14 @@ export function MonthGridView({
                 {list.slice(0, 2).map((a) => {
                   const p = PLATFORMS[a.platform] ?? PLATFORMS.google;
                   return (
-                    <div
+                    <button
                       key={a.id}
-                      className="truncate rounded px-1 text-[9px] font-medium leading-4"
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelect?.(a);
+                      }}
+                      className="truncate rounded px-1 text-left text-[9px] font-medium leading-4"
                       style={{
                         background: `${p.colorVar}22`,
                         color: p.colorVar,
@@ -595,7 +630,7 @@ export function MonthGridView({
                       }}
                     >
                       {a.client}
-                    </div>
+                    </button>
                   );
                 })}
                 {list.length > 2 && (

@@ -1,5 +1,5 @@
 import { createFileRoute, useSearch } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -12,18 +12,32 @@ import {
   Calendar,
   Eye,
   EyeOff,
+  Search,
+  List,
+  CalendarDays,
+  CalendarRange,
+  CalendarCheck2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AppointmentRow } from "@/components/AppointmentCard";
 import { PlatformBadge } from "@/components/PlatformBadge";
 import { ConflictResolverDialog } from "@/components/ConflictResolverDialog";
 import { WalkInDialog } from "@/components/WalkInDialog";
 import { AppointmentDetailDialog } from "@/components/AppointmentDetailDialog";
+import { DayTimelineView, MonthGridView, WeekView } from "@/components/CalendarViews";
 
 import { useAuth } from "@/hooks/use-auth";
 import { useAutoSyncPlatforms } from "@/hooks/use-auto-sync-platforms";
 import { useBillingStatus } from "@/hooks/use-billing-status";
-import { type Appointment, findConflicts, formatTime, toUiAppointment } from "@/lib/mock-data";
+import {
+  type Appointment,
+  findConflicts,
+  formatRelativeDay,
+  formatTime,
+  toUiAppointment,
+} from "@/lib/mock-data";
 import { PLATFORMS, type PlatformId } from "@/lib/platforms";
 import { getAppointments, upsertAppointment } from "@/lib/appointments.functions";
 import {
@@ -81,6 +95,24 @@ function overlapsToday(start: Date, durationMin: number) {
   return end > startOfToday() && start <= endOfToday();
 }
 
+function groupByDay(appts: Appointment[]) {
+  const map = new Map<string, Appointment[]>();
+  for (const a of appts) {
+    const key = formatRelativeDay(a.start);
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(a);
+  }
+  return Array.from(map.entries());
+}
+
+function sourcePlatformFor(appt: Appointment, isNew: boolean) {
+  if (isNew) return "walk_in";
+  if (appt.sourcePlatform) return appt.sourcePlatform;
+  if (appt.platform === "google") return "google_calendar";
+  if (appt.platform === "outlook") return "outlook_calendar";
+  return appt.platform;
+}
+
 function Schedule() {
   const search = useSearch({ from: "/" });
   const { session } = useAuth();
@@ -107,6 +139,8 @@ function Schedule() {
     queryKey: ["appointments"],
     queryFn: () => fetchAppts(),
     enabled: !!session,
+    refetchInterval: 15 * 1000,
+    refetchIntervalInBackground: false,
   });
 
   const { data: profile } = useQuery({
@@ -115,12 +149,83 @@ function Schedule() {
     enabled: !!session,
   });
 
-  const todayAppts: Appointment[] = useMemo(() => {
-    const rows = data?.items ?? [];
-    return rows.map(toUiAppointment).filter((a) => overlapsToday(a.start, a.durationMin));
-  }, [data]);
+  const allAppointments: Appointment[] = useMemo(
+    () => (data?.items ?? []).map(toUiAppointment),
+    [data],
+  );
 
+  const [q, setQ] = useState("");
   const [hiddenPlatforms, setHiddenPlatforms] = useState<Set<PlatformId>>(new Set());
+  const [syncing, setSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState<Date>(new Date());
+  const [resolverOpen, setResolverOpen] = useState(false);
+  const [appointmentFormDate, setAppointmentFormDate] = useState<Date | null>(null);
+  const [editingAppt, setEditingAppt] = useState<Appointment | null>(null);
+  const [detailAppt, setDetailAppt] = useState<Appointment | null>(null);
+
+  const filterAppointments = useCallback(
+    (list: Appointment[]) =>
+      q.trim()
+        ? list.filter(
+            (a) =>
+              a.client.toLowerCase().includes(q.toLowerCase()) ||
+              a.service.toLowerCase().includes(q.toLowerCase()),
+          )
+        : list,
+    [q],
+  );
+
+  const visibleAppointments = useMemo(
+    () =>
+      filterAppointments(allAppointments)
+        .filter((a) => !hiddenPlatforms.has(a.platform))
+        .sort((a, b) => a.start.getTime() - b.start.getTime()),
+    [allAppointments, filterAppointments, hiddenPlatforms],
+  );
+
+  const todayVisibleAppts: Appointment[] = useMemo(() => {
+    return visibleAppointments.filter((a) => overlapsToday(a.start, a.durationMin));
+  }, [visibleAppointments]);
+
+  const groupedUpcoming = useMemo(() => {
+    const now = Date.now();
+    return groupByDay(visibleAppointments.filter((a) => a.start.getTime() >= now));
+  }, [visibleAppointments]);
+
+  const groupedPast = useMemo(() => {
+    const now = Date.now();
+    return groupByDay(
+      [...visibleAppointments]
+        .filter((a) => a.start.getTime() < now)
+        .sort((a, b) => b.start.getTime() - a.start.getTime()),
+    );
+  }, [visibleAppointments]);
+
+  const sorted = todayVisibleAppts;
+
+  const next = useMemo(() => {
+    const now = Date.now();
+    return visibleAppointments.find((a) => a.start.getTime() > now);
+  }, [visibleAppointments]);
+
+  const conflictCandidates = useMemo(() => {
+    const now = Date.now();
+    return visibleAppointments.filter((a) => a.start.getTime() + a.durationMin * 60_000 >= now);
+  }, [visibleAppointments]);
+
+  const conflicts = useMemo(() => findConflicts(conflictCandidates), [conflictCandidates]);
+  const conflictIds = new Set(conflicts.map((c) => c.id));
+
+  const handleAddNew = useCallback((date: Date = new Date()) => {
+    setEditingAppt(null);
+    setAppointmentFormDate(date);
+  }, []);
+
+  const handleEdit = useCallback((appt: Appointment) => {
+    setDetailAppt(null);
+    setAppointmentFormDate(null);
+    setEditingAppt(appt);
+  }, []);
 
   const togglePlatform = (id: PlatformId) => {
     setHiddenPlatforms((prev) => {
@@ -133,28 +238,9 @@ function Schedule() {
 
   const platformsInDay = useMemo(() => {
     const set = new Set<PlatformId>();
-    for (const a of todayAppts) set.add(a.platform);
+    for (const a of allAppointments) set.add(a.platform);
     return Array.from(set).sort((a, b) => PLATFORMS[a].label.localeCompare(PLATFORMS[b].label));
-  }, [todayAppts]);
-
-  const sorted = useMemo(
-    () =>
-      [...todayAppts]
-        .filter((a) => !hiddenPlatforms.has(a.platform))
-        .sort((a, b) => a.start.getTime() - b.start.getTime()),
-    [todayAppts, hiddenPlatforms],
-  );
-  const next = useMemo(() => {
-    const now = Date.now();
-    return sorted.find((a) => a.start.getTime() > now);
-  }, [sorted]);
-  const conflicts = useMemo(() => findConflicts(sorted), [sorted]);
-  const conflictIds = new Set(conflicts.map((c) => c.id));
-  const [syncing, setSyncing] = useState(false);
-  const [lastSync, setLastSync] = useState<Date>(new Date());
-  const [resolverOpen, setResolverOpen] = useState(false);
-  const [walkInOpen, setWalkInOpen] = useState(false);
-  const [detailAppt, setDetailAppt] = useState<Appointment | null>(null);
+  }, [allAppointments]);
 
   useEffect(() => {
     if (conflicts.length > 0) setResolverOpen(true);
@@ -280,12 +366,14 @@ function Schedule() {
     }
   };
 
-  const addWalkIn = useMutation({
+  const saveAppointment = useMutation({
     mutationFn: async (appt: Appointment) => {
       const ends = new Date(appt.start.getTime() + appt.durationMin * 60_000);
+      const isNew = appt.id.startsWith("walkin-");
       const created = await upsertFn({
         data: {
-          source_platform: "walk_in",
+          ...(isNew ? {} : { id: appt.id }),
+          source_platform: sourcePlatformFor(appt, isNew),
           client_name: appt.client,
           service: appt.service,
           starts_at: appt.start.toISOString(),
@@ -294,7 +382,6 @@ function Schedule() {
           note: appt.notes ?? null,
         },
       });
-      // Best-effort push to Google so the slot is also blocked there.
       let blockReason: string | undefined;
       if (billing?.hasPaidAccess) {
         try {
@@ -306,16 +393,19 @@ function Schedule() {
       } else {
         blockReason = "upgrade required";
       }
-      return { blockReason };
+      return { blockReason, isNew };
     },
-    onSuccess: ({ blockReason }) => {
+    onSuccess: ({ blockReason, isNew }) => {
       qc.invalidateQueries({ queryKey: ["appointments"] });
+      setAppointmentFormDate(null);
+      setEditingAppt(null);
+      const action = isNew ? "added" : "saved";
       if (blockReason) {
-        toast.success("Appointment added", {
+        toast.success(`Appointment ${action}`, {
           description: `Calendar block skipped: ${blockReason}`,
         });
       } else {
-        toast.success("Appointment added · time blocked on Google & Outlook");
+        toast.success(`Appointment ${action} · time blocked on Google & Outlook`);
       }
     },
     onError: (e: Error) => toast.error(e.message),
@@ -347,7 +437,7 @@ function Schedule() {
     profile?.first_name?.trim() || profile?.display_name?.trim().split(/\s+/)[0] || "";
 
   return (
-    <main className="mx-auto max-w-md px-5 pb-10 pt-8">
+    <main className="mx-auto max-w-2xl px-5 pb-10 pt-8">
       <header className="mb-8">
         <p
           className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-accent"
@@ -412,7 +502,7 @@ function Schedule() {
         <section className="rounded-xl border border-dashed border-border bg-card p-8 text-center">
           <Calendar className="mx-auto h-8 w-8 text-muted-foreground" />
           <div className="mt-3 text-sm font-medium text-foreground">
-            {isLoading ? "Loading…" : "No upcoming appointments today"}
+            {isLoading ? "Loading…" : "No upcoming appointments"}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             Connect a platform or add an appointment to get started.
@@ -425,7 +515,7 @@ function Schedule() {
           <RefreshCw className={syncing ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
           {syncing ? "Syncing…" : "Sync platforms"}
         </Button>
-        <Button onClick={() => setWalkInOpen(true)} variant="outline" className="flex-1">
+        <Button onClick={() => handleAddNew(new Date())} variant="outline" className="flex-1">
           <Plus className="h-4 w-4" />
           Add appointment
         </Button>
@@ -483,32 +573,146 @@ function Schedule() {
         </div>
       )}
 
-      <section className="mt-9">
-        <div className="mb-4 flex items-baseline justify-between border-b-2 border-foreground pb-2">
-          <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-foreground">
-            <span className="h-2 w-2 bg-accent" />
-            Today
-          </h2>
-          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">
-            {sorted.length} appts
-          </span>
+      <section className="mt-7">
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search clients or services"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="pl-9"
+          />
         </div>
-        {sorted.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">
-            Nothing on the schedule yet.
-          </p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {sorted.map((a) => (
-              <AppointmentRow
-                key={a.id}
-                appt={a}
-                conflict={conflictIds.has(a.id)}
-                onClick={() => setDetailAppt(a)}
-              />
-            ))}
-          </div>
-        )}
+
+        <Tabs defaultValue="list" className="mb-4">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="list" className="gap-1.5">
+              <List className="h-3.5 w-3.5" /> List
+            </TabsTrigger>
+            <TabsTrigger value="day" className="gap-1.5">
+              <CalendarDays className="h-3.5 w-3.5" /> Day
+            </TabsTrigger>
+            <TabsTrigger value="week" className="gap-1.5">
+              <CalendarCheck2 className="h-3.5 w-3.5" /> Week
+            </TabsTrigger>
+            <TabsTrigger value="month" className="gap-1.5">
+              <CalendarRange className="h-3.5 w-3.5" /> Month
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="list" className="mt-4">
+            <Tabs defaultValue="today">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="today">Today</TabsTrigger>
+                <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
+                <TabsTrigger value="past">Past</TabsTrigger>
+              </TabsList>
+              <TabsContent value="today" className="mt-4">
+                <div className="mb-3 flex items-baseline justify-between border-b-2 border-foreground pb-2">
+                  <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-foreground">
+                    <span className="h-2 w-2 bg-accent" />
+                    Today
+                  </h2>
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">
+                    {sorted.length} appts
+                  </span>
+                </div>
+                {sorted.length === 0 ? (
+                  <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                    {isLoading ? "Loading..." : "Nothing on the schedule yet."}
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {sorted.map((a) => (
+                      <AppointmentRow
+                        key={a.id}
+                        appt={a}
+                        conflict={conflictIds.has(a.id)}
+                        onClick={() => setDetailAppt(a)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+              <TabsContent value="upcoming" className="mt-4 flex flex-col gap-4">
+                {isLoading && (
+                  <p className="text-center text-sm text-muted-foreground">Loading...</p>
+                )}
+                {!isLoading && groupedUpcoming.length === 0 && (
+                  <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                    {q.trim() ? "No matching appointments." : "No future appointments yet."}
+                  </p>
+                )}
+                {groupedUpcoming.map(([day, list]) => (
+                  <section key={day}>
+                    <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {day}
+                    </h2>
+                    <div className="flex flex-col gap-2">
+                      {list.map((a) => (
+                        <AppointmentRow
+                          key={a.id}
+                          appt={a}
+                          conflict={conflictIds.has(a.id)}
+                          onClick={() => setDetailAppt(a)}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                ))}
+              </TabsContent>
+              <TabsContent value="past" className="mt-4 flex flex-col gap-4">
+                {!isLoading && groupedPast.length === 0 && (
+                  <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                    No past appointments yet.
+                  </p>
+                )}
+                {groupedPast.map(([day, list]) => (
+                  <section key={day}>
+                    <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {day}
+                    </h2>
+                    <div className="flex flex-col gap-2">
+                      {list.map((a) => (
+                        <AppointmentRow
+                          key={a.id}
+                          appt={a}
+                          conflict={conflictIds.has(a.id)}
+                          onClick={() => setDetailAppt(a)}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                ))}
+              </TabsContent>
+            </Tabs>
+          </TabsContent>
+
+          <TabsContent value="day" className="mt-4">
+            <DayTimelineView
+              appointments={visibleAppointments}
+              onSelect={setDetailAppt}
+              onAddNew={handleAddNew}
+            />
+          </TabsContent>
+
+          <TabsContent value="week" className="mt-4">
+            <WeekView
+              appointments={visibleAppointments}
+              onSelect={setDetailAppt}
+              onAddNew={handleAddNew}
+            />
+          </TabsContent>
+
+          <TabsContent value="month" className="mt-4">
+            <MonthGridView
+              appointments={visibleAppointments}
+              onSelect={setDetailAppt}
+              onSelectDay={handleAddNew}
+              onAddNew={handleAddNew}
+            />
+          </TabsContent>
+        </Tabs>
       </section>
 
       <ConflictResolverDialog
@@ -516,21 +720,28 @@ function Schedule() {
         onOpenChange={setResolverOpen}
         conflicts={conflicts}
         onReschedule={(id, newStart) => {
-          const appt = sorted.find((a) => a.id === id);
+          const appt = visibleAppointments.find((a) => a.id === id);
           if (!appt) return;
           reschedule.mutate({ id, newStart, durationMin: appt.durationMin });
           setResolverOpen(false);
         }}
       />
       <WalkInDialog
-        open={walkInOpen}
-        onOpenChange={setWalkInOpen}
-        onAdd={(appt) => addWalkIn.mutate(appt)}
+        open={!!appointmentFormDate || !!editingAppt}
+        onOpenChange={(o) => {
+          if (o) return;
+          setAppointmentFormDate(null);
+          setEditingAppt(null);
+        }}
+        onAdd={(appt) => saveAppointment.mutate(appt)}
+        initialDate={appointmentFormDate}
+        editingAppointment={editingAppt}
       />
       <AppointmentDetailDialog
         appt={detailAppt}
         open={!!detailAppt}
         onOpenChange={(o) => !o && setDetailAppt(null)}
+        onEdit={handleEdit}
       />
     </main>
   );

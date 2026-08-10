@@ -7,6 +7,7 @@ export type Appointment = {
   client: string;
   service: string;
   platform: PlatformId;
+  sourcePlatform?: string;
   notes?: string;
   externalUrl?: string;
 };
@@ -93,6 +94,7 @@ export function toUiAppointment(row: {
     client: row.client_name,
     service: row.service ?? "Appointment",
     platform,
+    sourcePlatform: row.source_platform,
     notes: row.note ?? undefined,
     externalUrl: row.external_url ?? undefined,
   };
