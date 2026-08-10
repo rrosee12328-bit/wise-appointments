@@ -9,6 +9,11 @@ type StripeJson = Record<string, unknown>;
 function stripeSecretKey() {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("Stripe secret key is not configured");
+  if (!/^[sr]k_(test|live)_/.test(key)) {
+    throw new Error(
+      "Stripe secret key is invalid. Use a full secret key from Stripe that starts with sk_live_, sk_test_, rk_live_, or rk_test_.",
+    );
+  }
   return key;
 }
 
@@ -28,6 +33,21 @@ function appOrigin() {
 
 function stringFrom(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value : null;
+}
+
+function safeStripeErrorMessage(message: string, status: number) {
+  const normalized = message.toLowerCase();
+  if (
+    normalized.includes("invalid api key") ||
+    normalized.includes("api key expired") ||
+    normalized.includes("expired api key")
+  ) {
+    return "Stripe secret key is invalid or expired. Update STRIPE_SECRET_KEY in the deployment environment with the full secret key from Stripe.";
+  }
+  if (normalized.includes("no such price")) {
+    return "Stripe price ID was not found. Update STRIPE_PRICE_ID with a price from the same Stripe account as STRIPE_SECRET_KEY.";
+  }
+  return message || `Stripe request failed (${status})`;
 }
 
 function planFromStatus(status: string | null): BillingPlan {
@@ -72,7 +92,7 @@ async function stripeRequest<T extends StripeJson>(
       typeof json.error.message === "string"
         ? json.error.message
         : `Stripe request failed (${res.status})`;
-    throw new Error(message);
+    throw new Error(safeStripeErrorMessage(message, res.status));
   }
   return json as T;
 }
