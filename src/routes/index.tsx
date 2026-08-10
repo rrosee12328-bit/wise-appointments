@@ -10,6 +10,7 @@ import {
   Plus,
   Mail,
   Calendar,
+  ChevronDown,
   Eye,
   EyeOff,
   Search,
@@ -21,6 +22,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { AppointmentRow } from "@/components/AppointmentCard";
 import { PlatformBadge } from "@/components/PlatformBadge";
 import { ConflictResolverDialog } from "@/components/ConflictResolverDialog";
@@ -113,6 +121,20 @@ function sourcePlatformFor(appt: Appointment, isNew: boolean) {
   return appt.platform;
 }
 
+type ScheduleView = "list" | "day" | "week" | "month";
+
+const SCHEDULE_VIEWS: {
+  id: ScheduleView;
+  label: string;
+  description: string;
+  icon: typeof List;
+}[] = [
+  { id: "list", label: "Agenda", description: "Today, upcoming, and past", icon: List },
+  { id: "day", label: "Day", description: "Single-day timeline", icon: CalendarDays },
+  { id: "week", label: "Week", description: "Seven-day calendar", icon: CalendarCheck2 },
+  { id: "month", label: "Month", description: "Monthly overview", icon: CalendarRange },
+];
+
 function Schedule() {
   const search = useSearch({ from: "/" });
   const { session } = useAuth();
@@ -162,6 +184,7 @@ function Schedule() {
   const [appointmentFormDate, setAppointmentFormDate] = useState<Date | null>(null);
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null);
   const [detailAppt, setDetailAppt] = useState<Appointment | null>(null);
+  const [scheduleView, setScheduleView] = useState<ScheduleView>("list");
 
   const filterAppointments = useCallback(
     (list: Appointment[]) =>
@@ -241,6 +264,9 @@ function Schedule() {
     for (const a of allAppointments) set.add(a.platform);
     return Array.from(set).sort((a, b) => PLATFORMS[a].label.localeCompare(PLATFORMS[b].label));
   }, [allAppointments]);
+
+  const selectedView = SCHEDULE_VIEWS.find((view) => view.id === scheduleView) ?? SCHEDULE_VIEWS[0];
+  const SelectedViewIcon = selectedView.icon;
 
   useEffect(() => {
     if (conflicts.length > 0) setResolverOpen(true);
@@ -574,56 +600,99 @@ function Schedule() {
       )}
 
       <section className="mt-7">
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search clients or services"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            className="pl-9"
-          />
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search clients or services"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="justify-between gap-2 sm:min-w-40"
+                aria-label="Change schedule view"
+              >
+                <span className="flex items-center gap-2">
+                  <SelectedViewIcon className="h-4 w-4" />
+                  {selectedView.label}
+                </span>
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuRadioGroup
+                value={scheduleView}
+                onValueChange={(value) => setScheduleView(value as ScheduleView)}
+              >
+                {SCHEDULE_VIEWS.map(({ id, label, description, icon: Icon }) => (
+                  <DropdownMenuRadioItem key={id} value={id} className="items-start gap-2 py-2">
+                    <Icon className="mt-0.5 h-4 w-4" />
+                    <span className="flex flex-col">
+                      <span className="text-sm font-medium">{label}</span>
+                      <span className="text-xs text-muted-foreground">{description}</span>
+                    </span>
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
-        <Tabs defaultValue="list" className="mb-4">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="list" className="gap-1.5">
-              <List className="h-3.5 w-3.5" /> List
-            </TabsTrigger>
-            <TabsTrigger value="day" className="gap-1.5">
-              <CalendarDays className="h-3.5 w-3.5" /> Day
-            </TabsTrigger>
-            <TabsTrigger value="week" className="gap-1.5">
-              <CalendarCheck2 className="h-3.5 w-3.5" /> Week
-            </TabsTrigger>
-            <TabsTrigger value="month" className="gap-1.5">
-              <CalendarRange className="h-3.5 w-3.5" /> Month
-            </TabsTrigger>
-          </TabsList>
+        <div className="mb-3 flex items-baseline justify-between border-b-2 border-foreground pb-2">
+          <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-foreground">
+            <SelectedViewIcon className="h-3.5 w-3.5 text-accent" />
+            {selectedView.label}
+          </h2>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">
+            {visibleAppointments.length} appts
+          </span>
+        </div>
 
-          <TabsContent value="list" className="mt-4">
-            <Tabs defaultValue="today">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="today">Today</TabsTrigger>
-                <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-                <TabsTrigger value="past">Past</TabsTrigger>
-              </TabsList>
-              <TabsContent value="today" className="mt-4">
-                <div className="mb-3 flex items-baseline justify-between border-b-2 border-foreground pb-2">
-                  <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-foreground">
-                    <span className="h-2 w-2 bg-accent" />
-                    Today
-                  </h2>
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">
-                    {sorted.length} appts
-                  </span>
+        {scheduleView === "list" && (
+          <Tabs defaultValue="today">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="today">Today</TabsTrigger>
+              <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
+              <TabsTrigger value="past">Past</TabsTrigger>
+            </TabsList>
+            <TabsContent value="today" className="mt-4">
+              {sorted.length === 0 ? (
+                <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                  {isLoading ? "Loading..." : "Nothing on the schedule yet."}
+                </p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {sorted.map((a) => (
+                    <AppointmentRow
+                      key={a.id}
+                      appt={a}
+                      conflict={conflictIds.has(a.id)}
+                      onClick={() => setDetailAppt(a)}
+                    />
+                  ))}
                 </div>
-                {sorted.length === 0 ? (
-                  <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                    {isLoading ? "Loading..." : "Nothing on the schedule yet."}
-                  </p>
-                ) : (
+              )}
+            </TabsContent>
+            <TabsContent value="upcoming" className="mt-4 flex flex-col gap-4">
+              {isLoading && <p className="text-center text-sm text-muted-foreground">Loading...</p>}
+              {!isLoading && groupedUpcoming.length === 0 && (
+                <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                  {q.trim() ? "No matching appointments." : "No future appointments yet."}
+                </p>
+              )}
+              {groupedUpcoming.map(([day, list]) => (
+                <section key={day}>
+                  <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {day}
+                  </h2>
                   <div className="flex flex-col gap-2">
-                    {sorted.map((a) => (
+                    {list.map((a) => (
                       <AppointmentRow
                         key={a.id}
                         appt={a}
@@ -632,87 +701,60 @@ function Schedule() {
                       />
                     ))}
                   </div>
-                )}
-              </TabsContent>
-              <TabsContent value="upcoming" className="mt-4 flex flex-col gap-4">
-                {isLoading && (
-                  <p className="text-center text-sm text-muted-foreground">Loading...</p>
-                )}
-                {!isLoading && groupedUpcoming.length === 0 && (
-                  <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                    {q.trim() ? "No matching appointments." : "No future appointments yet."}
-                  </p>
-                )}
-                {groupedUpcoming.map(([day, list]) => (
-                  <section key={day}>
-                    <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      {day}
-                    </h2>
-                    <div className="flex flex-col gap-2">
-                      {list.map((a) => (
-                        <AppointmentRow
-                          key={a.id}
-                          appt={a}
-                          conflict={conflictIds.has(a.id)}
-                          onClick={() => setDetailAppt(a)}
-                        />
-                      ))}
-                    </div>
-                  </section>
-                ))}
-              </TabsContent>
-              <TabsContent value="past" className="mt-4 flex flex-col gap-4">
-                {!isLoading && groupedPast.length === 0 && (
-                  <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                    No past appointments yet.
-                  </p>
-                )}
-                {groupedPast.map(([day, list]) => (
-                  <section key={day}>
-                    <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      {day}
-                    </h2>
-                    <div className="flex flex-col gap-2">
-                      {list.map((a) => (
-                        <AppointmentRow
-                          key={a.id}
-                          appt={a}
-                          conflict={conflictIds.has(a.id)}
-                          onClick={() => setDetailAppt(a)}
-                        />
-                      ))}
-                    </div>
-                  </section>
-                ))}
-              </TabsContent>
-            </Tabs>
-          </TabsContent>
+                </section>
+              ))}
+            </TabsContent>
+            <TabsContent value="past" className="mt-4 flex flex-col gap-4">
+              {!isLoading && groupedPast.length === 0 && (
+                <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                  No past appointments yet.
+                </p>
+              )}
+              {groupedPast.map(([day, list]) => (
+                <section key={day}>
+                  <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {day}
+                  </h2>
+                  <div className="flex flex-col gap-2">
+                    {list.map((a) => (
+                      <AppointmentRow
+                        key={a.id}
+                        appt={a}
+                        conflict={conflictIds.has(a.id)}
+                        onClick={() => setDetailAppt(a)}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </TabsContent>
+          </Tabs>
+        )}
 
-          <TabsContent value="day" className="mt-4">
-            <DayTimelineView
-              appointments={visibleAppointments}
-              onSelect={setDetailAppt}
-              onAddNew={handleAddNew}
-            />
-          </TabsContent>
+        {scheduleView === "day" && (
+          <DayTimelineView
+            appointments={visibleAppointments}
+            onSelect={setDetailAppt}
+            onAddNew={handleAddNew}
+          />
+        )}
 
-          <TabsContent value="week" className="mt-4">
-            <WeekView
-              appointments={visibleAppointments}
-              onSelect={setDetailAppt}
-              onAddNew={handleAddNew}
-            />
-          </TabsContent>
+        {scheduleView === "week" && (
+          <WeekView
+            appointments={visibleAppointments}
+            onSelect={setDetailAppt}
+            onAddNew={handleAddNew}
+          />
+        )}
 
-          <TabsContent value="month" className="mt-4">
-            <MonthGridView
-              appointments={visibleAppointments}
-              onSelect={setDetailAppt}
-              onSelectDay={handleAddNew}
-              onAddNew={handleAddNew}
-            />
-          </TabsContent>
-        </Tabs>
+        {scheduleView === "month" && (
+          <MonthGridView
+            appointments={visibleAppointments}
+            onSelect={setDetailAppt}
+            onSelectDay={handleAddNew}
+            onAddNew={handleAddNew}
+          />
+        )}
       </section>
 
       <ConflictResolverDialog
