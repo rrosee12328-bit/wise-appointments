@@ -14,6 +14,7 @@ import { useBillingStatus } from "@/hooks/use-billing-status";
 import { cn } from "@/lib/utils";
 import { getProfile, updateProfile } from "@/lib/profile.functions";
 import { createStripeCheckoutSession, createStripePortalSession } from "@/lib/stripe.functions";
+import { planLabel, type BillingInterval, type PaidBillingPlan } from "@/lib/billing";
 
 export const Route = createFileRoute("/settings")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -122,8 +123,8 @@ function SettingsPage() {
   });
 
   const checkout = useMutation({
-    mutationFn: async () => {
-      const { url } = await startCheckout();
+    mutationFn: async (selection: { plan: PaidBillingPlan; interval: BillingInterval }) => {
+      const { url } = await startCheckout({ data: selection });
       window.location.href = url;
     },
     onError: (e: Error) => toast.error(e.message),
@@ -296,14 +297,34 @@ function SettingsPage() {
             <div>
               <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <CreditCard className="h-4 w-4 text-accent" />
-                {billing?.hasPaidAccess ? "Paid access active" : "Free plan"}
+                {billingLoading
+                  ? "Loading plan..."
+                  : billing?.hasPaidAccess
+                    ? `${planLabel(billing.plan)} active`
+                    : "Free plan"}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                Plan: {billingLoading ? "Loading..." : (billing?.plan ?? "free")}
+                Plan: {billingLoading ? "Loading..." : planLabel(billing?.plan)}
+                {billing?.billingInterval ? ` · ${billing.billingInterval}ly` : ""}
                 {billing?.stripeSubscriptionStatus
                   ? ` · Stripe: ${billing.stripeSubscriptionStatus}`
                   : ""}
               </p>
+              {billing?.paymentWarning ? (
+                <p className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
+                  Payment needs attention. Paid features stay active until{" "}
+                  {billing.stripeGracePeriodEndsAt
+                    ? new Date(billing.stripeGracePeriodEndsAt).toLocaleDateString()
+                    : "the grace period ends"}
+                  . Update your payment method to keep premium sync running.
+                </p>
+              ) : null}
+              {billing?.stripeCancelAtPeriodEnd ? (
+                <p className="mt-2 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                  Subscription canceled. Paid features remain active through the current billing
+                  period, then the account moves to Free.
+                </p>
+              ) : null}
               {billing?.stripeCurrentPeriodEnd ? (
                 <p className="mt-1 text-xs text-muted-foreground">
                   Current period ends{" "}
@@ -320,19 +341,33 @@ function SettingsPage() {
                 {portal.isPending ? "Opening..." : "Manage"}
               </Button>
             ) : (
-              <Button
-                onClick={() => checkout.mutate()}
-                disabled={checkout.isPending || billingLoading}
-              >
-                {checkout.isPending ? "Opening..." : "Upgrade"}
-              </Button>
+              <div className="grid gap-3">
+                <BillingChoice
+                  title="Pro"
+                  price="$9.99/mo"
+                  yearly="$99/yr"
+                  description="For individual professionals. Includes a 14-day Pro trial."
+                  disabled={checkout.isPending || billingLoading}
+                  onMonthly={() => checkout.mutate({ plan: "pro", interval: "month" })}
+                  onYearly={() => checkout.mutate({ plan: "pro", interval: "year" })}
+                />
+                <BillingChoice
+                  title="Business"
+                  price="$29.99/mo"
+                  yearly="$299/yr"
+                  description="For teams, multiple calendars, admin controls, and analytics."
+                  disabled={checkout.isPending || billingLoading}
+                  onMonthly={() => checkout.mutate({ plan: "business", interval: "month" })}
+                  onYearly={() => checkout.mutate({ plan: "business", interval: "year" })}
+                />
+              </div>
             )}
           </div>
           {!billing?.hasPaidAccess ? (
             <p className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-              Free users can view Jey Link, but calendar syncing and extra platform connections are
-              limited until billing is active. After checkout, this card updates as soon as Stripe
-              confirms the subscription.
+              Free includes one calendar, a basic appointment dashboard, limited connections, and
+              limited monthly appointments. There is no setup fee. Stripe handles subscriptions,
+              invoices, receipts, coupons, payment retries, and taxes when enabled in Stripe.
             </p>
           ) : null}
         </div>
@@ -363,6 +398,46 @@ function SettingsPage() {
         </div>
       </Section>
     </main>
+  );
+}
+
+function BillingChoice({
+  title,
+  price,
+  yearly,
+  description,
+  disabled,
+  onMonthly,
+  onYearly,
+}: {
+  title: string;
+  price: string;
+  yearly: string;
+  description: string;
+  disabled: boolean;
+  onMonthly: () => void;
+  onYearly: () => void;
+}) {
+  return (
+    <div className="rounded-md border p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-sm font-medium text-foreground">{title}</div>
+          <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+          <p className="mt-2 text-xs font-medium text-foreground">
+            {price} · {yearly}
+          </p>
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <Button size="sm" onClick={onMonthly} disabled={disabled}>
+          Monthly
+        </Button>
+        <Button size="sm" variant="outline" onClick={onYearly} disabled={disabled}>
+          Yearly
+        </Button>
+      </div>
+    </div>
   );
 }
 

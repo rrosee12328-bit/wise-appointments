@@ -40,6 +40,7 @@ import {
   adminSyncUser,
   getAdminDashboard,
 } from "@/lib/admin.functions";
+import { planLabel, type BillingPlan } from "@/lib/billing";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin")({
@@ -195,8 +196,7 @@ function AdminPage() {
   });
 
   const setPlan = useMutation({
-    mutationFn: (vars: { userId: string; plan: "free" | "paid" | "trial" | "internal" }) =>
-      setPlanFn({ data: vars }),
+    mutationFn: (vars: { userId: string; plan: BillingPlan }) => setPlanFn({ data: vars }),
     onSuccess: () => {
       refreshAdmin();
       toast.success("Plan updated");
@@ -330,19 +330,22 @@ function AdminPage() {
                           onChange={(e) =>
                             setPlan.mutate({
                               userId: user.id,
-                              plan: e.target.value as "free" | "paid" | "trial" | "internal",
+                              plan: e.target.value as BillingPlan,
                             })
                           }
                           className="h-8 rounded-md border bg-background px-2 text-xs"
                         >
                           <option value="free">Free</option>
+                          <option value="pro">Pro</option>
+                          <option value="business">Business</option>
                           <option value="trial">Trial</option>
-                          <option value="paid">Paid</option>
                           <option value="internal">Internal</option>
                         </select>
                         <Badge variant={user.hasPaidAccess ? "secondary" : "outline"}>
-                          {user.stripeSubscriptionStatus ??
-                            (user.hasPaidAccess ? "active" : "limited")}
+                          {user.paymentWarning
+                            ? "payment warning"
+                            : (user.stripeSubscriptionStatus ??
+                              (user.hasPaidAccess ? "active" : "limited"))}
                         </Badge>
                       </div>
                     </TableCell>
@@ -548,7 +551,8 @@ function AdminPage() {
                         platforms
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Billing: {selectedUser.plan}
+                        Billing: {planLabel(selectedUser.plan)}
+                        {selectedUser.billingInterval ? ` · ${selectedUser.billingInterval}ly` : ""}
                         {selectedUser.stripeSubscriptionStatus
                           ? ` · ${selectedUser.stripeSubscriptionStatus}`
                           : ""}
@@ -600,7 +604,14 @@ function AdminPage() {
                       </h3>
                       <div className="grid gap-2 sm:grid-cols-2">
                         <div className="text-muted-foreground">
-                          Plan: <span className="text-foreground">{selectedUser.plan}</span>
+                          Plan:{" "}
+                          <span className="text-foreground">{planLabel(selectedUser.plan)}</span>
+                        </div>
+                        <div className="text-muted-foreground">
+                          Billing interval:{" "}
+                          <span className="text-foreground">
+                            {selectedUser.billingInterval ?? "None"}
+                          </span>
                         </div>
                         <div className="text-muted-foreground">
                           Access:{" "}
@@ -618,6 +629,18 @@ function AdminPage() {
                           Period end:{" "}
                           <span className="text-foreground">
                             {formatDate(selectedUser.stripeCurrentPeriodEnd)}
+                          </span>
+                        </div>
+                        <div className="text-muted-foreground">
+                          Cancel at period end:{" "}
+                          <span className="text-foreground">
+                            {selectedUser.stripeCancelAtPeriodEnd ? "Yes" : "No"}
+                          </span>
+                        </div>
+                        <div className="text-muted-foreground">
+                          Grace ends:{" "}
+                          <span className="text-foreground">
+                            {formatDate(selectedUser.stripeGracePeriodEndsAt)}
                           </span>
                         </div>
                         <div className="text-muted-foreground">

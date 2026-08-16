@@ -281,6 +281,11 @@ export const getAdminDashboard = createServerFn({ method: "GET" }).handler(async
         .sort()
         .at(-1) ?? null;
 
+    const rawPlan = textFrom(authUser.app_metadata?.plan) ?? "free";
+    const plan = rawPlan === "paid" ? "pro" : rawPlan;
+    const stripeSubscriptionStatus = textFrom(authUser.app_metadata?.stripe_subscription_status);
+    const stripeGracePeriodEndsAt = textFrom(authUser.app_metadata?.stripe_grace_period_ends_at);
+
     return {
       id: authUser.id,
       email: authUser.email ?? null,
@@ -290,15 +295,16 @@ export const getAdminDashboard = createServerFn({ method: "GET" }).handler(async
       lastSignInAt: authUser.last_sign_in_at ?? null,
       bannedUntil: authUser.banned_until ?? null,
       isAdmin: adminIds.has(authUser.id),
-      plan: textFrom(authUser.app_metadata?.plan) ?? "free",
-      hasPaidAccess: hasPaidAccess(
-        textFrom(authUser.app_metadata?.plan) ?? "free",
-        textFrom(authUser.app_metadata?.stripe_subscription_status),
-      ),
+      plan,
+      billingInterval: textFrom(authUser.app_metadata?.billing_interval),
+      hasPaidAccess: hasPaidAccess(plan, stripeSubscriptionStatus, stripeGracePeriodEndsAt),
+      paymentWarning: stripeSubscriptionStatus === "past_due",
       stripeCustomerId: textFrom(authUser.app_metadata?.stripe_customer_id),
       stripeSubscriptionId: textFrom(authUser.app_metadata?.stripe_subscription_id),
-      stripeSubscriptionStatus: textFrom(authUser.app_metadata?.stripe_subscription_status),
+      stripeSubscriptionStatus,
       stripeCurrentPeriodEnd: textFrom(authUser.app_metadata?.stripe_current_period_end),
+      stripeCancelAtPeriodEnd: authUser.app_metadata?.stripe_cancel_at_period_end === true,
+      stripeGracePeriodEndsAt,
       stripePriceId: textFrom(authUser.app_metadata?.stripe_price_id),
       planUpdatedAt: textFrom(authUser.app_metadata?.plan_updated_at),
       platforms: platformRows,
@@ -485,7 +491,9 @@ export const adminDeleteUser = createServerFn({ method: "POST" })
 
 export const adminSetUserPlan = createServerFn({ method: "POST" })
   .inputValidator((input) =>
-    userIdSchema.extend({ plan: z.enum(["free", "paid", "trial", "internal"]) }).parse(input),
+    userIdSchema
+      .extend({ plan: z.enum(["free", "pro", "business", "trial", "internal"]) })
+      .parse(input),
   )
   .handler(async ({ data }) => {
     await requireAdminUser();

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/admin.server";
 import { requireUser } from "@/lib/require-user.server";
+import { hasPaidAccess } from "@/lib/billing";
 
 export type AppointmentRow = {
   id: string;
@@ -47,6 +48,43 @@ export const upsertAppointment = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const user = await requireUser();
+
+    const plan = user.app_metadata?.plan === "paid" ? "pro" : user.app_metadata?.plan;
+    const paidAccess = hasPaidAccess(
+      typeof plan === "string" ? plan : "free",
+      typeof user.app_metadata?.stripe_subscription_status === "string"
+        ? user.app_metadata.stripe_subscription_status
+        : null,
+      typeof user.app_metadata?.stripe_grace_period_ends_at === "string"
+        ? user.app_metadata.stripe_grace_period_ends_at
+        : null,
+    );
+
+    if (!paidAccess && !data.id) {
+      const freeLimit = Number(process.env.FREE_MONTHLY_APPOINTMENT_LIMIT ?? 25);
+      if (Number.isFinite(freeLimit) && freeLimit > 0) {
+        const start = new Date(data.starts_at);
+        const monthStart = new Date(
+          Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1),
+        ).toISOString();
+        const monthEnd = new Date(
+          Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1),
+        ).toISOString();
+        const { count, error: countError } = await supabaseAdmin
+          .from("appointments")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .gte("starts_at", monthStart)
+          .lt("starts_at", monthEnd);
+        if (countError) throw new Error(countError.message);
+        if ((count ?? 0) >= freeLimit) {
+          throw new Error(
+            `Free plan is limited to ${freeLimit} appointments per month. Upgrade to Pro for unlimited appointments.`,
+          );
+        }
+      }
+    }
+
     const row = { ...data, user_id: user.id };
     const { data: result, error } = await supabaseAdmin
       .from("appointments")

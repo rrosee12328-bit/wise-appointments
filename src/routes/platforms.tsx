@@ -365,7 +365,7 @@ function Platforms() {
 
   const checkout = useMutation({
     mutationFn: async () => {
-      const { url } = await startCheckout();
+      const { url } = await startCheckout({ data: { plan: "pro", interval: "month" } });
       window.location.href = url;
     },
     onError: (e: Error) => toast.error(e.message),

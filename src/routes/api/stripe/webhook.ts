@@ -18,6 +18,14 @@ function numberToIso(value: unknown): string | null {
   return typeof value === "number" ? new Date(value * 1000).toISOString() : null;
 }
 
+function boolFrom(value: unknown): boolean {
+  return value === true || value === "true";
+}
+
+function addDaysIso(days: number) {
+  return new Date(Date.now() + days * 86_400_000).toISOString();
+}
+
 function hex(buffer: ArrayBuffer) {
   return [...new Uint8Array(buffer)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
@@ -77,7 +85,10 @@ async function fetchSubscription(subscriptionId: string | null) {
   );
 }
 
-function subscriptionMetadata(subscription: Record<string, unknown> | null) {
+function subscriptionMetadata(
+  subscription: Record<string, unknown> | null,
+  previousMetadata: Record<string, unknown> | null | undefined = null,
+) {
   const items =
     subscription &&
     typeof subscription.items === "object" &&
@@ -93,12 +104,21 @@ function subscriptionMetadata(subscription: Record<string, unknown> | null) {
       : null;
 
   const status = textFrom(subscription?.status);
+  const priceId = textFrom(price?.id);
+  const selection = stripeInternals.priceSelectionFromId(priceId);
+  const previousGracePeriodEnd = textFrom(previousMetadata?.stripe_grace_period_ends_at);
+  const stripeGracePeriodEndsAt =
+    status === "past_due" ? (previousGracePeriodEnd ?? addDaysIso(7)) : null;
+
   return {
     stripe_subscription_id: textFrom(subscription?.id),
     stripe_subscription_status: status,
     stripe_current_period_end: numberToIso(subscription?.current_period_end),
-    stripe_price_id: textFrom(price?.id),
-    plan: stripeInternals.planFromStatus(status),
+    stripe_cancel_at_period_end: boolFrom(subscription?.cancel_at_period_end),
+    stripe_grace_period_ends_at: stripeGracePeriodEndsAt,
+    stripe_price_id: priceId,
+    billing_interval: selection?.interval ?? null,
+    plan: stripeInternals.planFromSubscription(status, priceId),
     plan_updated_at: new Date().toISOString(),
   };
 }
@@ -143,22 +163,31 @@ async function handleSubscriptionChanged(subscription: Record<string, unknown>) 
       : null;
   const userId = metadataUserId ?? (await findUserIdByStripeCustomer(customerId));
   if (!userId) throw new Error("Subscription event missing matching Supabase user");
-  await updateUserBilling(userId, subscriptionMetadata(subscription), customerId);
+  const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
+  if (error) throw new Error(error.message);
+  await updateUserBilling(
+    userId,
+    subscriptionMetadata(subscription, data.user.app_metadata),
+    customerId,
+  );
 }
 
 async function handleInvoicePaymentFailed(invoice: Record<string, unknown>) {
   const customerId = textFrom(invoice.customer);
   const userId = await findUserIdByStripeCustomer(customerId);
   if (!userId) return;
-  await updateUserBilling(
-    userId,
-    {
-      stripe_subscription_status: "past_due",
-      plan: "free",
-      plan_updated_at: new Date().toISOString(),
-    },
-    customerId,
-  );
+  const subscription = await fetchSubscription(textFrom(invoice.subscription));
+  const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
+  if (error) throw new Error(error.message);
+  const billingMetadata = subscription
+    ? subscriptionMetadata(subscription, data.user.app_metadata)
+    : {
+        stripe_subscription_status: "past_due",
+        stripe_grace_period_ends_at:
+          textFrom(data.user.app_metadata?.stripe_grace_period_ends_at) ?? addDaysIso(7),
+        plan_updated_at: new Date().toISOString(),
+      };
+  await updateUserBilling(userId, billingMetadata, customerId);
 }
 
 export const Route = createFileRoute("/api/stripe/webhook")({
