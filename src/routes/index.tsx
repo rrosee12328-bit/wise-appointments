@@ -526,7 +526,7 @@ function Schedule() {
             </div>
             <div className="shrink-0 text-right">
               <div className="text-3xl font-black leading-none tracking-tight">
-                {formatTime(next.start)}
+                {clientFormatTime(next.start, hydrated)}
               </div>
               <div className="mt-2 flex justify-end">
                 <PlatformBadge platform={next.platform} />
