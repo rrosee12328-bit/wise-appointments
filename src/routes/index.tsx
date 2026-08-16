@@ -155,6 +155,7 @@ function Schedule() {
   const listFeeds = useServerFn(listIcalFeeds);
   const refreshFeed = useServerFn(refreshIcalFeed);
   const { data: billing } = useBillingStatus(!!session);
+  const hydrated = useHydrated();
 
   useAutoSyncPlatforms(!!session && Boolean(billing?.hasPaidAccess));
 
