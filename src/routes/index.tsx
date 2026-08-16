@@ -39,6 +39,7 @@ import { DayTimelineView, MonthGridView, WeekView } from "@/components/CalendarV
 import { useAuth } from "@/hooks/use-auth";
 import { useAutoSyncPlatforms } from "@/hooks/use-auto-sync-platforms";
 import { useBillingStatus } from "@/hooks/use-billing-status";
+import { useHydrated } from "@/hooks/use-hydrated";
 import {
   type Appointment,
   findConflicts,
@@ -98,6 +99,9 @@ function endOfToday() {
  *  events that started yesterday and run into today, events that start
  *  today, and events that start today and end tomorrow. The home schedule
  *  needs all of these, not just events whose start_at is today. */
+function clientFormatTime(d: Date, hydrated: boolean) {
+  return hydrated ? formatTime(d) : null;
+}
 function overlapsToday(start: Date, durationMin: number) {
   const end = new Date(start.getTime() + durationMin * 60_000);
   return end > startOfToday() && start <= endOfToday();
@@ -154,6 +158,7 @@ function Schedule() {
   const listFeeds = useServerFn(listIcalFeeds);
   const refreshFeed = useServerFn(refreshIcalFeed);
   const { data: billing } = useBillingStatus(!!session);
+  const hydrated = useHydrated();
 
   useAutoSyncPlatforms(!!session && Boolean(billing?.hasPaidAccess));
 
@@ -521,7 +526,7 @@ function Schedule() {
             </div>
             <div className="shrink-0 text-right">
               <div className="text-3xl font-black leading-none tracking-tight">
-                {formatTime(next.start)}
+                {clientFormatTime(next.start, hydrated)}
               </div>
               <div className="mt-2 flex justify-end">
                 <PlatformBadge platform={next.platform} />
@@ -553,7 +558,7 @@ function Schedule() {
       </div>
       <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
         <CheckCircle2 className="h-3.5 w-3.5 text-accent" />
-        Calendar is up to date · {formatTime(lastSync)}
+        Calendar is up to date · {clientFormatTime(lastSync, hydrated)}
       </p>
 
       {conflicts.length > 0 && (
@@ -565,7 +570,7 @@ function Schedule() {
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span className="flex-1">
             {conflicts.length} overlapping appointment{conflicts.length > 1 ? "s" : ""} at{" "}
-            {formatTime(conflicts[0].start)}
+            {clientFormatTime(conflicts[0].start, hydrated)}
           </span>
           <span className="text-xs font-semibold uppercase tracking-wider">Resolve</span>
         </button>
