@@ -570,7 +570,7 @@ function Schedule() {
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span className="flex-1">
             {conflicts.length} overlapping appointment{conflicts.length > 1 ? "s" : ""} at{" "}
-            {formatTime(conflicts[0].start)}
+            {clientFormatTime(conflicts[0].start, hydrated)}
           </span>
           <span className="text-xs font-semibold uppercase tracking-wider">Resolve</span>
         </button>
