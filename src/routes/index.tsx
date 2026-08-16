@@ -558,7 +558,7 @@ function Schedule() {
       </div>
       <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
         <CheckCircle2 className="h-3.5 w-3.5 text-accent" />
-        Calendar is up to date · {formatTime(lastSync)}
+        Calendar is up to date · {clientFormatTime(lastSync, hydrated)}
       </p>
 
       {conflicts.length > 0 && (
