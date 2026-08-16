@@ -39,6 +39,7 @@ import { DayTimelineView, MonthGridView, WeekView } from "@/components/CalendarV
 import { useAuth } from "@/hooks/use-auth";
 import { useAutoSyncPlatforms } from "@/hooks/use-auto-sync-platforms";
 import { useBillingStatus } from "@/hooks/use-billing-status";
+import { useHydrated } from "@/hooks/use-hydrated";
 import {
   type Appointment,
   findConflicts,
