@@ -99,6 +99,9 @@ function endOfToday() {
  *  events that started yesterday and run into today, events that start
  *  today, and events that start today and end tomorrow. The home schedule
  *  needs all of these, not just events whose start_at is today. */
+function clientFormatTime(d: Date, hydrated: boolean) {
+  return hydrated ? formatTime(d) : null;
+}
 function overlapsToday(start: Date, durationMin: number) {
   const end = new Date(start.getTime() + durationMin * 60_000);
   return end > startOfToday() && start <= endOfToday();
