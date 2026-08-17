@@ -12,4 +12,9 @@ export default defineConfig({
   tanstackStart: {
     server: { entry: "server" },
   },
+  vite: {
+    build: {
+      target: ["edge107", "chrome107", "safari16", "es2022"],
+    },
+  },
 });
