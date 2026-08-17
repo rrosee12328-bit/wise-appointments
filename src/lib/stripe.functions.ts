@@ -21,7 +21,7 @@ const checkoutSelectionSchema = z.object({
 });
 
 function stripeSecretKey() {
-  const key = process.env.STRIPE_SECRET_KEY;
+  const key = process.env.STRIPE_LIVE_API_KEY ?? process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("Stripe secret key is not configured");
   if (!/^[sr]k_(test|live)_/.test(key)) {
     throw new Error(
