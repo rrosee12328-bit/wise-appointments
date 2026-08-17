@@ -338,6 +338,7 @@ function AdminPage() {
                           <option value="free">Free</option>
                           <option value="pro">Pro</option>
                           <option value="business">Business</option>
+                          <option value="test">Test</option>
                           <option value="trial">Trial</option>
                           <option value="internal">Internal</option>
                         </select>

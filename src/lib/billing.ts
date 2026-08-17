@@ -1,6 +1,6 @@
-export type BillingPlan = "free" | "pro" | "business" | "trial" | "internal";
+export type BillingPlan = "free" | "pro" | "business" | "test" | "trial" | "internal";
 export type BillingInterval = "month" | "year";
-export type PaidBillingPlan = "pro" | "business";
+export type PaidBillingPlan = "pro" | "business" | "test";
 
 export type BillingStatus = {
   plan: BillingPlan;
@@ -21,6 +21,7 @@ export function isPaidPlan(plan: string | null | undefined) {
   return (
     plan === "pro" ||
     plan === "business" ||
+    plan === "test" ||
     plan === "trial" ||
     plan === "internal" ||
     plan === "paid"
@@ -53,6 +54,8 @@ export function planLabel(plan: string | null | undefined) {
       return "Pro";
     case "business":
       return "Business";
+    case "test":
+      return "Test";
     case "trial":
       return "Pro trial";
     case "internal":

@@ -360,6 +360,13 @@ function SettingsPage() {
                   onMonthly={() => checkout.mutate({ plan: "business", interval: "month" })}
                   onYearly={() => checkout.mutate({ plan: "business", interval: "year" })}
                 />
+                <BillingChoice
+                  title="Test checkout"
+                  price="$0.50/mo"
+                  description="Internal test option for confirming checkout and webhook updates."
+                  disabled={checkout.isPending || billingLoading}
+                  onMonthly={() => checkout.mutate({ plan: "test", interval: "month" })}
+                />
               </div>
             )}
           </div>
@@ -412,11 +419,11 @@ function BillingChoice({
 }: {
   title: string;
   price: string;
-  yearly: string;
   description: string;
   disabled: boolean;
   onMonthly: () => void;
-  onYearly: () => void;
+  yearly?: string;
+  onYearly?: () => void;
 }) {
   return (
     <div className="rounded-md border p-3">
@@ -425,17 +432,19 @@ function BillingChoice({
           <div className="text-sm font-medium text-foreground">{title}</div>
           <p className="mt-1 text-xs text-muted-foreground">{description}</p>
           <p className="mt-2 text-xs font-medium text-foreground">
-            {price} · {yearly}
+            {yearly ? `${price} · ${yearly}` : price}
           </p>
         </div>
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className={cn("mt-3 grid gap-2", onYearly ? "grid-cols-2" : "grid-cols-1")}>
         <Button size="sm" onClick={onMonthly} disabled={disabled}>
           Monthly
         </Button>
-        <Button size="sm" variant="outline" onClick={onYearly} disabled={disabled}>
-          Yearly
-        </Button>
+        {onYearly ? (
+          <Button size="sm" variant="outline" onClick={onYearly} disabled={disabled}>
+            Yearly
+          </Button>
+        ) : null}
       </div>
     </div>
   );

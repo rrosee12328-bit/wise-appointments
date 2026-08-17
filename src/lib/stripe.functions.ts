@@ -16,7 +16,7 @@ type StripeJson = Record<string, unknown>;
 type CheckoutSelection = { plan: PaidBillingPlan; interval: BillingInterval };
 
 const checkoutSelectionSchema = z.object({
-  plan: z.enum(["pro", "business"]).default("pro"),
+  plan: z.enum(["pro", "business", "test"]).default("pro"),
   interval: z.enum(["month", "year"]).default("month"),
 });
 
@@ -39,15 +39,17 @@ function envFlag(name: string, defaultValue: boolean) {
 
 function stripePriceId({ plan, interval }: CheckoutSelection) {
   const priceId =
-    plan === "business"
-      ? interval === "year"
-        ? process.env.STRIPE_PRICE_ID_BUSINESS_YEARLY
-        : process.env.STRIPE_PRICE_ID_BUSINESS_MONTHLY
-      : interval === "year"
-        ? process.env.STRIPE_PRICE_ID_PRO_YEARLY
-        : (process.env.STRIPE_PRICE_ID_PRO_MONTHLY ??
-          process.env.STRIPE_PRICE_ID_PRO ??
-          process.env.STRIPE_PRICE_ID);
+    plan === "test"
+      ? (process.env.STRIPE_PRICE_ID_TEST_MONTHLY ?? process.env.STRIPE_PRICE_ID_TEST)
+      : plan === "business"
+        ? interval === "year"
+          ? process.env.STRIPE_PRICE_ID_BUSINESS_YEARLY
+          : process.env.STRIPE_PRICE_ID_BUSINESS_MONTHLY
+        : interval === "year"
+          ? process.env.STRIPE_PRICE_ID_PRO_YEARLY
+          : (process.env.STRIPE_PRICE_ID_PRO_MONTHLY ??
+            process.env.STRIPE_PRICE_ID_PRO ??
+            process.env.STRIPE_PRICE_ID);
   if (!priceId) throw new Error(`Stripe ${plan} ${interval} price ID is not configured`);
   return priceId;
 }
@@ -85,6 +87,8 @@ function safeStripeErrorMessage(message: string, status: number) {
 
 function priceSelectionFromId(priceId: string | null): CheckoutSelection | null {
   const entries: Array<[CheckoutSelection, string | undefined]> = [
+    [{ plan: "test", interval: "month" }, process.env.STRIPE_PRICE_ID_TEST_MONTHLY],
+    [{ plan: "test", interval: "month" }, process.env.STRIPE_PRICE_ID_TEST],
     [{ plan: "pro", interval: "month" }, process.env.STRIPE_PRICE_ID_PRO_MONTHLY],
     [{ plan: "pro", interval: "month" }, process.env.STRIPE_PRICE_ID_PRO],
     [{ plan: "pro", interval: "month" }, process.env.STRIPE_PRICE_ID],

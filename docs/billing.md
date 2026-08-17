@@ -1,17 +1,19 @@
 # Jey Link Billing Setup
 
-Jey Link supports Free, Pro, Business, Trial, and Internal billing states.
+Jey Link supports Free, Pro, Business, Test, Trial, and Internal billing states.
 
 ## Stripe prices
 
-Create four recurring Stripe prices and add their IDs to the deployment environment:
+Create the recurring Stripe prices and add their IDs to the deployment environment:
 
 - `STRIPE_PRICE_ID_PRO_MONTHLY` - Pro, $9.99 monthly
 - `STRIPE_PRICE_ID_PRO_YEARLY` - Pro, $99 yearly
 - `STRIPE_PRICE_ID_BUSINESS_MONTHLY` - Business, $29.99 monthly
 - `STRIPE_PRICE_ID_BUSINESS_YEARLY` - Business, $299 yearly
+- `STRIPE_PRICE_ID_TEST_MONTHLY` - Internal test checkout, $0.50 monthly
 
 `STRIPE_PRICE_ID_PRO` and `STRIPE_PRICE_ID` still work as fallbacks for Pro monthly.
+`STRIPE_PRICE_ID_TEST` still works as a fallback for the test checkout price.
 
 ## Required Stripe secrets
 

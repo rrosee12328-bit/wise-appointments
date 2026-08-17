@@ -492,7 +492,7 @@ export const adminDeleteUser = createServerFn({ method: "POST" })
 export const adminSetUserPlan = createServerFn({ method: "POST" })
   .inputValidator((input) =>
     userIdSchema
-      .extend({ plan: z.enum(["free", "pro", "business", "trial", "internal"]) })
+      .extend({ plan: z.enum(["free", "pro", "business", "test", "trial", "internal"]) })
       .parse(input),
   )
   .handler(async ({ data }) => {
