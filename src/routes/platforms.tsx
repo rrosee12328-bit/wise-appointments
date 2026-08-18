@@ -42,7 +42,6 @@ import {
   refreshIcalFeed,
 } from "@/lib/ical-feed.functions";
 import { LinkPlatformDialog } from "@/components/LinkPlatformDialog";
-import { createStripeCheckoutSession } from "@/lib/stripe.functions";
 
 export const Route = createFileRoute("/platforms")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -152,7 +151,6 @@ function Platforms() {
   const refreshIcal = useServerFn(refreshIcalFeed);
   const syncGoogle = useServerFn(syncGoogleCalendar);
   const syncOutlook = useServerFn(syncOutlookCalendar);
-  const startCheckout = useServerFn(createStripeCheckoutSession);
   const { data: billing } = useBillingStatus(!!session);
   const hasPaidAccess = Boolean(billing?.hasPaidAccess);
 
@@ -365,8 +363,7 @@ function Platforms() {
 
   const checkout = useMutation({
     mutationFn: async () => {
-      const { url } = await startCheckout({ data: { plan: "pro", interval: "month" } });
-      window.location.href = url;
+      window.location.href = "/settings";
     },
     onError: (e: Error) => toast.error(e.message),
   });

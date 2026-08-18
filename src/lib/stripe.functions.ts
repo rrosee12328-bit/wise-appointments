@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/require-user.server";
 import {
   gracePeriodActive,
   hasPaidAccess,
+  type BillingSource,
   type BillingInterval,
   type BillingPlan,
   type BillingStatus,
@@ -111,27 +112,44 @@ function planFromSubscription(status: string | null, priceId: string | null): Bi
 }
 
 function gracePeriodEndsAtFrom(metadata: Record<string, unknown> | null | undefined) {
-  return stringFrom(metadata?.stripe_grace_period_ends_at);
+  return (
+    stringFrom(metadata?.grace_period_ends_at) ??
+    stringFrom(metadata?.stripe_grace_period_ends_at) ??
+    stringFrom(metadata?.store_grace_period_ends_at)
+  );
 }
 
 function statusFromMetadata(metadata: Record<string, unknown> | null | undefined): BillingStatus {
   const rawPlan = stringFrom(metadata?.plan) ?? "free";
   const storedPlan = (rawPlan === "paid" ? "pro" : rawPlan) as BillingPlan;
+  const billingSource = (stringFrom(metadata?.billing_source) ??
+    (stringFrom(metadata?.stripe_customer_id) ? "stripe" : "free")) as BillingSource;
+  const billingStatus = stringFrom(metadata?.billing_status);
   const stripeSubscriptionStatus = stringFrom(metadata?.stripe_subscription_status);
-  const stripeGracePeriodEndsAt = gracePeriodEndsAtFrom(metadata);
+  const storeSubscriptionStatus = stringFrom(metadata?.store_subscription_status);
+  const gracePeriodEndsAt = gracePeriodEndsAtFrom(metadata);
+  const stripeGracePeriodEndsAt = stringFrom(metadata?.stripe_grace_period_ends_at);
+  const accessStatus = billingStatus ?? stripeSubscriptionStatus ?? storeSubscriptionStatus;
+  const currentPeriodEnd =
+    stringFrom(metadata?.current_period_end) ??
+    stringFrom(metadata?.stripe_current_period_end) ??
+    stringFrom(metadata?.store_current_period_end);
   const plan =
     storedPlan !== "internal" &&
-    (["canceled", "unpaid", "paused", "incomplete_expired"].includes(
-      stripeSubscriptionStatus ?? "",
-    ) ||
-      (stripeSubscriptionStatus === "past_due" && !gracePeriodActive(stripeGracePeriodEndsAt)))
+    (["canceled", "unpaid", "paused", "incomplete_expired"].includes(accessStatus ?? "") ||
+      (accessStatus === "past_due" && !gracePeriodActive(gracePeriodEndsAt)))
       ? "free"
       : storedPlan;
   return {
     plan,
+    billingSource: storedPlan === "internal" ? "internal" : billingSource,
+    billingStatus: accessStatus,
     billingInterval: stringFrom(metadata?.billing_interval) as BillingInterval | null,
-    hasPaidAccess: hasPaidAccess(plan, stripeSubscriptionStatus, stripeGracePeriodEndsAt),
-    paymentWarning: stripeSubscriptionStatus === "past_due",
+    hasPaidAccess: hasPaidAccess(plan, accessStatus, gracePeriodEndsAt),
+    paymentWarning: accessStatus === "past_due",
+    currentPeriodEnd,
+    trialEndsAt: stringFrom(metadata?.trial_ends_at),
+    gracePeriodEndsAt,
     stripeCustomerId: stringFrom(metadata?.stripe_customer_id),
     stripeSubscriptionId: stringFrom(metadata?.stripe_subscription_id),
     stripeSubscriptionStatus,
@@ -139,6 +157,11 @@ function statusFromMetadata(metadata: Record<string, unknown> | null | undefined
     stripeCancelAtPeriodEnd: boolFrom(metadata?.stripe_cancel_at_period_end),
     stripeGracePeriodEndsAt,
     stripePriceId: stringFrom(metadata?.stripe_price_id),
+    storeSubscriptionStatus,
+    storeProductId: stringFrom(metadata?.store_product_id),
+    storeOriginalTransactionId: stringFrom(metadata?.store_original_transaction_id),
+    storeCurrentPeriodEnd: stringFrom(metadata?.store_current_period_end),
+    revenuecatAppUserId: stringFrom(metadata?.revenuecat_app_user_id),
     planUpdatedAt: stringFrom(metadata?.plan_updated_at),
   };
 }
@@ -239,6 +262,9 @@ export const createStripeCheckoutSession = createServerFn({ method: "POST" })
 export const createStripePortalSession = createServerFn({ method: "POST" }).handler(async () => {
   const user = await requireUser();
   const current = statusFromMetadata(user.app_metadata);
+  if (current.billingSource !== "stripe" && current.billingSource !== "internal") {
+    throw new Error("This subscription is managed outside Stripe");
+  }
   if (!current.stripeCustomerId) throw new Error("No Stripe customer found yet");
 
   const body = new URLSearchParams();

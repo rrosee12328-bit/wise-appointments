@@ -111,13 +111,18 @@ function subscriptionMetadata(
     status === "past_due" ? (previousGracePeriodEnd ?? addDaysIso(7)) : null;
 
   return {
+    billing_source: "stripe",
+    billing_status: status,
     stripe_subscription_id: textFrom(subscription?.id),
     stripe_subscription_status: status,
+    current_period_end: numberToIso(subscription?.current_period_end),
     stripe_current_period_end: numberToIso(subscription?.current_period_end),
     stripe_cancel_at_period_end: boolFrom(subscription?.cancel_at_period_end),
+    grace_period_ends_at: stripeGracePeriodEndsAt,
     stripe_grace_period_ends_at: stripeGracePeriodEndsAt,
     stripe_price_id: priceId,
     billing_interval: selection?.interval ?? null,
+    trial_ends_at: numberToIso(subscription?.trial_end),
     plan: stripeInternals.planFromSubscription(status, priceId),
     plan_updated_at: new Date().toISOString(),
   };
@@ -182,7 +187,13 @@ async function handleInvoicePaymentFailed(invoice: Record<string, unknown>) {
   const billingMetadata = subscription
     ? subscriptionMetadata(subscription, data.user.app_metadata)
     : {
+        billing_source: "stripe",
+        billing_status: "past_due",
         stripe_subscription_status: "past_due",
+        grace_period_ends_at:
+          textFrom(data.user.app_metadata?.grace_period_ends_at) ??
+          textFrom(data.user.app_metadata?.stripe_grace_period_ends_at) ??
+          addDaysIso(7),
         stripe_grace_period_ends_at:
           textFrom(data.user.app_metadata?.stripe_grace_period_ends_at) ?? addDaysIso(7),
         plan_updated_at: new Date().toISOString(),

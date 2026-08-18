@@ -14,7 +14,12 @@ import { useBillingStatus } from "@/hooks/use-billing-status";
 import { cn } from "@/lib/utils";
 import { getProfile, updateProfile } from "@/lib/profile.functions";
 import { createStripeCheckoutSession, createStripePortalSession } from "@/lib/stripe.functions";
-import { planLabel, type BillingInterval, type PaidBillingPlan } from "@/lib/billing";
+import {
+  billingSourceLabel,
+  planLabel,
+  type BillingInterval,
+  type PaidBillingPlan,
+} from "@/lib/billing";
 
 export const Route = createFileRoute("/settings")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -36,6 +41,47 @@ function detectBrowserTimezone() {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 }
 
+type NativePlatform = "web" | "ios" | "android";
+
+function detectNativePlatform(): NativePlatform {
+  if (typeof window === "undefined") return "web";
+  const capacitor = (window as unknown as { Capacitor?: { getPlatform?: () => string } }).Capacitor;
+  const platform = capacitor?.getPlatform?.();
+  return platform === "ios" || platform === "android" ? platform : "web";
+}
+
+function storeSubscriptionUrl(source: string | null | undefined) {
+  if (source === "apple") return "https://apps.apple.com/account/subscriptions";
+  if (source === "google") return "https://play.google.com/store/account/subscriptions";
+  return null;
+}
+
+async function startNativePurchase(selection: {
+  plan: PaidBillingPlan;
+  interval: BillingInterval;
+  platform: Exclude<NativePlatform, "web">;
+}) {
+  const bridge = (
+    window as unknown as {
+      JeyLinkMobileBilling?: {
+        purchaseSubscription?: (selection: {
+          plan: PaidBillingPlan;
+          interval: BillingInterval;
+          platform: Exclude<NativePlatform, "web">;
+        }) => Promise<void>;
+      };
+    }
+  ).JeyLinkMobileBilling;
+
+  if (!bridge?.purchaseSubscription) {
+    throw new Error(
+      `${selection.platform === "ios" ? "Apple" : "Google Play"} billing is not connected in this build yet.`,
+    );
+  }
+
+  await bridge.purchaseSubscription(selection);
+}
+
 function SettingsPage() {
   const search = Route.useSearch();
   const { mode, setMode } = useTheme();
@@ -49,6 +95,7 @@ function SettingsPage() {
   const [notifyNew, setNotifyNew] = useState(true);
   const [notifyConflicts, setNotifyConflicts] = useState(true);
   const [notifyDigest, setNotifyDigest] = useState(false);
+  const [nativePlatform, setNativePlatform] = useState<NativePlatform>("web");
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["profile"],
@@ -86,6 +133,7 @@ function SettingsPage() {
 
   useEffect(() => {
     setDetectedTimezone(detectBrowserTimezone());
+    setNativePlatform(detectNativePlatform());
   }, []);
 
   useEffect(() => {
@@ -124,6 +172,10 @@ function SettingsPage() {
 
   const checkout = useMutation({
     mutationFn: async (selection: { plan: PaidBillingPlan; interval: BillingInterval }) => {
+      if (nativePlatform === "ios" || nativePlatform === "android") {
+        await startNativePurchase({ ...selection, platform: nativePlatform });
+        return;
+      }
       const { url } = await startCheckout({ data: selection });
       window.location.href = url;
     },
@@ -132,6 +184,11 @@ function SettingsPage() {
 
   const portal = useMutation({
     mutationFn: async () => {
+      const storeUrl = storeSubscriptionUrl(billing?.billingSource);
+      if (storeUrl) {
+        window.location.href = storeUrl;
+        return;
+      }
       const { url } = await startPortal();
       window.location.href = url;
     },
@@ -305,30 +362,33 @@ function SettingsPage() {
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 Plan: {billingLoading ? "Loading..." : planLabel(billing?.plan)}
-                {billing?.billingInterval ? ` · ${billing.billingInterval}ly` : ""}
-                {billing?.stripeSubscriptionStatus
-                  ? ` · Stripe: ${billing.stripeSubscriptionStatus}`
+                {billing?.billingSource
+                  ? ` · Source: ${billingSourceLabel(billing.billingSource)}`
                   : ""}
+                {billing?.billingInterval ? ` · ${billing.billingInterval}ly` : ""}
+                {billing?.billingStatus ? ` · Status: ${billing.billingStatus}` : ""}
               </p>
               {billing?.paymentWarning ? (
                 <p className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
                   Payment needs attention. Paid features stay active until{" "}
                   {billing.stripeGracePeriodEndsAt
                     ? new Date(billing.stripeGracePeriodEndsAt).toLocaleDateString()
-                    : "the grace period ends"}
+                    : billing.gracePeriodEndsAt
+                      ? new Date(billing.gracePeriodEndsAt).toLocaleDateString()
+                      : "the grace period ends"}
                   . Update your payment method to keep premium sync running.
                 </p>
               ) : null}
-              {billing?.stripeCancelAtPeriodEnd ? (
+              {billing?.stripeCancelAtPeriodEnd || billing?.billingStatus === "active" ? (
                 <p className="mt-2 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                  Subscription canceled. Paid features remain active through the current billing
-                  period, then the account moves to Free.
+                  {billing.stripeCancelAtPeriodEnd
+                    ? "Subscription canceled. Paid features remain active through the current billing period, then the account moves to Free."
+                    : `${billingSourceLabel(billing.billingSource)} is managing this subscription.`}
                 </p>
               ) : null}
-              {billing?.stripeCurrentPeriodEnd ? (
+              {billing?.currentPeriodEnd ? (
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Current period ends{" "}
-                  {new Date(billing.stripeCurrentPeriodEnd).toLocaleDateString()}
+                  Current period ends {new Date(billing.currentPeriodEnd).toLocaleDateString()}
                 </p>
               ) : null}
             </div>
@@ -338,7 +398,11 @@ function SettingsPage() {
                 onClick={() => portal.mutate()}
                 disabled={portal.isPending || billingLoading}
               >
-                {portal.isPending ? "Opening..." : "Manage"}
+                {portal.isPending
+                  ? "Opening..."
+                  : billing?.billingSource === "apple" || billing?.billingSource === "google"
+                    ? `Manage in ${billingSourceLabel(billing.billingSource)}`
+                    : "Manage"}
               </Button>
             ) : (
               <div className="grid gap-3">
@@ -373,8 +437,12 @@ function SettingsPage() {
           {!billing?.hasPaidAccess ? (
             <p className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
               Free includes one calendar, a basic appointment dashboard, limited connections, and
-              limited monthly appointments. There is no setup fee. Stripe handles subscriptions,
-              invoices, receipts, coupons, payment retries, and taxes when enabled in Stripe.
+              limited monthly appointments. There is no setup fee.{" "}
+              {nativePlatform === "ios"
+                ? "The iOS app uses Apple subscriptions; web customers use Stripe."
+                : nativePlatform === "android"
+                  ? "The Android app uses Google Play subscriptions; web customers use Stripe."
+                  : "Stripe handles web subscriptions, invoices, receipts, coupons, payment retries, and taxes when enabled in Stripe."}
             </p>
           ) : null}
         </div>

@@ -283,7 +283,23 @@ export const getAdminDashboard = createServerFn({ method: "GET" }).handler(async
 
     const rawPlan = textFrom(authUser.app_metadata?.plan) ?? "free";
     const plan = rawPlan === "paid" ? "pro" : rawPlan;
+    const billingSource =
+      textFrom(authUser.app_metadata?.billing_source) ??
+      (textFrom(authUser.app_metadata?.stripe_customer_id) ? "stripe" : "free");
     const stripeSubscriptionStatus = textFrom(authUser.app_metadata?.stripe_subscription_status);
+    const storeSubscriptionStatus = textFrom(authUser.app_metadata?.store_subscription_status);
+    const billingStatus =
+      textFrom(authUser.app_metadata?.billing_status) ??
+      stripeSubscriptionStatus ??
+      storeSubscriptionStatus;
+    const gracePeriodEndsAt =
+      textFrom(authUser.app_metadata?.grace_period_ends_at) ??
+      textFrom(authUser.app_metadata?.stripe_grace_period_ends_at) ??
+      textFrom(authUser.app_metadata?.store_grace_period_ends_at);
+    const currentPeriodEnd =
+      textFrom(authUser.app_metadata?.current_period_end) ??
+      textFrom(authUser.app_metadata?.stripe_current_period_end) ??
+      textFrom(authUser.app_metadata?.store_current_period_end);
     const stripeGracePeriodEndsAt = textFrom(authUser.app_metadata?.stripe_grace_period_ends_at);
 
     return {
@@ -296,9 +312,14 @@ export const getAdminDashboard = createServerFn({ method: "GET" }).handler(async
       bannedUntil: authUser.banned_until ?? null,
       isAdmin: adminIds.has(authUser.id),
       plan,
+      billingSource,
+      billingStatus,
       billingInterval: textFrom(authUser.app_metadata?.billing_interval),
-      hasPaidAccess: hasPaidAccess(plan, stripeSubscriptionStatus, stripeGracePeriodEndsAt),
-      paymentWarning: stripeSubscriptionStatus === "past_due",
+      hasPaidAccess: hasPaidAccess(plan, billingStatus, gracePeriodEndsAt),
+      paymentWarning: billingStatus === "past_due",
+      currentPeriodEnd,
+      trialEndsAt: textFrom(authUser.app_metadata?.trial_ends_at),
+      gracePeriodEndsAt,
       stripeCustomerId: textFrom(authUser.app_metadata?.stripe_customer_id),
       stripeSubscriptionId: textFrom(authUser.app_metadata?.stripe_subscription_id),
       stripeSubscriptionStatus,
@@ -306,6 +327,12 @@ export const getAdminDashboard = createServerFn({ method: "GET" }).handler(async
       stripeCancelAtPeriodEnd: authUser.app_metadata?.stripe_cancel_at_period_end === true,
       stripeGracePeriodEndsAt,
       stripePriceId: textFrom(authUser.app_metadata?.stripe_price_id),
+      storeSubscriptionStatus,
+      storeProductId: textFrom(authUser.app_metadata?.store_product_id),
+      storeOriginalTransactionId: textFrom(authUser.app_metadata?.store_original_transaction_id),
+      storeCurrentPeriodEnd: textFrom(authUser.app_metadata?.store_current_period_end),
+      revenuecatAppUserId: textFrom(authUser.app_metadata?.revenuecat_app_user_id),
+      revenuecatEnvironment: textFrom(authUser.app_metadata?.revenuecat_environment),
       planUpdatedAt: textFrom(authUser.app_metadata?.plan_updated_at),
       platforms: platformRows,
       platformCount: platformRows.length,
@@ -504,6 +531,8 @@ export const adminSetUserPlan = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
       app_metadata: {
         ...(userData.user.app_metadata ?? {}),
+        billing_source: data.plan === "free" ? "free" : "internal",
+        billing_status: data.plan === "free" ? null : data.plan === "trial" ? "trialing" : "active",
         plan: data.plan,
         plan_updated_at: new Date().toISOString(),
       },

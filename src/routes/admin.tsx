@@ -40,7 +40,7 @@ import {
   adminSyncUser,
   getAdminDashboard,
 } from "@/lib/admin.functions";
-import { planLabel, type BillingPlan } from "@/lib/billing";
+import { billingSourceLabel, planLabel, type BillingPlan } from "@/lib/billing";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin")({
@@ -345,9 +345,11 @@ function AdminPage() {
                         <Badge variant={user.hasPaidAccess ? "secondary" : "outline"}>
                           {user.paymentWarning
                             ? "payment warning"
-                            : (user.stripeSubscriptionStatus ??
-                              (user.hasPaidAccess ? "active" : "limited"))}
+                            : (user.billingStatus ?? (user.hasPaidAccess ? "active" : "limited"))}
                         </Badge>
+                        <span className="text-[11px] text-muted-foreground">
+                          {billingSourceLabel(user.billingSource)}
+                        </span>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -553,12 +555,13 @@ function AdminPage() {
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         Billing: {planLabel(selectedUser.plan)}
-                        {selectedUser.billingInterval ? ` · ${selectedUser.billingInterval}ly` : ""}
-                        {selectedUser.stripeSubscriptionStatus
-                          ? ` · ${selectedUser.stripeSubscriptionStatus}`
+                        {selectedUser.billingSource
+                          ? ` · ${billingSourceLabel(selectedUser.billingSource)}`
                           : ""}
-                        {selectedUser.stripeCurrentPeriodEnd
-                          ? ` · renews ${formatDateOnly(selectedUser.stripeCurrentPeriodEnd)}`
+                        {selectedUser.billingInterval ? ` · ${selectedUser.billingInterval}ly` : ""}
+                        {selectedUser.billingStatus ? ` · ${selectedUser.billingStatus}` : ""}
+                        {selectedUser.currentPeriodEnd
+                          ? ` · renews ${formatDateOnly(selectedUser.currentPeriodEnd)}`
                           : ""}
                       </p>
                     </div>
@@ -609,6 +612,18 @@ function AdminPage() {
                           <span className="text-foreground">{planLabel(selectedUser.plan)}</span>
                         </div>
                         <div className="text-muted-foreground">
+                          Source:{" "}
+                          <span className="text-foreground">
+                            {billingSourceLabel(selectedUser.billingSource)}
+                          </span>
+                        </div>
+                        <div className="text-muted-foreground">
+                          Status:{" "}
+                          <span className="text-foreground">
+                            {selectedUser.billingStatus ?? "None"}
+                          </span>
+                        </div>
+                        <div className="text-muted-foreground">
                           Billing interval:{" "}
                           <span className="text-foreground">
                             {selectedUser.billingInterval ?? "None"}
@@ -618,6 +633,24 @@ function AdminPage() {
                           Access:{" "}
                           <span className="text-foreground">
                             {selectedUser.hasPaidAccess ? "paid" : "limited"}
+                          </span>
+                        </div>
+                        <div className="text-muted-foreground">
+                          Current period end:{" "}
+                          <span className="text-foreground">
+                            {formatDate(selectedUser.currentPeriodEnd)}
+                          </span>
+                        </div>
+                        <div className="text-muted-foreground">
+                          Trial ends:{" "}
+                          <span className="text-foreground">
+                            {formatDate(selectedUser.trialEndsAt)}
+                          </span>
+                        </div>
+                        <div className="text-muted-foreground">
+                          Grace ends:{" "}
+                          <span className="text-foreground">
+                            {formatDate(selectedUser.gracePeriodEndsAt)}
                           </span>
                         </div>
                         <div className="text-muted-foreground">
@@ -654,6 +687,30 @@ function AdminPage() {
                           Price:{" "}
                           <span className="text-foreground">
                             {selectedUser.stripePriceId ?? "None"}
+                          </span>
+                        </div>
+                        <div className="text-muted-foreground">
+                          Store status:{" "}
+                          <span className="text-foreground">
+                            {selectedUser.storeSubscriptionStatus ?? "None"}
+                          </span>
+                        </div>
+                        <div className="text-muted-foreground">
+                          Store product:{" "}
+                          <span className="text-foreground">
+                            {selectedUser.storeProductId ?? "None"}
+                          </span>
+                        </div>
+                        <div className="text-muted-foreground">
+                          Store period end:{" "}
+                          <span className="text-foreground">
+                            {formatDate(selectedUser.storeCurrentPeriodEnd)}
+                          </span>
+                        </div>
+                        <div className="text-muted-foreground">
+                          RevenueCat user:{" "}
+                          <span className="text-foreground">
+                            {selectedUser.revenuecatAppUserId ?? "None"}
                           </span>
                         </div>
                       </div>

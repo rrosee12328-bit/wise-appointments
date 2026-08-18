@@ -1,12 +1,18 @@
 export type BillingPlan = "free" | "pro" | "business" | "test" | "trial" | "internal";
 export type BillingInterval = "month" | "year";
 export type PaidBillingPlan = "pro" | "business" | "test";
+export type BillingSource = "free" | "stripe" | "apple" | "google" | "internal";
 
 export type BillingStatus = {
   plan: BillingPlan;
+  billingSource: BillingSource;
+  billingStatus: string | null;
   billingInterval: BillingInterval | null;
   hasPaidAccess: boolean;
   paymentWarning: boolean;
+  currentPeriodEnd: string | null;
+  trialEndsAt: string | null;
+  gracePeriodEndsAt: string | null;
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
   stripeSubscriptionStatus: string | null;
@@ -14,6 +20,11 @@ export type BillingStatus = {
   stripeCancelAtPeriodEnd: boolean;
   stripeGracePeriodEndsAt: string | null;
   stripePriceId: string | null;
+  storeSubscriptionStatus: string | null;
+  storeProductId: string | null;
+  storeOriginalTransactionId: string | null;
+  storeCurrentPeriodEnd: string | null;
+  revenuecatAppUserId: string | null;
   planUpdatedAt: string | null;
 };
 
@@ -45,6 +56,21 @@ export function hasPaidAccess(
   if (["active", "trialing"].includes(subscriptionStatus)) return true;
   if (subscriptionStatus === "past_due") return gracePeriodActive(gracePeriodEndsAt);
   return false;
+}
+
+export function billingSourceLabel(source: string | null | undefined) {
+  switch (source) {
+    case "stripe":
+      return "Stripe";
+    case "apple":
+      return "Apple";
+    case "google":
+      return "Google Play";
+    case "internal":
+      return "Internal";
+    default:
+      return "Free";
+  }
 }
 
 export function planLabel(plan: string | null | undefined) {
