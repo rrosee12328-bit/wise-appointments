@@ -41,6 +41,7 @@ function billingSourceFromStore(store: string | null): BillingSource {
   if (normalized.includes("app_store") || normalized.includes("mac_app_store")) return "apple";
   if (normalized.includes("play_store") || normalized.includes("google")) return "google";
   if (normalized.includes("stripe")) return "stripe";
+  if (normalized.includes("test_store")) return "internal";
   return "free";
 }
 
@@ -107,7 +108,7 @@ async function updateRevenueCatBilling(event: RevenueCatEvent) {
   if (!userId) throw new Error("RevenueCat event missing app_user_id");
 
   const source = billingSourceFromStore(textFrom(event.store));
-  if (source !== "apple" && source !== "google" && source !== "stripe") {
+  if (source !== "apple" && source !== "google" && source !== "stripe" && source !== "internal") {
     throw new Error(`Unsupported RevenueCat store: ${event.store ?? "unknown"}`);
   }
 
