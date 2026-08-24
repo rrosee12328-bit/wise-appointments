@@ -65,9 +65,9 @@ function Support() {
         <h2 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           <Mail className="h-3.5 w-3.5" /> Contact
         </h2>
-        <a href="mailto:support@jeylink.app" className="block">
+        <a href="mailto:support@jeylink.co" className="block">
           <Button variant="outline" className="w-full justify-start">
-            <Mail className="h-4 w-4" /> support@jeylink.app
+            <Mail className="h-4 w-4" /> support@jeylink.co
           </Button>
         </a>
       </section>

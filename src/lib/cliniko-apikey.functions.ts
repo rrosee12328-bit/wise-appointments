@@ -46,7 +46,7 @@ export const connectClinikoApiKey = createServerFn({ method: "POST" })
     const testRes = await fetch(`${CLINIKO_API_BASE}/practitioners`, {
       headers: {
         Authorization: `Basic ${Buffer.from(`${data.apiKey}:`).toString("base64")}`,
-        "User-Agent": "Jey Link (support@jeylink.com)",
+        "User-Agent": "Jey Link (support@jeylink.co)",
         Accept: "application/json",
       },
     });
@@ -109,7 +109,7 @@ export const syncClinikoAppointments = createServerFn({ method: "POST" }).handle
   const authHeader2 = `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}`;
   const headers = {
     Authorization: authHeader2,
-    "User-Agent": "Jey Link (support@jeylink.com)",
+    "User-Agent": "Jey Link (support@jeylink.co)",
     Accept: "application/json",
   };
 
