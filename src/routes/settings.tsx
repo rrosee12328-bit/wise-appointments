@@ -20,6 +20,11 @@ import {
   type BillingInterval,
   type PaidBillingPlan,
 } from "@/lib/billing";
+import {
+  detectNativePlatform,
+  openExternalBillingUrl,
+  type NativePlatform,
+} from "@/lib/native-billing";
 
 export const Route = createFileRoute("/settings")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -39,15 +44,6 @@ export const Route = createFileRoute("/settings")({
 function detectBrowserTimezone() {
   if (typeof window === "undefined" || typeof Intl === "undefined") return "UTC";
   return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-}
-
-type NativePlatform = "web" | "ios" | "android";
-
-function detectNativePlatform(): NativePlatform {
-  if (typeof window === "undefined") return "web";
-  const capacitor = (window as unknown as { Capacitor?: { getPlatform?: () => string } }).Capacitor;
-  const platform = capacitor?.getPlatform?.();
-  return platform === "ios" || platform === "android" ? platform : "web";
 }
 
 function storeSubscriptionUrl(source: string | null | undefined) {
@@ -179,6 +175,14 @@ function SettingsPage() {
       const { url } = await startCheckout({ data: selection });
       window.location.href = url;
     },
+    onSuccess: () => {
+      if (nativePlatform === "ios" || nativePlatform === "android") {
+        toast.success("Purchase complete", {
+          description: "Your subscription is being confirmed now.",
+        });
+        void qc.invalidateQueries({ queryKey: ["billing-status"] });
+      }
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -186,11 +190,11 @@ function SettingsPage() {
     mutationFn: async () => {
       const storeUrl = storeSubscriptionUrl(billing?.billingSource);
       if (storeUrl) {
-        window.location.href = storeUrl;
+        await openExternalBillingUrl(storeUrl);
         return;
       }
       const { url } = await startPortal();
-      window.location.href = url;
+      await openExternalBillingUrl(url);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -424,13 +428,15 @@ function SettingsPage() {
                   onMonthly={() => checkout.mutate({ plan: "business", interval: "month" })}
                   onYearly={() => checkout.mutate({ plan: "business", interval: "year" })}
                 />
-                <BillingChoice
-                  title="Test checkout"
-                  price="$0.50/mo"
-                  description="Internal test option for confirming checkout and webhook updates."
-                  disabled={checkout.isPending || billingLoading}
-                  onMonthly={() => checkout.mutate({ plan: "test", interval: "month" })}
-                />
+                {nativePlatform === "web" ? (
+                  <BillingChoice
+                    title="Test checkout"
+                    price="$0.50/mo"
+                    description="Internal test option for confirming checkout and webhook updates."
+                    disabled={checkout.isPending || billingLoading}
+                    onMonthly={() => checkout.mutate({ plan: "test", interval: "month" })}
+                  />
+                ) : null}
               </div>
             )}
           </div>

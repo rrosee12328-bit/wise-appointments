@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { useAppointmentsRealtime } from "@/hooks/use-appointments-realtime";
+import { useNativeBillingBridge } from "@/hooks/use-native-billing";
 import { BottomNav } from "@/components/BottomNav";
 import { AppHeader } from "@/components/AppHeader";
 import { AuthGate } from "@/components/AuthGate";
@@ -201,6 +202,7 @@ function AppShell() {
   const { user, session } = useAuth();
 
   useAppointmentsRealtime(user?.id);
+  useNativeBillingBridge(user?.id);
 
   return (
     <>
