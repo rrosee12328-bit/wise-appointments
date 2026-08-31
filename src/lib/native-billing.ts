@@ -28,6 +28,8 @@ declare global {
 let configuredUserId: string | null = null;
 let isConfigured = false;
 
+const REVENUECAT_ANDROID_PUBLIC_SDK_KEY = "goog_xzpOgkdCotxKPRMCPwuuSfgUowk";
+
 function envValue(name: string) {
   return (import.meta.env as Record<string, string | undefined>)[name]?.trim();
 }
@@ -46,7 +48,9 @@ function revenueCatApiKey(platform: Exclude<NativePlatform, "web">) {
   const key =
     platform === "ios"
       ? (envValue("VITE_REVENUECAT_IOS_API_KEY") ?? envValue("VITE_REVENUECAT_API_KEY"))
-      : (envValue("VITE_REVENUECAT_ANDROID_API_KEY") ?? envValue("VITE_REVENUECAT_API_KEY"));
+      : (envValue("VITE_REVENUECAT_ANDROID_API_KEY") ??
+        envValue("VITE_REVENUECAT_API_KEY") ??
+        REVENUECAT_ANDROID_PUBLIC_SDK_KEY);
   if (!key) {
     throw new Error(
       `RevenueCat ${platform === "ios" ? "iOS" : "Android"} API key is not configured.`,
