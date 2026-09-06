@@ -70,7 +70,7 @@ function inviteRedirectUrl(host: string) {
   if (configuredOrigin) return `${configuredOrigin.replace(/\/$/, "")}/reset-password`;
 
   const isLocal = host.includes("localhost");
-  const origin = isLocal ? `http://${host}` : "https://jeylink.vektiss.com";
+  const origin = isLocal ? `http://${host}` : "https://jeylink.co";
   return `${origin}/reset-password`;
 }
 

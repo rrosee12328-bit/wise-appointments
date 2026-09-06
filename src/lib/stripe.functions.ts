@@ -60,7 +60,7 @@ function appOrigin() {
   if (configuredOrigin) return configuredOrigin.replace(/\/$/, "");
 
   const host = getRequestHost();
-  return host.includes("localhost") ? `http://${host}` : "https://jeylink.vektiss.com";
+  return host.includes("localhost") ? `http://${host}` : "https://jeylink.co";
 }
 
 function stringFrom(value: unknown): string | null {

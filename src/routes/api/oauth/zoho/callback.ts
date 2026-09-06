@@ -8,7 +8,7 @@ function getZohoRedirectUri(url: URL) {
   const configuredOrigin = process.env.ZOHO_OAUTH_REDIRECT_ORIGIN;
   if (configuredOrigin) return `${configuredOrigin.replace(/\/$/, "")}/api/oauth/zoho/callback`;
   const isLocal = url.hostname.includes("localhost");
-  const origin = isLocal ? `http://${url.host}` : "https://jeylink.vektiss.com";
+  const origin = isLocal ? `http://${url.host}` : "https://jeylink.co";
   return `${origin}/api/oauth/zoho/callback`;
 }
 

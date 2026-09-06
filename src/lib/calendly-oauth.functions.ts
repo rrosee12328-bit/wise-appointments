@@ -13,7 +13,7 @@ function getCalendlyRedirectUri(host: string) {
   const configuredOrigin = process.env.CALENDLY_OAUTH_REDIRECT_ORIGIN;
   if (configuredOrigin) return `${configuredOrigin.replace(/\/$/, "")}/api/oauth/calendly/callback`;
   const isLocal = host.includes("localhost");
-  const origin = isLocal ? `http://${host}` : "https://jeylink.vektiss.com";
+  const origin = isLocal ? `http://${host}` : "https://jeylink.co";
   return `${origin}/api/oauth/calendly/callback`;
 }
 

@@ -12,7 +12,7 @@ function getGoogleRedirectUri(host: string) {
   if (configuredOrigin) return `${configuredOrigin.replace(/\/$/, "")}/api/oauth/google/callback`;
 
   const isLocal = host.includes("localhost");
-  const origin = isLocal ? `http://${host}` : "https://jeylink.vektiss.com";
+  const origin = isLocal ? `http://${host}` : "https://jeylink.co";
   return `${origin}/api/oauth/google/callback`;
 }
 

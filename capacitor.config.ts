@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: "Jey Link",
   webDir: "dist/client",
   server: {
-    url: process.env.CAPACITOR_SERVER_URL ?? "https://jeylink.vektiss.com",
+    url: process.env.CAPACITOR_SERVER_URL ?? "https://jeylink.co",
     cleartext: false,
   },
 };
