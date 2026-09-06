@@ -28,6 +28,7 @@ declare global {
 let configuredUserId: string | null = null;
 let isConfigured = false;
 
+const REVENUECAT_IOS_PUBLIC_SDK_KEY = "appl_SpXcOJmDoNGXMXSnWvOPAAOkkOX";
 const REVENUECAT_ANDROID_PUBLIC_SDK_KEY = "goog_xzpOgkdCotxKPRMCPwuuSfgUowk";
 
 function envValue(name: string) {
@@ -47,7 +48,9 @@ export function isNativeMobile() {
 function revenueCatApiKey(platform: Exclude<NativePlatform, "web">) {
   const key =
     platform === "ios"
-      ? (envValue("VITE_REVENUECAT_IOS_API_KEY") ?? envValue("VITE_REVENUECAT_API_KEY"))
+      ? (envValue("VITE_REVENUECAT_IOS_API_KEY") ??
+        envValue("VITE_REVENUECAT_API_KEY") ??
+        REVENUECAT_IOS_PUBLIC_SDK_KEY)
       : (envValue("VITE_REVENUECAT_ANDROID_API_KEY") ??
         envValue("VITE_REVENUECAT_API_KEY") ??
         REVENUECAT_ANDROID_PUBLIC_SDK_KEY);
