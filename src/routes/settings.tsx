@@ -183,7 +183,16 @@ function SettingsPage() {
         void qc.invalidateQueries({ queryKey: ["billing-status"] });
       }
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      const isStoreConfigurationError =
+        nativePlatform !== "web" &&
+        /configuration|products registered|offerings.*empty|could not be fetched/i.test(e.message);
+      toast.error(
+        isStoreConfigurationError
+          ? "Subscriptions are temporarily unavailable. Please try again shortly."
+          : e.message,
+      );
+    },
   });
 
   const portal = useMutation({
