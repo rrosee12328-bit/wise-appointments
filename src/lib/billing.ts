@@ -69,7 +69,7 @@ export function billingSourceLabel(source: string | null | undefined) {
     case "internal":
       return "Internal";
     default:
-      return "Free";
+      return "None";
   }
 }
 
@@ -87,6 +87,6 @@ export function planLabel(plan: string | null | undefined) {
     case "internal":
       return "Internal";
     default:
-      return "Free";
+      return "No subscription";
   }
 }

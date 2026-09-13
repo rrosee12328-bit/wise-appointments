@@ -371,7 +371,7 @@ function SettingsPage() {
                   ? "Loading plan..."
                   : billing?.hasPaidAccess
                     ? `${planLabel(billing.plan)} active`
-                    : "Free plan"}
+                    : "Subscription required"}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 Plan: {billingLoading ? "Loading..." : planLabel(billing?.plan)}
@@ -395,7 +395,7 @@ function SettingsPage() {
               {billing?.stripeCancelAtPeriodEnd || billing?.billingStatus === "active" ? (
                 <p className="mt-2 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
                   {billing.stripeCancelAtPeriodEnd
-                    ? "Subscription canceled. Paid features remain active through the current billing period, then the account moves to Free."
+                    ? "Subscription canceled. Access remains active through the current billing period."
                     : `${billingSourceLabel(billing.billingSource)} is managing this subscription.`}
                 </p>
               ) : null}
@@ -423,7 +423,7 @@ function SettingsPage() {
                   title="Pro"
                   price="$9.99/mo"
                   yearly="$99/yr"
-                  description="For individual professionals. Includes a 14-day Pro trial."
+                  description="For individual professionals. Includes a 7-day Pro trial."
                   disabled={checkout.isPending || billingLoading}
                   onMonthly={() => checkout.mutate({ plan: "pro", interval: "month" })}
                   onYearly={() => checkout.mutate({ plan: "pro", interval: "year" })}
@@ -451,8 +451,7 @@ function SettingsPage() {
           </div>
           {!billing?.hasPaidAccess ? (
             <p className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-              Free includes one calendar, a basic appointment dashboard, limited connections, and
-              limited monthly appointments. There is no setup fee.{" "}
+              Choose a plan to use Jey Link. Pro includes a 7-day free trial. There is no setup fee.{" "}
               {nativePlatform === "ios"
                 ? "The iOS app uses Apple subscriptions; web customers use Stripe."
                 : nativePlatform === "android"

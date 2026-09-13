@@ -586,10 +586,9 @@ function Platforms() {
           <div className="flex items-start gap-3">
             <CreditCard className="mt-0.5 h-4 w-4 text-accent" />
             <div className="min-w-0 flex-1">
-              <div className="font-medium text-foreground">Limited access</div>
+              <div className="font-medium text-foreground">Subscription required</div>
               <p className="mt-1 text-xs text-muted-foreground">
-                You can connect a main calendar, but syncing and booking-app connections require an
-                active subscription.
+                Syncing and booking-app connections require an active subscription or trial.
               </p>
             </div>
             <Button size="sm" onClick={() => checkout.mutate()} disabled={checkout.isPending}>

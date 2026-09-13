@@ -17,6 +17,7 @@ import { useNativeBillingBridge } from "@/hooks/use-native-billing";
 import { BottomNav } from "@/components/BottomNav";
 import { AppHeader } from "@/components/AppHeader";
 import { AuthGate } from "@/components/AuthGate";
+import { SubscriptionGate } from "@/components/SubscriptionGate";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -209,7 +210,9 @@ function AppShell() {
       <div className="min-h-screen bg-background pb-20">
         <AppHeader />
         <AuthGate>
-          <Outlet />
+          <SubscriptionGate>
+            <Outlet />
+          </SubscriptionGate>
         </AuthGate>
       </div>
       {session ? <BottomNav /> : null}

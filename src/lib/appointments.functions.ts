@@ -60,29 +60,8 @@ export const upsertAppointment = createServerFn({ method: "POST" })
         : null,
     );
 
-    if (!paidAccess && !data.id) {
-      const freeLimit = Number(process.env.FREE_MONTHLY_APPOINTMENT_LIMIT ?? 25);
-      if (Number.isFinite(freeLimit) && freeLimit > 0) {
-        const start = new Date(data.starts_at);
-        const monthStart = new Date(
-          Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1),
-        ).toISOString();
-        const monthEnd = new Date(
-          Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1),
-        ).toISOString();
-        const { count, error: countError } = await supabaseAdmin
-          .from("appointments")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id)
-          .gte("starts_at", monthStart)
-          .lt("starts_at", monthEnd);
-        if (countError) throw new Error(countError.message);
-        if ((count ?? 0) >= freeLimit) {
-          throw new Error(
-            `Free plan is limited to ${freeLimit} appointments per month. Upgrade to Pro for unlimited appointments.`,
-          );
-        }
-      }
+    if (!paidAccess) {
+      throw new Error("An active Jey Link subscription or trial is required.");
     }
 
     const row = { ...data, user_id: user.id };
