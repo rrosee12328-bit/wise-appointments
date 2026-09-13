@@ -18,6 +18,7 @@ type RevenueCatEvent = {
   period_type?: string;
   transaction_id?: string;
   original_transaction_id?: string;
+  event_timestamp_ms?: number | string | null;
   expiration_at_ms?: number | string | null;
   purchased_at_ms?: number | string | null;
   environment?: string;
@@ -28,8 +29,13 @@ function textFrom(value: unknown): string | null {
 }
 
 function msToIso(value: unknown): string | null {
+  const ms = msFrom(value);
+  return ms === null ? null : new Date(ms).toISOString();
+}
+
+function msFrom(value: unknown): number | null {
   const ms = typeof value === "string" ? Number(value) : value;
-  return typeof ms === "number" && Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+  return typeof ms === "number" && Number.isFinite(ms) ? ms : null;
 }
 
 function addDaysIso(days: number) {
@@ -75,6 +81,7 @@ function statusFromEvent(event: RevenueCatEvent) {
   if (type === "TEST") return "test";
   if (type === "EXPIRATION") return "expired";
   if (type === "BILLING_ISSUE") return "past_due";
+  if ((msFrom(event.expiration_at_ms) ?? Infinity) <= Date.now()) return "expired";
   if (type === "CANCELLATION") return "active";
   if (periodType === "trial") return "trialing";
 
@@ -116,6 +123,16 @@ async function updateRevenueCatBilling(event: RevenueCatEvent) {
   if (loadError) throw new Error(loadError.message);
   if (!data.user) throw new Error("RevenueCat event did not match a Supabase user");
 
+  const eventTimestampMs = msFrom(event.event_timestamp_ms);
+  const lastEventTimestampMs = msFrom(data.user.app_metadata?.revenuecat_last_event_timestamp_ms);
+  if (
+    eventTimestampMs !== null &&
+    lastEventTimestampMs !== null &&
+    eventTimestampMs < lastEventTimestampMs
+  ) {
+    return;
+  }
+
   const status = statusFromEvent(event);
   const periodEnd = msToIso(event.expiration_at_ms);
   const productId = textFrom(event.product_id);
@@ -144,6 +161,7 @@ async function updateRevenueCatBilling(event: RevenueCatEvent) {
     revenuecat_app_user_id: userId,
     revenuecat_environment: textFrom(event.environment),
     revenuecat_last_event_type: textFrom(event.type),
+    revenuecat_last_event_timestamp_ms: eventTimestampMs,
     revenuecat_last_event_at: new Date().toISOString(),
   };
 

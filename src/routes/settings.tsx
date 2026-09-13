@@ -181,6 +181,10 @@ function SettingsPage() {
           description: "Your subscription is being confirmed now.",
         });
         void qc.invalidateQueries({ queryKey: ["billing-status"] });
+        const interval = window.setInterval(() => {
+          void qc.invalidateQueries({ queryKey: ["billing-status"] });
+        }, 3000);
+        window.setTimeout(() => window.clearInterval(interval), 30000);
       }
     },
     onError: (e: Error) => {
