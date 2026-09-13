@@ -293,7 +293,7 @@ function Schedule() {
   const sync = async () => {
     if (!billing?.hasPaidAccess) {
       toast.error("Upgrade to sync platforms.", {
-        description: "An active subscription or trial is required to sync platforms.",
+        description: "Free users can view and add appointments, but live calendar sync is limited.",
       });
       return;
     }

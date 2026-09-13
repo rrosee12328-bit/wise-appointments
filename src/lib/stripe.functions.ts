@@ -247,7 +247,7 @@ export const createStripeCheckoutSession = createServerFn({ method: "POST" })
     body.set("subscription_data[metadata][requested_plan]", data.plan);
     body.set("subscription_data[metadata][billing_interval]", data.interval);
     if (data.plan === "pro" && !current.planUpdatedAt && envFlag("STRIPE_ENABLE_PRO_TRIAL", true)) {
-      body.set("subscription_data[trial_period_days]", "7");
+      body.set("subscription_data[trial_period_days]", "14");
       body.set("subscription_data[trial_settings][end_behavior][missing_payment_method]", "cancel");
     }
 
