@@ -1,18 +1,29 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CreditCard, LogOut, Monitor, Moon, Sun } from "lucide-react";
+import { CreditCard, LogOut, Monitor, Moon, RotateCcw, Sun, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useTheme } from "@/components/ThemeProvider";
 import { useAuth } from "@/hooks/use-auth";
 import { useBillingStatus } from "@/hooks/use-billing-status";
 import { cn } from "@/lib/utils";
-import { getProfile, updateProfile } from "@/lib/profile.functions";
+import { deleteAccount, getProfile, updateProfile } from "@/lib/profile.functions";
 import { createStripeCheckoutSession, createStripePortalSession } from "@/lib/stripe.functions";
 import {
   billingSourceLabel,
@@ -25,6 +36,7 @@ import {
   openExternalBillingUrl,
   type NativePlatform,
 } from "@/lib/native-billing";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/settings")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -78,13 +90,31 @@ async function startNativePurchase(selection: {
   await bridge.purchaseSubscription(selection);
 }
 
+async function restoreNativePurchases(platform: Exclude<NativePlatform, "web">) {
+  const bridge = (
+    window as unknown as {
+      JeyLinkMobileBilling?: { restorePurchases?: () => Promise<void> };
+    }
+  ).JeyLinkMobileBilling;
+
+  if (!bridge?.restorePurchases) {
+    throw new Error(
+      `${platform === "ios" ? "Apple" : "Google Play"} billing is not connected in this build yet.`,
+    );
+  }
+
+  await bridge.restorePurchases();
+}
+
 function SettingsPage() {
   const search = Route.useSearch();
+  const navigate = useNavigate();
   const { mode, setMode } = useTheme();
   const { session, signOut } = useAuth();
   const qc = useQueryClient();
   const fetchProfile = useServerFn(getProfile);
   const saveProfile = useServerFn(updateProfile);
+  const removeAccount = useServerFn(deleteAccount);
   const startCheckout = useServerFn(createStripeCheckoutSession);
   const startPortal = useServerFn(createStripePortalSession);
 
@@ -208,6 +238,35 @@ function SettingsPage() {
       }
       const { url } = await startPortal();
       await openExternalBillingUrl(url);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const restore = useMutation({
+    mutationFn: async () => {
+      if (nativePlatform !== "ios" && nativePlatform !== "android") {
+        throw new Error("Restore Purchases is available in the iOS and Android apps.");
+      }
+      await restoreNativePurchases(nativePlatform);
+    },
+    onSuccess: () => {
+      toast.success("Purchases restored", {
+        description: "Your subscription status is being refreshed.",
+      });
+      void qc.invalidateQueries({ queryKey: ["billing-status"] });
+      window.setTimeout(() => {
+        void qc.invalidateQueries({ queryKey: ["billing-status"] });
+      }, 3000);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const accountDeletion = useMutation({
+    mutationFn: () => removeAccount(),
+    onSuccess: async () => {
+      await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+      toast.success("Account deleted");
+      navigate({ to: "/signin" });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -452,6 +511,16 @@ function SettingsPage() {
                 ) : null}
               </div>
             )}
+            {nativePlatform === "ios" || nativePlatform === "android" ? (
+              <Button
+                variant="outline"
+                onClick={() => restore.mutate()}
+                disabled={restore.isPending || billingLoading}
+              >
+                <RotateCcw className="h-4 w-4" />
+                {restore.isPending ? "Restoring..." : "Restore Purchases"}
+              </Button>
+            ) : null}
           </div>
           {!billing?.hasPaidAccess ? (
             <p className="mt-3 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
@@ -484,6 +553,39 @@ function SettingsPage() {
           <LogOut className="h-4 w-4" />
           Sign out
         </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="outline" className="text-destructive hover:text-destructive">
+              <Trash2 className="h-4 w-4" />
+              Delete account
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete your Jey Link account?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This permanently deletes your profile, appointments, connected calendars, and saved
+                platform connections. This cannot be undone. Store subscriptions must still be
+                canceled through Apple or Google Play.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={accountDeletion.isPending}>
+                Keep account
+              </AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={accountDeletion.isPending}
+                onClick={(event) => {
+                  event.preventDefault();
+                  accountDeletion.mutate();
+                }}
+              >
+                {accountDeletion.isPending ? "Deleting..." : "Delete account permanently"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </Section>
 
       <Section title="About">

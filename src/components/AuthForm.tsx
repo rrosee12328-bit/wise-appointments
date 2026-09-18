@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { JeyLinkLogo } from "@/components/JeyLinkLogo";
 import { toast } from "sonner";
+import { signInWithOAuth } from "@/lib/native-auth";
 
 type Mode = "signin" | "signup";
 
@@ -70,11 +71,14 @@ export function AuthForm({ mode }: { mode: Mode }) {
   };
 
   const handleOAuth = async (provider: "google" | "apple") => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: `${window.location.origin}/` },
-    });
-    if (error) toast.error(error.message);
+    setSubmitting(true);
+    try {
+      await signInWithOAuth(provider);
+    } catch (err) {
+      toast.error(errorMessage(err, `${provider === "apple" ? "Apple" : "Google"} sign-in failed`));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const isSignup = mode === "signup";
@@ -93,10 +97,20 @@ export function AuthForm({ mode }: { mode: Mode }) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-2">
-            <Button type="button" variant="outline" onClick={() => handleOAuth("google")}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={submitting}
+              onClick={() => handleOAuth("google")}
+            >
               Google
             </Button>
-            <Button type="button" variant="outline" onClick={() => handleOAuth("apple")}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={submitting}
+              onClick={() => handleOAuth("apple")}
+            >
               Apple
             </Button>
           </div>

@@ -85,3 +85,27 @@ export const updateProfile = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return result;
   });
+
+export const deleteAccount = createServerFn({ method: "POST" }).handler(async () => {
+  const user = await requireUser();
+  const userTables = [
+    "appointments",
+    "platform_connections",
+    "platform_links",
+    "ical_feeds",
+    "user_roles",
+  ] as const;
+
+  for (const table of userTables) {
+    const { error } = await supabaseAdmin.from(table).delete().eq("user_id", user.id);
+    if (error) throw new Error(`Unable to delete ${table}: ${error.message}`);
+  }
+
+  const { error: profileError } = await supabaseAdmin.from("profiles").delete().eq("id", user.id);
+  if (profileError) throw new Error(`Unable to delete profile: ${profileError.message}`);
+
+  const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(user.id, false);
+  if (authError) throw new Error(authError.message);
+
+  return { deleted: true };
+});

@@ -11,7 +11,12 @@ export function AppHeader() {
   const { session, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isNativeIos, setIsNativeIos] = useState(false);
   const userId = session?.user?.id;
+
+  useEffect(() => {
+    setIsNativeIos(window.Capacitor?.getPlatform?.() === "ios");
+  }, []);
 
   useEffect(() => {
     if (!userId) {
@@ -36,7 +41,11 @@ export function AppHeader() {
   return (
     <header
       className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/65"
-      style={{ paddingTop: "env(safe-area-inset-top)" }}
+      style={{
+        paddingTop: isNativeIos
+          ? "max(env(safe-area-inset-top), 2.75rem)"
+          : "env(safe-area-inset-top)",
+      }}
     >
       <div className="mx-auto flex max-w-md items-center justify-between px-5 py-3.5">
         <Link
