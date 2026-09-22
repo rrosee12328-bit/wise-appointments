@@ -12,11 +12,63 @@ export type Profile = {
   business_name: string | null;
   avatar_url: string | null;
   timezone: string | null;
+  onboarding_completed_at: string | null;
   email: string | null;
 };
 
 const SELECT =
-  "id, first_name, last_name, phone, display_name, business_name, avatar_url, timezone";
+  "id, first_name, last_name, phone, display_name, business_name, avatar_url, timezone, onboarding_completed_at";
+
+export type OnboardingStatus = {
+  completed: boolean;
+  completedAt: string | null;
+};
+
+export const getOnboardingStatus = createServerFn({ method: "GET" }).handler(
+  async (): Promise<OnboardingStatus> => {
+    const user = await requireUser();
+    const { data, error } = await supabaseAdmin
+      .from("profiles")
+      .select("onboarding_completed_at")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    const completedAt = data?.onboarding_completed_at ?? null;
+    return { completed: Boolean(completedAt), completedAt };
+  },
+);
+
+export const completeOnboarding = createServerFn({ method: "POST" }).handler(
+  async (): Promise<OnboardingStatus> => {
+    const user = await requireUser();
+    const completedAt = new Date().toISOString();
+    const updated = await supabaseAdmin
+      .from("profiles")
+      .update({ onboarding_completed_at: completedAt })
+      .eq("id", user.id)
+      .select("onboarding_completed_at")
+      .maybeSingle();
+
+    if (updated.error) throw new Error(updated.error.message);
+    if (!updated.data) {
+      const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+      const firstName = typeof meta.first_name === "string" ? meta.first_name : null;
+      const lastName = typeof meta.last_name === "string" ? meta.last_name : null;
+      const displayName = [firstName, lastName].filter(Boolean).join(" ") || user.email;
+      const inserted = await supabaseAdmin.from("profiles").insert({
+        id: user.id,
+        first_name: firstName,
+        last_name: lastName,
+        display_name: displayName,
+        onboarding_completed_at: completedAt,
+      });
+
+      if (inserted.error) throw new Error(inserted.error.message);
+    }
+    return { completed: true, completedAt };
+  },
+);
 
 export const getProfile = createServerFn({ method: "GET" }).handler(async (): Promise<Profile> => {
   const user = await requireUser();

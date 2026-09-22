@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -37,6 +37,7 @@ import { syncSquareBookings } from "@/lib/square-sync.functions";
 import { connectZenotiApiKey } from "@/lib/zenoti-apikey.functions";
 import { createZohoAuthUrl } from "@/lib/zoho-oauth.functions";
 import { syncZohoBookings } from "@/lib/zoho-sync.functions";
+import { completeOnboarding } from "@/lib/profile.functions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/onboarding")({
@@ -163,6 +164,7 @@ function readLocalFlag(key: string) {
 
 function Onboarding() {
   const search = useSearch({ from: "/onboarding" });
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const list = useServerFn(listConnections);
   const listIcal = useServerFn(listIcalFeeds);
@@ -187,6 +189,7 @@ function Onboarding() {
   const fetchAppts = useServerFn(getAppointments);
   const upsertFn = useServerFn(upsertAppointment);
   const pushBlockFn = useServerFn(pushAppointmentBlock);
+  const completeOnboardingFn = useServerFn(completeOnboarding);
 
   const [selectedGuide, setSelectedGuide] = useState<PlatformId>("square");
   const [guideConfirmed, setGuideConfirmed] = useState(() =>
@@ -200,6 +203,16 @@ function Onboarding() {
   const [apiKeyDialog, setApiKeyDialog] = useState<"cliniko" | "zenoti" | null>(null);
   const [apiKeyLoading, setApiKeyLoading] = useState(false);
   const [firstSyncMessage, setFirstSyncMessage] = useState<string | null>(null);
+
+  const finishOnboarding = useMutation({
+    mutationFn: () => completeOnboardingFn(),
+    onSuccess: async (status) => {
+      qc.setQueriesData({ queryKey: ["onboarding-status"] }, status);
+      await qc.invalidateQueries({ queryKey: ["profile"] });
+      await navigate({ to: "/", search: { verify: undefined }, replace: true });
+    },
+    onError: (err: Error) => toast.error("Unable to finish setup", { description: err.message }),
+  });
 
   const { data: realConnections } = useQuery({
     queryKey: ["platform-connections"],
@@ -459,7 +472,20 @@ function Onboarding() {
   return (
     <main className="mx-auto max-w-4xl px-4 pb-24 pt-8">
       <header className="mb-5">
-        <p className="text-xs font-semibold uppercase tracking-wide text-accent">Jey Link setup</p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-accent">
+            Jey Link setup
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => finishOnboarding.mutate()}
+            disabled={finishOnboarding.isPending}
+          >
+            {finishOnboarding.isPending ? "Opening schedule…" : "Skip for now"}
+          </Button>
+        </div>
         <h1 className="mt-1 text-2xl font-semibold text-foreground">Connect your scheduler</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
           Jey Link connects all your booking apps into one calendar so you never get double-booked.
@@ -667,10 +693,13 @@ function Onboarding() {
               <ChecklistItem label="Booking-app calendar sync enabled" done={guideConfirmed} />
               <ChecklistItem label="Test block confirmed" done={hasTestBlock} />
             </div>
-            <Button asChild className="mt-3">
-              <Link to="/" search={{ verify: undefined }}>
-                Go to schedule
-              </Link>
+            <Button
+              type="button"
+              className="mt-3"
+              onClick={() => finishOnboarding.mutate()}
+              disabled={finishOnboarding.isPending}
+            >
+              {finishOnboarding.isPending ? "Opening schedule…" : "Go to schedule"}
             </Button>
           </section>
         </div>

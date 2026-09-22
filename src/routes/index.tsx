@@ -160,6 +160,13 @@ function Schedule() {
   const { data: billing } = useBillingStatus(!!session);
   const hydrated = useHydrated();
 
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
   useAutoSyncPlatforms(!!session && Boolean(billing?.hasPaidAccess));
 
   const { data, isLoading } = useQuery({

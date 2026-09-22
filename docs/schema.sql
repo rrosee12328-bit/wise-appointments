@@ -33,6 +33,7 @@ create table public.profiles (
   business_name text,
   avatar_url text,
   timezone text default 'America/New_York',
+  onboarding_completed_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

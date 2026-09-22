@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useEffect, type MouseEvent } from "react";
+import { useMemo, useState, type MouseEvent } from "react";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { PLATFORMS } from "@/lib/platforms";
 import { type Appointment, formatTime } from "@/lib/mock-data";
@@ -83,8 +83,6 @@ export function DayTimelineView({
   const [day, setDay] = useState<Date>(() => {
     return startOfDay(new Date());
   });
-  const nowLineRef = useRef<HTMLDivElement>(null);
-
   const dayAppts = useMemo(
     () => appointments.filter((a) => sameDay(a.start, day)).sort((a, b) => +a.start - +b.start),
     [appointments, day],
@@ -108,13 +106,6 @@ export function DayTimelineView({
     if (mins < 0 || mins > (DAY_END_HOUR - DAY_START_HOUR) * 60) return null;
     return (mins / 60) * HOUR_PX;
   }, [day]);
-
-  // Scroll to current time on mount
-  useEffect(() => {
-    if (nowLineRef.current) {
-      nowLineRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  }, []);
 
   const isToday = sameDay(day, new Date());
 
@@ -248,11 +239,7 @@ export function DayTimelineView({
 
             {/* Now indicator */}
             {nowOffset !== null && (
-              <div
-                ref={nowLineRef}
-                className="absolute inset-x-0 z-10 flex items-center"
-                style={{ top: nowOffset }}
-              >
+              <div className="absolute inset-x-0 z-10 flex items-center" style={{ top: nowOffset }}>
                 <div className="h-2 w-2 rounded-full bg-accent" />
                 <div className="h-px flex-1 bg-accent" />
               </div>
