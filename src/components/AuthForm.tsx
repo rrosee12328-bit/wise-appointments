@@ -10,7 +10,7 @@ import { JeyLinkLogo } from "@/components/JeyLinkLogo";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { isNativeMobile } from "@/lib/native-billing";
 import { toast } from "sonner";
-import { signInWithOAuth } from "@/lib/native-auth";
+import { signInWithOAuth, emailConfirmationRedirect } from "@/lib/native-auth";
 
 type Mode = "signin" | "signup";
 
@@ -51,7 +51,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
+            emailRedirectTo: emailConfirmationRedirect(),
             data: {
               first_name: fn,
               last_name: ln,

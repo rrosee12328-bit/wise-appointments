@@ -7,7 +7,8 @@ import {
   useRouter,
 } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Component, useState, type ReactNode } from "react";
+import { Component, useEffect, useState, type ReactNode } from "react";
+import { listenForNativeAuthCallbacks } from "@/lib/native-auth";
 
 import appCss from "../styles.css?url";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -203,6 +204,11 @@ function AppShell() {
 
   useAppointmentsRealtime(user?.id);
   useNativeBillingBridge(user?.id);
+
+  useEffect(() => {
+    const cleanup = listenForNativeAuthCallbacks();
+    return () => cleanup();
+  }, []);
 
   return (
     <>
