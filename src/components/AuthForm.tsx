@@ -27,6 +27,8 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const hydrated = useHydrated();
+  const isNative = hydrated && isNativeMobile();
 
   useEffect(() => {
     if (!loading && session) navigate({ to: "/", search: { verify: undefined } });
