@@ -100,33 +100,37 @@ export function AuthForm({ mode }: { mode: Mode }) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={submitting}
-              onClick={() => handleOAuth("google")}
-            >
-              Google
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={submitting}
-              onClick={() => handleOAuth("apple")}
-            >
-              Apple
-            </Button>
-          </div>
+          {!isNative && (
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={submitting}
+                onClick={() => handleOAuth("google")}
+              >
+                Google
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={submitting}
+                onClick={() => handleOAuth("apple")}
+              >
+                Apple
+              </Button>
+            </div>
+          )}
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
+          {!isNative && (
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">or with email</span>
+              </div>
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">or with email</span>
-            </div>
-          </div>
+          )}
 
           <form onSubmit={handleEmail} className="space-y-3">
             {isSignup && (
